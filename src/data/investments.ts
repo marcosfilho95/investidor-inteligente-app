@@ -138,28 +138,30 @@ export const allocationData = (() => {
   }));
 })();
 
-// Generate price history data for different periods
+// Generate price history data for different periods — with high granularity
 export function generatePriceHistory(basePrice: number, changePercent: number, period: string) {
+  const generateLabels = (count: number, fmt: (i: number) => string) => Array.from({ length: count }, (_, i) => fmt(i));
+
   const periods: Record<string, { points: number; labels: string[] }> = {
-    "1D": { points: 8, labels: ["9h", "10h", "11h", "12h", "13h", "14h", "15h", "16h"] },
-    "7D": { points: 7, labels: ["Seg", "Ter", "Qua", "Qui", "Sex", "Seg", "Ter"] },
-    "30D": { points: 10, labels: ["Sem 1", "Sem 2", "Sem 3", "Sem 4", "Sem 5", "Sem 6", "Sem 7", "Sem 8", "Sem 9", "Sem 10"] },
-    "6M": { points: 6, labels: ["Set", "Out", "Nov", "Dez", "Jan", "Fev"] },
-    "YTD": { points: 3, labels: ["Jan", "Fev", "Mar"] },
-    "1A": { points: 12, labels: ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev"] },
-    "5A": { points: 10, labels: ["2021", "2021.2", "2022", "2022.2", "2023", "2023.2", "2024", "2024.2", "2025", "2025.2"] },
+    "1D": { points: 42, labels: generateLabels(42, (i) => { const h = 9 + Math.floor(i * 7 / 42); const m = Math.round((i * 7 / 42 - Math.floor(i * 7 / 42)) * 60); return `${h}:${m.toString().padStart(2, '0')}`; }) },
+    "7D": { points: 35, labels: generateLabels(35, (i) => { const days = ["Seg", "Ter", "Qua", "Qui", "Sex"]; const d = Math.floor(i / 7); const h = 9 + (i % 7); return `${days[d % 5]} ${h}h`; }) },
+    "30D": { points: 30, labels: generateLabels(30, (i) => `${(i + 1).toString().padStart(2, '0')}/02`) },
+    "6M": { points: 60, labels: generateLabels(60, (i) => { const months = ["Set", "Out", "Nov", "Dez", "Jan", "Fev"]; const m = Math.floor(i / 10); const d = ((i % 10) * 3 + 1); return `${d.toString().padStart(2, '0')}/${months[m]}`; }) },
+    "YTD": { points: 30, labels: generateLabels(30, (i) => { const m = Math.floor(i / 15); const d = (i % 15) * 2 + 1; return `${d.toString().padStart(2, '0')}/${m === 0 ? 'Jan' : 'Fev'}`; }) },
+    "1A": { points: 52, labels: generateLabels(52, (i) => { const months = ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev"]; const m = Math.floor(i * 12 / 52); const week = (i % Math.ceil(52 / 12)) + 1; return `${months[m]} S${week}`; }) },
+    "5A": { points: 60, labels: generateLabels(60, (i) => { const year = 2021 + Math.floor(i / 12); const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]; return `${months[i % 12]}/${year.toString().slice(2)}`; }) },
   };
 
   const config = periods[period] || periods["1A"];
-  const volatility = period === "1D" ? 0.005 : period === "7D" ? 0.01 : period === "5A" ? 0.08 : 0.03;
+  const volatility = period === "1D" ? 0.003 : period === "7D" ? 0.006 : period === "5A" ? 0.04 : 0.015;
   const trend = changePercent >= 0 ? 1 : -1;
 
-  let currentPrice = basePrice * (1 - (trend * volatility * config.points * 0.5));
+  let currentPrice = basePrice * (1 - (trend * volatility * config.points * 0.3));
   const data = [];
 
   for (let i = 0; i < config.points; i++) {
     const noise = (Math.random() - 0.4) * volatility * basePrice;
-    currentPrice += noise + (trend * volatility * basePrice * 0.3);
+    currentPrice += noise + (trend * volatility * basePrice * 0.2);
     currentPrice = Math.max(currentPrice, basePrice * 0.5);
     data.push({
       month: config.labels[i],

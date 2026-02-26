@@ -21,13 +21,36 @@ export function PerformanceChart() {
     setActiveBenchmarks((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Slice data based on period
+  // Generate more detailed data based on period
   const getFilteredData = () => {
-    const periodSlices: Record<string, number> = {
-      "1 DIA": 1, "7 DIAS": 2, "30 DIAS": 3, "6 MESES": 6, "YTD": 3, "1 ANO": 12, "5 ANOS": 12,
+    const base = performanceData;
+    const lastEntry = base[base.length - 1];
+    const pointsMap: Record<string, number> = {
+      "1 DIA": 24, "7 DIAS": 35, "30 DIAS": 30, "6 MESES": 60, "YTD": 30, "1 ANO": 52, "5 ANOS": 60,
     };
-    const count = periodSlices[selectedPeriod] || 12;
-    return performanceData.slice(-count);
+    const points = pointsMap[selectedPeriod] || 12;
+    
+    // Generate interpolated data with more granularity
+    const result = [];
+    const startVal = { carteira: base[0].carteira * 0.85, ibovespa: base[0].ibovespa * 0.88, cdi: base[0].cdi * 0.9, ipca: base[0].ipca * 0.92 };
+    const endVal = lastEntry;
+    
+    for (let i = 0; i < points; i++) {
+      const progress = i / (points - 1);
+      const noise = (Math.random() - 0.45) * 0.015;
+      result.push({
+        month: selectedPeriod === "1 DIA" ? `${(9 + Math.floor(i * 7 / points))}:${(Math.round((i * 7 / points % 1) * 60)).toString().padStart(2, '0')}` :
+               selectedPeriod === "7 DIAS" ? `D${Math.floor(i / 5) + 1} ${9 + (i % 5)}h` :
+               selectedPeriod === "30 DIAS" ? `${(i + 1).toString().padStart(2, '0')}/02` :
+               selectedPeriod === "5 ANOS" ? `${["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"][i % 12]}/${(21 + Math.floor(i / 12)).toString()}` :
+               `S${i + 1}`,
+        carteira: Math.round(startVal.carteira + (endVal.carteira - startVal.carteira) * (progress + noise)),
+        ibovespa: Math.round(startVal.ibovespa + (endVal.ibovespa - startVal.ibovespa) * (progress + noise * 0.8)),
+        cdi: Math.round(startVal.cdi + (endVal.cdi - startVal.cdi) * progress),
+        ipca: Math.round(startVal.ipca + (endVal.ipca - startVal.ipca) * progress),
+      });
+    }
+    return result;
   };
 
   return (
@@ -83,7 +106,7 @@ export function PerformanceChart() {
             ))}
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
-          <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={12} tickLine={false} axisLine={false} />
+          <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={10} tickLine={false} axisLine={false} interval={Math.max(0, Math.floor(getFilteredData().length / 8))} />
           <YAxis stroke="hsl(215, 14%, 50%)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
           <Tooltip
             contentStyle={{ backgroundColor: "hsl(220, 18%, 10%)", border: "1px solid hsl(220, 14%, 16%)", borderRadius: "8px", fontSize: "13px", fontFamily: "JetBrains Mono" }}
