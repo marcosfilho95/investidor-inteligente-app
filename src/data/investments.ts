@@ -334,7 +334,6 @@ let _benchmarkCache: Record<string, { date: string; value: number }[]> | null = 
 export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
   // Merge real data — only replace tickers that exist in the holdings
   if (!_marketHistoryCache) {
-    // Initialize with synthetic first
     _marketHistoryCache = {};
     for (const h of holdings) {
       const cagr = ASSET_5Y_CAGR[h.symbol] ?? 0.05;
@@ -347,6 +346,27 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
       _marketHistoryCache[ticker] = ohlcv;
     }
   }
+
+  // Also rebuild benchmark cache using real IBOV data if available
+  // The CSV stores IBOV as "^BVSP" ticker
+  const ibovTicker = data["^BVSP"] || data["IBOV"] || data["BVSP"];
+  if (ibovTicker && ibovTicker.length > 0) {
+    // Rebuild IBOV benchmark from real prices
+    const ibovSeries = ibovTicker.map(d => ({
+      date: d.date,
+      value: d.close,
+    }));
+    // Re-generate CDI and IPCA (they already use real rates)
+    const cdiBenchmark = generateBenchmarkSeries("CDI");
+    const ipcaBenchmark = generateBenchmarkSeries("IPCA");
+    _benchmarkCache = {
+      CDI: cdiBenchmark,
+      IPCA: ipcaBenchmark,
+      IBOV: ibovSeries,
+    };
+    console.log(`[investments] Real IBOV data injected (${ibovSeries.length} points)`);
+  }
+
   console.log(`[investments] Real market data injected for ${Object.keys(data).length} tickers`);
 }
 
@@ -490,13 +510,11 @@ export function getFilteredBenchmarks(period: string, baseValue: number): { mont
   const cdiStart = cdiData[0]?.value || ibovStart;
   const ipcaStart = ipcaData[0]?.value || ibovStart;
   
-  // Portfolio = slightly better than IBOV
-  const rand = seededRandom(hashStr("portfolio" + period));
-  
   const maxPoints = period === "5 ANOS" ? 200 : period === "1 ANO" ? 120 : 60;
   const step = Math.max(1, Math.floor(ibovData.length / maxPoints));
   
-  let portfolioVal = baseValue;
+  // Build portfolio value from real user holdings price data
+  const marketData = getMarketHistory();
   
   return ibovData
     .filter((_, i) => i % step === 0 || i === ibovData.length - 1)
@@ -508,9 +526,26 @@ export function getFilteredBenchmarks(period: string, baseValue: number): { mont
       const cdiNorm = baseValue * ((cdi?.value || cdiStart) / cdiStart);
       const ipcaNorm = baseValue * ((ipca?.value || ipcaStart) / ipcaStart);
       
-      // Portfolio tracks above IBOV with slight alpha
-      const alpha = 1 + (rand() - 0.45) * 0.003;
-      portfolioVal = ibovNorm * 1.02 * alpha + (cdiNorm - baseValue) * 0.1;
+      // Portfolio: weighted average of real asset returns based on holdings
+      // Find each asset's return at this date and weight by allocation
+      let portfolioReturn = 0;
+      let totalWeight = 0;
+      for (const h of holdings) {
+        const assetData = marketData[h.symbol];
+        if (!assetData || assetData.length === 0) continue;
+        const startIdx = assetData.findIndex(d => d.date >= startStr);
+        if (startIdx < 0) continue;
+        const assetStart = assetData[startIdx].close;
+        // Find the closest date
+        const match = assetData.find(d => d.date === ibov.date) || assetData.find(d => d.date >= ibov.date);
+        if (!match) continue;
+        const assetReturn = match.close / assetStart;
+        portfolioReturn += assetReturn * h.allocation;
+        totalWeight += h.allocation;
+      }
+      const portfolioVal = totalWeight > 0
+        ? baseValue * (portfolioReturn / totalWeight)
+        : ibovNorm; // fallback
       
       const parts = ibov.date.split("-");
       const day = parts[2];
@@ -555,27 +590,66 @@ export function generatePriceHistory(basePrice: number, changePercent: number, p
   return data;
 }
 
-export const performanceData = [
-  { month: "Mar", carteira: 220000, ibovespa: 215000, cdi: 210000, ipca: 208000 },
-  { month: "Abr", carteira: 225000, ibovespa: 218000, cdi: 212000, ipca: 209500 },
-  { month: "Mai", carteira: 232000, ibovespa: 222000, cdi: 214000, ipca: 211000 },
-  { month: "Jun", carteira: 238000, ibovespa: 225000, cdi: 216000, ipca: 212500 },
-  { month: "Jul", carteira: 245000, ibovespa: 230000, cdi: 218000, ipca: 214000 },
-  { month: "Ago", carteira: 250000, ibovespa: 228000, cdi: 220000, ipca: 215500 },
-  { month: "Set", carteira: 255000, ibovespa: 235000, cdi: 222000, ipca: 217000 },
-  { month: "Out", carteira: 262000, ibovespa: 238000, cdi: 224000, ipca: 218500 },
-  { month: "Nov", carteira: 268000, ibovespa: 242000, cdi: 226000, ipca: 220000 },
-  { month: "Dez", carteira: 275000, ibovespa: 245000, cdi: 228000, ipca: 221500 },
-  { month: "Jan", carteira: 280000, ibovespa: 248000, cdi: 230000, ipca: 223000 },
-  { month: "Fev", carteira: 285432, ibovespa: 252000, cdi: 232000, ipca: 224500 },
-];
+export const performanceData: any[] = [];
+export const assetHistoryData: any[] = [];
 
-export const assetHistoryData = [
-  { month: "Set", price: 100 }, { month: "Out", price: 105 }, { month: "Nov", price: 102 },
-  { month: "Dez", price: 110 }, { month: "Jan", price: 115 }, { month: "Fev", price: 112 },
-  { month: "Mar", price: 118 }, { month: "Abr", price: 125 }, { month: "Mai", price: 130 },
-  { month: "Jun", price: 128 }, { month: "Jul", price: 135 }, { month: "Ago", price: 140 },
-];
+/**
+ * Build a "R$ 1.000 invested" comparison using real asset and benchmark data.
+ */
+export function getInvestmentComparison(symbol: string, period: string): Record<string, any>[] {
+  const periodMapInternal: Record<string, string> = {
+    "1 DIA": "1D", "7 DIAS": "7D", "30 DIAS": "30D", "6 MESES": "6M",
+    "YTD": "YTD", "1 ANO": "1A", "5 ANOS": "5A",
+    "1D": "1D", "7D": "7D", "30D": "30D", "6M": "6M", "1A": "1A", "5A": "5A",
+  };
+  const p = periodMapInternal[period] || "1A";
+  
+  const priceHistory = getFilteredPriceHistory(symbol, p);
+  if (priceHistory.length === 0) return [];
+  
+  const benchmarkData = getBenchmarkHistory();
+  const now = new Date(2026, 1, 26);
+  let startDate: Date;
+  
+  switch (p) {
+    case "1D": startDate = new Date(now); startDate.setDate(now.getDate() - 1); break;
+    case "7D": startDate = new Date(now); startDate.setDate(now.getDate() - 10); break;
+    case "30D": startDate = new Date(now); startDate.setDate(now.getDate() - 35); break;
+    case "6M": startDate = new Date(now); startDate.setMonth(now.getMonth() - 6); break;
+    case "YTD": startDate = new Date(2026, 0, 1); break;
+    case "1A": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1); break;
+    case "5A": startDate = new Date(2021, 1, 1); break;
+    default: startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1);
+  }
+  
+  const startStr = startDate.toISOString().slice(0, 10);
+  
+  const ibovData = benchmarkData.IBOV.filter(d => d.date >= startStr);
+  const cdiData = benchmarkData.CDI.filter(d => d.date >= startStr);
+  const ipcaData = benchmarkData.IPCA.filter(d => d.date >= startStr);
+  
+  if (ibovData.length === 0) return [];
+  
+  const ibovStart = ibovData[0].value;
+  const cdiStart = cdiData[0]?.value || 1;
+  const ipcaStart = ipcaData[0]?.value || 1;
+  const assetStart = priceHistory[0].price;
+  
+  return priceHistory.map((d, i) => {
+    const progress = i / (priceHistory.length - 1 || 1);
+    const ibovIdx = Math.min(Math.floor(progress * (ibovData.length - 1)), ibovData.length - 1);
+    const cdiIdx = Math.min(Math.floor(progress * (cdiData.length - 1)), cdiData.length - 1);
+    const ipcaIdx = Math.min(Math.floor(progress * (ipcaData.length - 1)), ipcaData.length - 1);
+    
+    return {
+      month: d.month,
+      [symbol]: Math.round((1000 * d.price / assetStart) * 100) / 100,
+      IBOV: Math.round((1000 * ibovData[ibovIdx].value / ibovStart) * 100) / 100,
+      CDI: Math.round((1000 * cdiData[cdiIdx].value / cdiStart) * 100) / 100,
+      IPCA: Math.round((1000 * ipcaData[ipcaIdx].value / ipcaStart) * 100) / 100,
+    };
+  });
+}
 
 export function calcRecommendationScore(asset: Holding): { score: number; label: string; color: string } {
   if (asset.pe === null) return { score: 30, label: "Sem dados", color: "hsl(var(--muted-foreground))" };

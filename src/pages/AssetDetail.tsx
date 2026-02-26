@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getFilteredPriceHistory, indicatorTooltips, calcRecommendationScore, calcGrahamPrice } from "@/data/investments";
+import { holdings, getFilteredPriceHistory, getInvestmentComparison, indicatorTooltips, calcRecommendationScore, calcGrahamPrice } from "@/data/investments";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
 import { AiChatWidget } from "@/components/AiChatWidget";
@@ -12,11 +12,6 @@ import { useUserHoldings } from "@/hooks/useUserHoldings";
 
 const periods = ["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
 const periodMap: Record<string, string> = { "1 DIA": "1D", "7 DIAS": "7D", "30 DIAS": "30D", "6 MESES": "6M", "YTD": "YTD", "1 ANO": "1A", "5 ANOS": "5A" };
-
-// Realistic daily benchmark returns
-const IBOV_DAILY = 0.00038;
-const CDI_DAILY = 0.000425;
-const IPCA_DAILY = 0.000185;
 
 const AssetDetail = () => {
   const { symbol } = useParams<{ symbol: string }>();
@@ -46,22 +41,8 @@ const AssetDetail = () => {
 
   const priceHistory = getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]);
 
-  // Realistic benchmark comparison using compound returns
-  const daysMap: Record<string, number> = { "1D": 1, "7D": 7, "30D": 30, "6M": 126, "YTD": 40, "1A": 252, "5A": 1260 };
-  const totalDays = daysMap[periodMap[selectedPeriod]] || 252;
-  const points = priceHistory.length;
-
-  const investmentComparison = priceHistory.map((d, i) => {
-    const investBase = priceHistory[0]?.price || asset.price;
-    const daysElapsed = (totalDays / points) * (i + 1);
-    return {
-      month: d.month,
-      [asset.symbol]: Math.round((1000 * d.price / investBase) * 100) / 100,
-      IBOV: Math.round(1000 * Math.pow(1 + IBOV_DAILY, daysElapsed) * (1 + (Math.random() - 0.48) * 0.005) * 100) / 100,
-      CDI: Math.round(1000 * Math.pow(1 + CDI_DAILY, daysElapsed) * 100) / 100,
-      IPCA: Math.round(1000 * Math.pow(1 + IPCA_DAILY, daysElapsed) * 100) / 100,
-    };
-  });
+  // Use real benchmark comparison data
+  const investmentComparison = getInvestmentComparison(asset.symbol, periodMap[selectedPeriod]);
 
   const lastComparison = investmentComparison[investmentComparison.length - 1];
   const hasFundamentals = asset.pe !== null;
