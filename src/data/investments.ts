@@ -161,15 +161,10 @@ export interface OHLCVDay {
   volume: number;
 }
 
-// Annual benchmark data (cumulative from base 100000)
-const BENCHMARK_ANNUAL_RETURNS: Record<string, number[]> = {
-  // CDI annual rates 2021-2025
-  CDI:  [0.0490, 0.1215, 0.1315, 0.1125, 0.1075],
-  // IPCA annual rates
-  IPCA: [0.1006, 0.0562, 0.0462, 0.0483, 0.0480],
-  // IBOV annual returns
-  IBOV: [-0.1180, 0.0467, 0.2205, -0.1012, 0.1580],
-};
+// Benchmark parameters for deterministic generation
+// CDI: ~11% a.a. pro-rata die, near-zero volatility
+// IPCA: ~4.7% a.a. with small monthly noise
+// IBOV: GBM with 12% a.a. drift and 18% volatility
 
 function generateTradingDays(): string[] {
   const days: string[] = [];
@@ -245,30 +240,49 @@ function generateAssetOHLCV(symbol: string, currentPrice: number, annualReturn5y
 }
 
 function generateBenchmarkSeries(key: string): { date: string; value: number }[] {
-  const annualRates = BENCHMARK_ANNUAL_RETURNS[key];
-  if (!annualRates) return [];
-  
   const rand = seededRandom(hashStr(key) + 99);
   let value = 100000;
   const result: { date: string; value: number }[] = [];
-  
   const totalDays = TRADING_DAYS.length;
-  // Map each day to a year index
-  for (let i = 0; i < totalDays; i++) {
-    const yearStr = TRADING_DAYS[i].slice(0, 4);
-    const yearIdx = Math.min(parseInt(yearStr) - 2021, annualRates.length - 1);
-    const dailyRate = Math.pow(1 + annualRates[yearIdx], 1 / 252) - 1;
-    
-    // CDI/IPCA are smooth; IBOV has volatility
-    const noise = key === "IBOV" ? (rand() - 0.48) * 0.012 : (key === "IPCA" ? (rand() - 0.5) * 0.0003 : 0);
-    value *= (1 + dailyRate + noise);
-    
-    result.push({
-      date: TRADING_DAYS[i],
-      value: Math.round(value * 100) / 100,
-    });
+
+  if (key === "CDI") {
+    // CDI: ~11% a.a. pro-rata die, near-zero volatility
+    const annualRate = 0.11;
+    const dailyRate = Math.pow(1 + annualRate, 1 / 252) - 1;
+    for (let i = 0; i < totalDays; i++) {
+      value *= (1 + dailyRate);
+      result.push({ date: TRADING_DAYS[i], value: Math.round(value * 100) / 100 });
+    }
+  } else if (key === "IPCA") {
+    // IPCA: ~4.7% a.a. with small monthly noise
+    const annualRate = 0.047;
+    const dailyRate = Math.pow(1 + annualRate, 1 / 252) - 1;
+    for (let i = 0; i < totalDays; i++) {
+      // Add small monthly perturbation (simulates monthly IPCA releases)
+      const monthNoise = (rand() - 0.5) * 0.0004;
+      value *= (1 + dailyRate + monthNoise);
+      result.push({ date: TRADING_DAYS[i], value: Math.round(value * 100) / 100 });
+    }
+  } else if (key === "IBOV") {
+    // IBOV: Geometric Brownian Motion (GBM) — drift 12% a.a., vol 18%
+    const annualDrift = 0.12;
+    const annualVol = 0.18;
+    const dt = 1 / 252;
+    const dailyDrift = (annualDrift - 0.5 * annualVol * annualVol) * dt;
+    const dailyVol = annualVol * Math.sqrt(dt);
+    let momentum = 0;
+    for (let i = 0; i < totalDays; i++) {
+      // Box-Muller for normal distribution from uniform
+      const u1 = Math.max(1e-10, rand());
+      const u2 = rand();
+      const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+      momentum = momentum * 0.92 + z * 0.08; // slight autocorrelation
+      const shock = dailyDrift + dailyVol * (z * 0.85 + momentum * 0.15);
+      value *= Math.exp(shock);
+      result.push({ date: TRADING_DAYS[i], value: Math.round(value * 100) / 100 });
+    }
   }
-  
+
   return result;
 }
 
@@ -626,6 +640,36 @@ export function buildAssetContext(symbol: string): string {
   const rec = calcRecommendationScore(h);
   const graham = calcGrahamPrice(h);
   const fair = calcFairPrice(h);
+
+  // Calculate 12-month benchmark returns for comparison
+  const benchmarks = getBenchmarkHistory();
+  const now = new Date(2026, 1, 26);
+  const oneYearAgo = new Date(now);
+  oneYearAgo.setFullYear(now.getFullYear() - 1);
+  const startStr = oneYearAgo.toISOString().slice(0, 10);
+
+  const benchReturns: Record<string, string> = {};
+  for (const key of ["CDI", "IPCA", "IBOV"] as const) {
+    const series = benchmarks[key];
+    const startPoint = series.find(d => d.date >= startStr);
+    const endPoint = series[series.length - 1];
+    if (startPoint && endPoint) {
+      const ret = ((endPoint.value / startPoint.value - 1) * 100).toFixed(2);
+      benchReturns[key] = ret;
+    }
+  }
+
+  // Asset 12-month return
+  const assetHistory = getMarketHistory()[symbol];
+  let assetReturn12m = "N/A";
+  if (assetHistory && assetHistory.length > 0) {
+    const assetStart = assetHistory.find(d => d.date >= startStr);
+    const assetEnd = assetHistory[assetHistory.length - 1];
+    if (assetStart && assetEnd) {
+      assetReturn12m = ((assetEnd.close / assetStart.close - 1) * 100).toFixed(2);
+    }
+  }
+
   return `Dados atuais de ${h.symbol} (${h.name}):
 Preço: R$ ${h.price} | Variação: ${h.changePercent >= 0 ? '+' : ''}${h.changePercent}%
 Market Cap: ${h.marketCap} | Setor: ${h.sector} / ${h.subsetor}
@@ -639,5 +683,6 @@ Giro Ativos: ${h.giroAtivos ?? 'N/A'} | Liq. Corrente: ${h.liqCorrente ?? 'N/A'}
 Dív.Líq/PL: ${h.divLiqPl ?? 'N/A'} | Dív.Líq/EBITDA: ${h.divLiqEbitda ?? 'N/A'} | PL/Ativos: ${h.plAtivos ?? 'N/A'}
 Score de Recomendação: ${rec.score}/100 (${rec.label})
 Preço Graham: R$ ${graham ?? 'N/A'} | Preço Justo: R$ ${fair ?? 'N/A'}
+Performance 12 meses: ${h.symbol} ${assetReturn12m}% | IBOV ${benchReturns.IBOV ?? 'N/A'}% | CDI ${benchReturns.CDI ?? 'N/A'}% | IPCA ${benchReturns.IPCA ?? 'N/A'}%
 Descrição: ${h.description}`;
 }
