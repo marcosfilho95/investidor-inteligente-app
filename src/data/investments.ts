@@ -419,9 +419,8 @@ function cleanOHLCVOutliers(data: OHLCVDay[]): OHLCVDay[] {
     }
   }
 
-  // Pass 5: Final EMA smoothing to eliminate remaining jagged variations
-  // Use a 5-point EMA to smooth the entire series while preserving the trend
-  const alpha = 0.4; // smoothing factor (higher = less smoothing)
+  // Pass 5: Final EMA smoothing — stronger smoothing to eliminate jaggedness
+  const alpha = 0.3; // lower = more smoothing (was 0.4)
   let ema = result[0].close;
   for (let i = 1; i < result.length; i++) {
     ema = alpha * result[i].close + (1 - alpha) * ema;
@@ -434,18 +433,43 @@ function cleanOHLCVOutliers(data: OHLCVDay[]): OHLCVDay[] {
       low: Math.min(smoothed, result[i].open) * 0.999,
     };
   }
+  // Pass 6: Reverse EMA to eliminate lag bias from forward-only smoothing
+  let rEma = result[result.length - 1].close;
+  for (let i = result.length - 2; i >= 0; i--) {
+    rEma = 0.35 * result[i].close + 0.65 * rEma;
+    const blended = Math.round(((result[i].close + rEma) / 2) * 100) / 100;
+    result[i] = {
+      ...result[i],
+      close: blended,
+      open: blended,
+      high: blended * 1.001,
+      low: blended * 0.999,
+    };
+  }
 
-  // Fix first/last
-  if (result.length > 1) {
-    const first = result[0].close;
-    const second = result[1].close;
-    if (second > 0 && Math.abs(first - second) / second > 0.10) {
-      result[0] = { ...result[0], open: second, high: second, low: second, close: second };
+  // Fix first/last — more aggressive to avoid abrupt edges
+  if (result.length > 3) {
+    // Fix first 3 points
+    const earlyRef = result[3].close;
+    for (let i = 0; i < 3; i++) {
+      const ref = i === 0 ? earlyRef : result[i + 1].close;
+      if (ref > 0 && Math.abs(result[i].close - ref) / ref > 0.05) {
+        const smooth = i === 0 ? result[1].close : (result[i - 1].close + result[i + 1].close) / 2;
+        result[i] = { ...result[i], open: smooth, high: smooth * 1.002, low: smooth * 0.998, close: Math.round(smooth * 100) / 100 };
+      }
     }
-    const last = result[result.length - 1].close;
-    const prev = result[result.length - 2].close;
-    if (prev > 0 && Math.abs(last - prev) / prev > 0.10) {
-      result[result.length - 1] = { ...result[result.length - 1], open: prev, high: prev, low: prev, close: prev };
+    // Fix last 5 points — critical for avoiding abrupt drops/spikes at the end
+    for (let i = result.length - 1; i >= Math.max(0, result.length - 5); i--) {
+      const neighbors: number[] = [];
+      if (i > 0) neighbors.push(result[i - 1].close);
+      if (i > 1) neighbors.push(result[i - 2].close);
+      if (i < result.length - 1) neighbors.push(result[i + 1].close);
+      if (neighbors.length === 0) continue;
+      const avg = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
+      if (avg > 0 && Math.abs(result[i].close - avg) / avg > 0.04) {
+        const smooth = Math.round(avg * 100) / 100;
+        result[i] = { ...result[i], open: smooth, high: smooth * 1.002, low: smooth * 0.998, close: smooth };
+      }
     }
   }
 
