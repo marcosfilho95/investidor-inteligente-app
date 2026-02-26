@@ -10,13 +10,14 @@ interface AiChatWidgetProps {
   page?: "dashboard" | "carteira" | "ativo" | "aprender";
   ticker?: string;
   userSymbols?: string[];
+  userHoldingsData?: { symbol: string; shares: number; avgPrice: number }[];
 }
 
 type Msg = { role: "user" | "assistant"; content: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
-export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, userSymbols }: AiChatWidgetProps) {
+export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, userSymbols, userHoldingsData }: AiChatWidgetProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: welcomeMessage || "Olá! Sou o Hodl 🤖, seu assistente inteligente. Como posso te ajudar hoje?" },
@@ -37,15 +38,34 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
     setIsLoading(true);
 
     let assistantContent = "";
+    let displayContent = "";
+    let typingQueue: string[] = [];
+    let isTyping = false;
+
+    const processTypingQueue = () => {
+      if (typingQueue.length === 0) { isTyping = false; return; }
+      isTyping = true;
+      // Reveal 2-4 chars at a time for natural typing feel
+      const charsToReveal = Math.min(typingQueue.length, Math.random() > 0.7 ? 4 : 2);
+      for (let c = 0; c < charsToReveal; c++) {
+        displayContent += typingQueue.shift()!;
+      }
+      setMessages(prev => {
+        const updated = [...prev];
+        if (updated.length > newMessages.length && updated[updated.length - 1]?.role === "assistant") {
+          updated[updated.length - 1] = { role: "assistant", content: displayContent };
+        } else {
+          updated.push({ role: "assistant", content: displayContent });
+        }
+        return updated.slice(0, newMessages.length + 1);
+      });
+      setTimeout(processTypingQueue, 15 + Math.random() * 25);
+    };
+
     const updateAssistant = (chunk: string) => {
       assistantContent += chunk;
-      setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant" && prev.length === newMessages.length + 1) {
-          return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantContent } : m);
-        }
-        return [...prev.slice(0, newMessages.length), { role: "assistant", content: assistantContent }];
-      });
+      typingQueue.push(...chunk.split(''));
+      if (!isTyping) processTypingQueue();
     };
 
     try {
@@ -60,7 +80,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
         body.ticker = ticker;
         body.currentData = buildAssetContext(ticker);
       } else {
-        body.dataset = buildDatasetContext(userSymbols);
+        body.dataset = buildDatasetContext(userSymbols, userHoldingsData);
       }
 
       const resp = await fetch(CHAT_URL, {

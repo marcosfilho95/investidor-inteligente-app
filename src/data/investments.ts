@@ -419,6 +419,22 @@ function cleanOHLCVOutliers(data: OHLCVDay[]): OHLCVDay[] {
     }
   }
 
+  // Pass 5: Final EMA smoothing to eliminate remaining jagged variations
+  // Use a 5-point EMA to smooth the entire series while preserving the trend
+  const alpha = 0.4; // smoothing factor (higher = less smoothing)
+  let ema = result[0].close;
+  for (let i = 1; i < result.length; i++) {
+    ema = alpha * result[i].close + (1 - alpha) * ema;
+    const smoothed = Math.round(ema * 100) / 100;
+    result[i] = {
+      ...result[i],
+      close: smoothed,
+      open: Math.round((alpha * result[i].open + (1 - alpha) * result[i - 1].close) * 100) / 100,
+      high: Math.max(smoothed, result[i].open) * 1.001,
+      low: Math.min(smoothed, result[i].open) * 0.999,
+    };
+  }
+
   // Fix first/last
   if (result.length > 1) {
     const first = result[0].close;
@@ -807,7 +823,8 @@ export function calcFairPrice(asset: Holding): number | null {
 }
 
 // Build dataset string for AI context — accepts optional symbol filter for user portfolio
-export function buildDatasetContext(userSymbols?: string[]): string {
+// userHoldingsData: optional array of { symbol, shares, avgPrice } with REAL user quantities
+export function buildDatasetContext(userSymbols?: string[], userHoldingsData?: { symbol: string; shares: number; avgPrice: number }[]): string {
   const assetsToShow = userSymbols && userSymbols.length > 0
     ? holdings.filter(h => userSymbols.includes(h.symbol))
     : holdings;
@@ -816,12 +833,18 @@ export function buildDatasetContext(userSymbols?: string[]): string {
     return "A carteira do usuário está vazia. Ele ainda não adicionou nenhum ativo.";
   }
 
-  // Calculate portfolio total and allocations for concentration analysis
-  const totalValue = assetsToShow.reduce((sum, h) => sum + h.value, 0);
-  const assetAllocations = assetsToShow.map(h => ({
+  // Calculate portfolio total and allocations using REAL user holdings if available
+  const enrichedAssets = assetsToShow.map(h => {
+    const userH = userHoldingsData?.find(u => u.symbol === h.symbol);
+    const realShares = userH ? userH.shares : h.shares;
+    const realValue = realShares * h.price;
+    return { ...h, realShares, realValue, realAvgPrice: userH?.avgPrice ?? h.price };
+  });
+  const totalValue = enrichedAssets.reduce((sum, h) => sum + h.realValue, 0);
+  const assetAllocations = enrichedAssets.map(h => ({
     symbol: h.symbol,
     sector: h.sector,
-    alloc: totalValue > 0 ? (h.value / totalValue * 100) : 0,
+    alloc: totalValue > 0 ? (h.realValue / totalValue * 100) : 0,
   }));
   const sectorAllocations: Record<string, number> = {};
   assetAllocations.forEach(a => {
@@ -847,13 +870,13 @@ export function buildDatasetContext(userSymbols?: string[]): string {
 
   const allocBlock = `\nALOCAÇÃO POR SETOR:\n${Object.entries(sectorAllocations).map(([s, a]) => `- ${s}: ${a.toFixed(1)}%`).join('\n')}\n`;
 
-  const body = assetsToShow.map(h => {
-    const alloc = totalValue > 0 ? (h.value / totalValue * 100).toFixed(1) : '0';
+  const body = enrichedAssets.map(h => {
+    const alloc = totalValue > 0 ? (h.realValue / totalValue * 100).toFixed(1) : '0';
     const rec = calcRecommendationScore(h);
     const graham = calcGrahamPrice(h);
     const fair = calcFairPrice(h);
-    return `${h.symbol} (${h.name}) - Setor: ${h.sector}/${h.subsetor} - Alocação: ${alloc}%
-Preço: R$${h.price} | P/L: ${h.pe ?? 'N/A'} | P/VP: ${h.pvp ?? 'N/A'} | DY: ${h.dividend}%
+    return `${h.symbol} (${h.name}) - Setor: ${h.sector}/${h.subsetor} - Alocação: ${alloc}% - Qtd: ${h.realShares} ações - Valor: R$${h.realValue.toFixed(2)}
+Preço Atual: R$${h.price} | Preço Médio: R$${h.realAvgPrice.toFixed(2)} | P/L: ${h.pe ?? 'N/A'} | P/VP: ${h.pvp ?? 'N/A'} | DY: ${h.dividend}%
 ROE: ${h.roe ?? 'N/A'}% | ROIC: ${h.roic ?? 'N/A'}% | Marg.Líq: ${h.margemLiquida ?? 'N/A'}%
 Dív.Líq/EBITDA: ${h.divLiqEbitda ?? 'N/A'} | Liq.Corrente: ${h.liqCorrente ?? 'N/A'}
 Score: ${rec.score}/100 (${rec.label}) | Graham: R$${graham ?? 'N/A'} | Preço Justo: R$${fair ?? 'N/A'}
