@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { LayoutDashboard, Wallet, ArrowLeftRight, Bell, Settings, Search } from "lucide-react";
+import { LayoutDashboard, Wallet, Bell, Settings, Search, PieChart } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { PerformanceChart } from "@/components/PerformanceChart";
 import { AllocationChart } from "@/components/AllocationChart";
 import { HoldingsTable } from "@/components/HoldingsTable";
+import { AiChatWidget } from "@/components/AiChatWidget";
 import { portfolioData } from "@/data/investments";
 
 const Index = () => {
@@ -21,9 +22,8 @@ const Index = () => {
             </div>
             <nav className="hidden md:flex items-center gap-1">
               {[
-                { label: "Dashboard", icon: LayoutDashboard, active: true },
-                { label: "Carteira", icon: Wallet, href: "/ativos" },
-                { label: "Transações", icon: ArrowLeftRight },
+                { label: "Dashboard", icon: LayoutDashboard, active: true, href: "/dashboard" },
+                { label: "Ativos", icon: PieChart, href: "/ativos" },
               ].map((item) => (
                 <Link
                   key={item.label}
@@ -108,8 +108,13 @@ const Index = () => {
           <AllocationChart />
         </div>
 
-        {/* Holdings */}
-        <HoldingsTable />
+        {/* AI + Holdings */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            <HoldingsTable />
+          </div>
+          <AiChatWidget welcomeMessage="Bom dia, João! 👋 Sua carteira subiu 1.54% hoje. NVDA e ETH foram os destaques positivos. Quer que eu analise algum ativo específico?" />
+        </div>
       </main>
     </div>
   );
