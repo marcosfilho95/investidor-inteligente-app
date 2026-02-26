@@ -256,7 +256,7 @@ const CDI_ANNUAL: Record<number, number> = {
   2023: 13.04,
   2024: 10.88,
   2025: 14.32,
-  2026: 14.15, // Selic target annualized for 2026
+  2026: 2.06, // Partial year accumulated (source: CSV real data)
 };
 
 function generateBenchmarkSeries(key: string): { date: string; value: number }[] {
@@ -325,6 +325,29 @@ const ASSET_5Y_CAGR: Record<string, number> = {
 // Lazy-computed cache
 let _marketHistoryCache: Record<string, OHLCVDay[]> | null = null;
 let _benchmarkCache: Record<string, { date: string; value: number }[]> | null = null;
+
+/**
+ * Inject real CSV data into the market history cache.
+ * Called from App.tsx after csvLoader fetches the CSV.
+ */
+export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
+  // Merge real data — only replace tickers that exist in the holdings
+  if (!_marketHistoryCache) {
+    // Initialize with synthetic first
+    _marketHistoryCache = {};
+    for (const h of holdings) {
+      const cagr = ASSET_5Y_CAGR[h.symbol] ?? 0.05;
+      _marketHistoryCache[h.symbol] = generateAssetOHLCV(h.symbol, h.price, cagr);
+    }
+  }
+  // Override with real data where available
+  for (const [ticker, ohlcv] of Object.entries(data)) {
+    if (ohlcv.length > 0) {
+      _marketHistoryCache[ticker] = ohlcv;
+    }
+  }
+  console.log(`[investments] Real market data injected for ${Object.keys(data).length} tickers`);
+}
 
 export function getMarketHistory(): Record<string, OHLCVDay[]> {
   if (_marketHistoryCache) return _marketHistoryCache;
