@@ -332,7 +332,6 @@ let _benchmarkCache: Record<string, { date: string; value: number }[]> | null = 
  * Called from App.tsx after csvLoader fetches the CSV.
  */
 export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
-  // Merge real data — only replace tickers that exist in the holdings
   if (!_marketHistoryCache) {
     _marketHistoryCache = {};
     for (const h of holdings) {
@@ -340,23 +339,21 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
       _marketHistoryCache[h.symbol] = generateAssetOHLCV(h.symbol, h.price, cagr);
     }
   }
-  // Override with real data where available
+  // Override with real data where available — clean outliers first
   for (const [ticker, ohlcv] of Object.entries(data)) {
     if (ohlcv.length > 0) {
-      _marketHistoryCache[ticker] = ohlcv;
+      _marketHistoryCache[ticker] = cleanOHLCVOutliers(ohlcv);
     }
   }
 
   // Also rebuild benchmark cache using real IBOV data if available
-  // The CSV stores IBOV as "^BVSP" ticker
   const ibovTicker = data["^BVSP"] || data["IBOV"] || data["BVSP"];
   if (ibovTicker && ibovTicker.length > 0) {
-    // Rebuild IBOV benchmark from real prices
-    const ibovSeries = ibovTicker.map(d => ({
+    const cleaned = cleanOHLCVOutliers(ibovTicker);
+    const ibovSeries = cleaned.map(d => ({
       date: d.date,
       value: d.close,
     }));
-    // Re-generate CDI and IPCA (they already use real rates)
     const cdiBenchmark = generateBenchmarkSeries("CDI");
     const ipcaBenchmark = generateBenchmarkSeries("IPCA");
     _benchmarkCache = {
@@ -364,10 +361,55 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
       IPCA: ipcaBenchmark,
       IBOV: ibovSeries,
     };
-    console.log(`[investments] Real IBOV data injected (${ibovSeries.length} points)`);
+    console.log(`[investments] Real IBOV data injected (${ibovSeries.length} points, cleaned)`);
   }
 
   console.log(`[investments] Real market data injected for ${Object.keys(data).length} tickers`);
+}
+
+/**
+ * Clean OHLCV data by detecting and fixing outliers.
+ * CSV has corrupted values (missing digits) causing extreme spikes/dips.
+ * Strategy: if close deviates >40% from neighbors, interpolate.
+ */
+function cleanOHLCVOutliers(data: OHLCVDay[]): OHLCVDay[] {
+  if (data.length < 3) return data;
+  const result = [...data];
+  
+  for (let i = 1; i < result.length - 1; i++) {
+    const prev = result[i - 1].close;
+    const curr = result[i].close;
+    const next = result[i + 1].close;
+    const avg = (prev + next) / 2;
+    
+    // If current value deviates >40% from average of neighbors, it's likely corrupted
+    if (avg > 0 && (curr < avg * 0.6 || curr > avg * 1.4)) {
+      const interpolated = Math.round(avg * 100) / 100;
+      result[i] = {
+        ...result[i],
+        open: interpolated,
+        high: Math.max(prev, next, interpolated),
+        low: Math.min(prev, next, interpolated),
+        close: interpolated,
+      };
+    }
+  }
+  
+  // Also fix first/last if they look wrong compared to neighbors
+  if (result.length > 1) {
+    const first = result[0].close;
+    const second = result[1].close;
+    if (second > 0 && (first < second * 0.6 || first > second * 1.4)) {
+      result[0] = { ...result[0], open: second, high: second, low: second, close: second };
+    }
+    const last = result[result.length - 1].close;
+    const prev = result[result.length - 2].close;
+    if (prev > 0 && (last < prev * 0.6 || last > prev * 1.4)) {
+      result[result.length - 1] = { ...result[result.length - 1], open: prev, high: prev, low: prev, close: prev };
+    }
+  }
+  
+  return result;
 }
 
 export function getMarketHistory(): Record<string, OHLCVDay[]> {
