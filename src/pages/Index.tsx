@@ -152,7 +152,7 @@ const Index = () => {
                 <HoldingsTable holdings={enrichedHoldings} />
               </AnimatedCard>
             )}
-            <AnimatedCard delay={0.6} className={isEmpty ? "lg:col-span-3" : ""}>
+            <AnimatedCard delay={0.6} className={isEmpty ? "lg:col-span-3" : ""} data-tour="ai-chat">
               <AiChatWidget
                 page="dashboard"
                 userSymbols={enrichedHoldings.map(h => h.symbol)}
