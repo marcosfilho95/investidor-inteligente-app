@@ -1,17 +1,21 @@
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
-import { holdings, assetHistoryData, indicatorTooltips, calcRecommendationScore, calcFairPrice, calcGrahamPrice } from "@/data/investments";
+import { holdings, generatePriceHistory, indicatorTooltips, calcRecommendationScore, calcFairPrice, calcGrahamPrice } from "@/data/investments";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { useState } from "react";
+
+const periods = ["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
+const periodMap: Record<string, string> = { "1 DIA": "1D", "7 DIAS": "7D", "30 DIAS": "30D", "6 MESES": "6M", "YTD": "YTD", "1 ANO": "1A", "5 ANOS": "5A" };
 
 const AssetDetail = () => {
   const { symbol } = useParams<{ symbol: string }>();
   const asset = holdings.find((h) => h.symbol === symbol);
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [orderType, setOrderType] = useState<"buy" | "sell">("buy");
+  const [selectedPeriod, setSelectedPeriod] = useState("1 ANO");
 
   if (!asset) {
     return (
@@ -30,14 +34,12 @@ const AssetDetail = () => {
   const grahamPrice = calcGrahamPrice(asset);
   const grahamUpside = grahamPrice ? ((grahamPrice / asset.price - 1) * 100).toFixed(1) : null;
 
-  const priceHistory = assetHistoryData.map((d) => ({
-    month: d.month,
-    price: Math.round(asset.price * (d.price / 140) * 100) / 100,
-  }));
+  const priceHistory = generatePriceHistory(asset.price, asset.changePercent, periodMap[selectedPeriod]);
 
-  const investmentComparison = assetHistoryData.map((d, i) => ({
+  const investBase = priceHistory[0]?.price || asset.price;
+  const investmentComparison = priceHistory.map((d, i) => ({
     month: d.month,
-    [asset.symbol]: Math.round((1000 * d.price) / assetHistoryData[0].price * 100) / 100,
+    [asset.symbol]: Math.round((1000 * d.price / investBase) * 100) / 100,
     IBOV: Math.round(1000 * (1 + 0.003 * i) * 100) / 100,
     CDI: Math.round(1000 * Math.pow(1.0008, (i + 1) * 30) * 100) / 100,
     IPCA: Math.round(1000 * Math.pow(1.0004, (i + 1) * 30) * 100) / 100,
@@ -51,14 +53,11 @@ const AssetDetail = () => {
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-[1400px] mx-auto px-6 h-14 flex items-center gap-4">
           <Link to="/ativos" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm">Ativos</span>
+            <ArrowLeft className="h-4 w-4" /><span className="text-sm">Ativos</span>
           </Link>
           <div className="h-4 w-px bg-border" />
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-              <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
-            </div>
+            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center"><LayoutDashboard className="h-4 w-4 text-primary-foreground" /></div>
             <span className="font-semibold text-sm tracking-tight">Investidor Inteligente</span>
           </div>
         </div>
@@ -68,41 +67,26 @@ const AssetDetail = () => {
         {/* Asset header + Actions */}
         <div className="flex flex-col md:flex-row items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
-              {asset.symbol.slice(0, 2)}
-            </div>
+            <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">{asset.symbol.slice(0, 2)}</div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-semibold">{asset.symbol}</h1>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent text-muted-foreground">{asset.sector}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{asset.subsetor}</span>
               </div>
               <p className="text-sm text-muted-foreground">{asset.name}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right mr-4">
-              <p className="text-2xl font-semibold font-mono">
-                R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-              </p>
+              <p className="text-2xl font-semibold font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
               <div className="flex items-center justify-end gap-1.5 mt-1">
                 {isPositive ? <TrendingUp className="h-3.5 w-3.5 text-gain" /> : <TrendingDown className="h-3.5 w-3.5 text-loss" />}
-                <span className={`text-sm font-mono font-medium ${isPositive ? "text-gain" : "text-loss"}`}>
-                  {isPositive ? "+" : ""}{asset.changePercent}%
-                </span>
+                <span className={`text-sm font-mono font-medium ${isPositive ? "text-gain" : "text-loss"}`}>{isPositive ? "+" : ""}{asset.changePercent}%</span>
               </div>
             </div>
-            <button
-              onClick={() => { setOrderType("buy"); setShowBuyModal(true); }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-            >
-              <ShoppingCart className="h-4 w-4" /> Comprar
-            </button>
-            <button
-              onClick={() => { setOrderType("sell"); setShowBuyModal(true); }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors"
-            >
-              <DollarSign className="h-4 w-4" /> Vender
-            </button>
+            <button onClick={() => { setOrderType("buy"); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"><ShoppingCart className="h-4 w-4" /> Comprar</button>
+            <button onClick={() => { setOrderType("sell"); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors"><DollarSign className="h-4 w-4" /> Vender</button>
           </div>
         </div>
 
@@ -116,23 +100,15 @@ const AssetDetail = () => {
             <h3 className="text-base font-semibold mb-3">Preço Justo Estimado</h3>
             {fairPrice ? (
               <div className="space-y-3">
-                <p className="text-3xl font-bold font-mono text-primary">
-                  R$ {fairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </p>
+                <p className="text-3xl font-bold font-mono text-primary">R$ {fairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                 <p className="text-xs text-muted-foreground">Baseado no LPA × P/L justo ajustado pelo ROE</p>
                 {asset.price < fairPrice ? (
-                  <div className="bg-gain/10 text-gain rounded-lg px-3 py-2 text-xs font-medium">
-                    ↑ Potencial de alta de {((fairPrice / asset.price - 1) * 100).toFixed(1)}%
-                  </div>
+                  <div className="bg-gain/10 text-gain rounded-lg px-3 py-2 text-xs font-medium">↑ Potencial de alta de {((fairPrice / asset.price - 1) * 100).toFixed(1)}%</div>
                 ) : (
-                  <div className="bg-loss/10 text-loss rounded-lg px-3 py-2 text-xs font-medium">
-                    ↓ Preço {((1 - fairPrice / asset.price) * 100).toFixed(1)}% acima do estimado
-                  </div>
+                  <div className="bg-loss/10 text-loss rounded-lg px-3 py-2 text-xs font-medium">↓ Preço {((1 - fairPrice / asset.price) * 100).toFixed(1)}% acima do estimado</div>
                 )}
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Dados insuficientes para calcular</p>
-            )}
+            ) : (<p className="text-sm text-muted-foreground">Dados insuficientes para calcular</p>)}
           </div>
           <div className="glass-card p-5">
             <h3 className="text-base font-semibold mb-1">Método Graham</h3>
@@ -140,27 +116,24 @@ const AssetDetail = () => {
             {grahamPrice ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-muted/50 rounded-lg p-3 text-center">
-                    <p className="text-[10px] text-muted-foreground">Preço atual</p>
-                    <p className="text-sm font-mono font-semibold mt-1">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                  </div>
-                  <div className="bg-primary/10 rounded-lg p-3 text-center">
-                    <p className="text-[10px] text-muted-foreground">Preço Graham</p>
-                    <p className="text-sm font-mono font-semibold text-primary mt-1">R$ {grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-3 text-center">
-                    <p className="text-[10px] text-muted-foreground">Upside</p>
-                    <p className={`text-sm font-mono font-semibold mt-1 ${Number(grahamUpside) >= 0 ? "text-gain" : "text-loss"}`}>
-                      {Number(grahamUpside) >= 0 ? "+" : ""}{grahamUpside}%
-                    </p>
-                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3 text-center"><p className="text-[10px] text-muted-foreground">Preço atual</p><p className="text-sm font-mono font-semibold mt-1">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p></div>
+                  <div className="bg-primary/10 rounded-lg p-3 text-center"><p className="text-[10px] text-muted-foreground">Preço Graham</p><p className="text-sm font-mono font-semibold text-primary mt-1">R$ {grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p></div>
+                  <div className="bg-muted/50 rounded-lg p-3 text-center"><p className="text-[10px] text-muted-foreground">Upside</p><p className={`text-sm font-mono font-semibold mt-1 ${Number(grahamUpside) >= 0 ? "text-gain" : "text-loss"}`}>{Number(grahamUpside) >= 0 ? "+" : ""}{grahamUpside}%</p></div>
                 </div>
                 <p className="text-[10px] text-muted-foreground font-mono">Fórmula: √(22,5 × LPA × VPA)</p>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Dados insuficientes (LPA e VPA necessários)</p>
-            )}
+            ) : (<p className="text-sm text-muted-foreground">Dados insuficientes (LPA e VPA necessários)</p>)}
           </div>
+        </div>
+
+        {/* Time period selector */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-1">
+          {periods.map((period) => (
+            <button key={period} onClick={() => setSelectedPeriod(period)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                period === selectedPeriod ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              }`}>{period}</button>
+          ))}
         </div>
 
         {/* Price History + Investment Comparison side by side */}
@@ -169,12 +142,10 @@ const AssetDetail = () => {
             <h3 className="text-base font-semibold mb-4">Preço histórico</h3>
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={priceHistory}>
-                <defs>
-                  <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} stopOpacity={0.3} />
-                    <stop offset="95%" stopColor={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
+                <defs><linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} stopOpacity={0} />
+                </linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
                 <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
@@ -218,9 +189,9 @@ const AssetDetail = () => {
 
         {/* AI Widget */}
         <AiChatWidget
-          compact
+          page="ativo"
           context={`Análise de ${asset.symbol}`}
-          welcomeMessage={`📊 Analisando ${asset.symbol}... Score: ${recommendation.score}/100 (${recommendation.label}). ${fairPrice ? `Preço justo estimado: R$ ${fairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}. ` : ""}${grahamPrice ? `Preço Graham: R$ ${grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}. ` : ""}A IA será integrada via RAG para insights em tempo real.`}
+          welcomeMessage={`📊 Analisando ${asset.symbol} (${asset.name})...\n\n${asset.description}\n\n🏷️ Setor: ${asset.sector} / ${asset.subsetor}\n📈 Score: ${recommendation.score}/100 (${recommendation.label})\n💰 P/L: ${asset.pe ?? 'N/A'} | DY: ${asset.dividend}% | ROE: ${asset.roe ?? 'N/A'}%\n${fairPrice ? `🎯 Preço Justo: R$ ${fairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : ""}\n${grahamPrice ? `📐 Graham: R$ ${grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${grahamUpside}% upside)` : ""}\n\nPergunte-me sobre indicadores, riscos ou estratégias para este ativo!`}
         />
 
         {/* Indicators */}
@@ -282,22 +253,15 @@ const AssetDetail = () => {
                 <label className="text-xs text-muted-foreground">Quantidade</label>
                 <input type="number" defaultValue={1} min={1} className="w-full mt-1 bg-muted/50 rounded-lg px-3 py-2.5 text-sm font-mono text-foreground border border-border/50 focus:outline-none focus:ring-1 focus:ring-primary/50" />
               </div>
-              <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">Preço unitário</p>
-                <p className="text-sm font-mono font-semibold">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+              <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Preço unitário</span><span className="font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
+                <div className="flex justify-between text-xs font-medium"><span className="text-muted-foreground">Total estimado</span><span className="font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
               </div>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setShowBuyModal(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Cancelar
-              </button>
-              <button
-                onClick={() => setShowBuyModal(false)}
-                className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  orderType === "buy" ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                }`}
-              >
-                Confirmar {orderType === "buy" ? "Compra" : "Venda"}
+              <button onClick={() => setShowBuyModal(false)} className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-accent transition-colors">Cancelar</button>
+              <button className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${orderType === "buy" ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}`}>
+                Confirmar {orderType === "buy" ? "compra" : "venda"}
               </button>
             </div>
           </div>

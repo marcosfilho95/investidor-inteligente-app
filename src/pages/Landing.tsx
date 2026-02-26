@@ -15,7 +15,6 @@ const Landing = () => {
         }} />
       </div>
 
-      {/* Navbar */}
       <header className="border-b border-border/50 bg-card/30 backdrop-blur-xl sticky top-0 z-50 relative">
         <div className="max-w-[1200px] mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -25,20 +24,12 @@ const Landing = () => {
             <span className="font-semibold text-sm tracking-tight">Investidor Inteligente</span>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Entrar
-            </Link>
-            <Link
-              to="/login"
-              className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-            >
-              Começar grátis
-            </Link>
+            <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Entrar</Link>
+            <Link to="/login" className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">Começar grátis</Link>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
       <section className="max-w-[1200px] mx-auto px-6 pt-20 pb-16 text-center relative z-10">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium mb-6">
           <Sparkles className="h-3 w-3" />
@@ -53,18 +44,9 @@ const Landing = () => {
           <span className="text-primary font-semibold">Hodl</span>, seu assistente inteligente.
         </p>
         <div className="flex items-center justify-center gap-3 mt-8">
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
-          >
+          <Link to="/login" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors">
             Criar conta gratuita
             <ArrowRight className="h-4 w-4" />
-          </Link>
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg border border-border bg-card text-foreground font-medium hover:bg-accent transition-colors"
-          >
-            Ver demo
           </Link>
         </div>
       </section>
@@ -78,11 +60,11 @@ const Landing = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {[
             { icon: Bot, title: "Hodl — Assistente IA", description: "Tire dúvidas sobre investimentos a qualquer momento. O Hodl explica conceitos de forma simples e te ajuda a tomar decisões." },
-            { icon: BookOpen, title: "Conteúdo Educativo", description: "Artigos, vídeos e trilhas de aprendizado para você entender o mercado financeiro do zero." },
-            { icon: TrendingUp, title: "Dashboard Intuitivo", description: "Acompanhe seu portfólio com gráficos claros, comparações com benchmarks como IBOVESPA, CDI e IPCA." },
-            { icon: BarChart3, title: "Análise de Ativos", description: "Veja indicadores, histórico de preços e informações detalhadas de cada ativo da sua carteira." },
+            { icon: BookOpen, title: "Conteúdo Educativo", description: "Trilhas de aprendizado para você entender o mercado financeiro do zero ao avançado." },
+            { icon: TrendingUp, title: "Dashboard Intuitivo", description: "Acompanhe seu portfólio com gráficos claros, comparações com IBOVESPA, CDI e IPCA." },
+            { icon: BarChart3, title: "25 Ativos Reais", description: "Analise indicadores fundamentalistas de 25 ações da B3 com dados completos." },
             { icon: Shield, title: "Ambiente Seguro", description: "Pratique com simulações antes de investir de verdade. Aprenda sem riscos financeiros." },
-            { icon: Sparkles, title: "Personalizado para Você", description: "Recomendações e conteúdos adaptados ao seu perfil de investidor e objetivos financeiros." },
+            { icon: Sparkles, title: "Personalizado para Você", description: "Recomendações e conteúdos adaptados ao seu perfil de investidor e objetivos." },
           ].map((feature) => (
             <div key={feature.title} className="glass-card p-6 hover:border-primary/30 transition-all">
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
@@ -95,7 +77,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Hodl CTA */}
       <section className="max-w-[1200px] mx-auto px-6 py-16 relative z-10">
         <div className="glass-card p-8 md:p-12 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
@@ -105,13 +86,10 @@ const Landing = () => {
             </div>
             <h2 className="text-2xl md:text-3xl font-bold mb-2">Conheça o Hodl 🤖</h2>
             <p className="text-muted-foreground text-sm max-w-md mx-auto mb-6 leading-relaxed">
-              Seu assistente inteligente que te acompanha na jornada de investimentos. 
+              Seu assistente inteligente que te acompanha na jornada de investimentos.
               Pergunte qualquer coisa — de "o que é renda fixa?" até "como diversificar minha carteira?".
             </p>
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
-            >
+            <Link to="/login" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors">
               Começar agora
               <ArrowRight className="h-4 w-4" />
             </Link>
@@ -119,7 +97,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="border-t border-border/50 bg-card/30 relative z-10">
         <div className="max-w-[1200px] mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -128,9 +105,7 @@ const Landing = () => {
             </div>
             <span className="text-xs font-semibold">Investidor Inteligente</span>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Projeto de TCC — Plataforma educativa para investidores iniciantes
-          </p>
+          <p className="text-xs text-muted-foreground">Projeto de TCC — Plataforma educativa para investidores iniciantes</p>
         </div>
       </footer>
     </div>
