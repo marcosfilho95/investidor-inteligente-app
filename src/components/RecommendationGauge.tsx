@@ -5,26 +5,21 @@ interface GaugeProps {
 }
 
 export function RecommendationGauge({ score, label, color }: GaugeProps) {
-  // Semi-circle gauge like CMC Fear & Greed Index
-  const width = 220;
-  const height = 130;
+  const width = 240;
+  const height = 150;
   const cx = width / 2;
-  const cy = 110;
-  const radius = 85;
-  const strokeWidth = 18;
+  const cy = 120;
+  const radius = 90;
+  const strokeWidth = 22;
 
-  // Score goes from 0 (Vender) to 100 (Comprar)
-  // Arc from 180° (left) to 0° (right)
-  const startAngle = 180;
-  const endAngle = 0;
-
-  const scoreAngle = startAngle - (score / 100) * (startAngle - endAngle);
+  // Score 0-100 mapped to 180°-0° arc
+  const scoreAngle = 180 - (score / 100) * 180;
   const needleRad = (scoreAngle * Math.PI) / 180;
-  const needleLen = radius - 20;
+  const needleLen = radius - 28;
   const needleX = cx + needleLen * Math.cos(needleRad);
   const needleY = cy - needleLen * Math.sin(needleRad);
 
-  // Create arc path
+  // Arc helper
   const arcPath = (startDeg: number, endDeg: number) => {
     const s = { x: cx + radius * Math.cos((startDeg * Math.PI) / 180), y: cy - radius * Math.sin((startDeg * Math.PI) / 180) };
     const e = { x: cx + radius * Math.cos((endDeg * Math.PI) / 180), y: cy - radius * Math.sin((endDeg * Math.PI) / 180) };
@@ -32,59 +27,64 @@ export function RecommendationGauge({ score, label, color }: GaugeProps) {
     return `M ${s.x} ${s.y} A ${radius} ${radius} 0 ${largeArc} 1 ${e.x} ${e.y}`;
   };
 
-  // Determine recommendation text
+  // Determine recommendation
   let recText: string;
   if (score >= 70) recText = "Comprar";
   else if (score >= 40) recText = "Neutro";
   else recText = "Vender";
 
   return (
-    <div className="flex flex-col items-center">
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-        {/* Red zone (Vender): 180° to 126° */}
+    <div className="flex flex-col items-center w-full">
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+        {/* Background track */}
         <path
-          d={arcPath(180, 126)}
+          d={arcPath(180, 0)}
           fill="none"
-          stroke="hsl(var(--loss))"
-          strokeWidth={strokeWidth}
-          strokeLinecap="butt"
-          opacity={0.6}
+          stroke="hsl(220, 14%, 16%)"
+          strokeWidth={strokeWidth + 4}
+          strokeLinecap="round"
         />
-        {/* Orange zone: 126° to 108° */}
-        <path
-          d={arcPath(126, 108)}
-          fill="none"
-          stroke="hsl(30, 80%, 55%)"
-          strokeWidth={strokeWidth}
-          strokeLinecap="butt"
-          opacity={0.6}
-        />
-        {/* Yellow/Neutral zone: 108° to 72° */}
-        <path
-          d={arcPath(108, 72)}
-          fill="none"
-          stroke="hsl(var(--warning))"
-          strokeWidth={strokeWidth}
-          strokeLinecap="butt"
-          opacity={0.6}
-        />
-        {/* Light green zone: 72° to 54° */}
-        <path
-          d={arcPath(72, 54)}
-          fill="none"
-          stroke="hsl(142, 50%, 50%)"
-          strokeWidth={strokeWidth}
-          strokeLinecap="butt"
-          opacity={0.6}
-        />
-        {/* Green zone (Comprar): 54° to 0° */}
-        <path
-          d={arcPath(54, 0)}
-          fill="none"
-          stroke="hsl(var(--gain))"
-          strokeWidth={strokeWidth}
-          strokeLinecap="butt"
-          opacity={0.6}
+
+        {/* Red zone: 180° to 120° (Vender) */}
+        <path d={arcPath(180, 120)} fill="none" stroke="hsl(0, 72%, 50%)" strokeWidth={strokeWidth} strokeLinecap="butt" />
+        {/* Orange zone: 120° to 108° */}
+        <path d={arcPath(120, 108)} fill="none" stroke="hsl(25, 80%, 50%)" strokeWidth={strokeWidth} strokeLinecap="butt" />
+        {/* Yellow zone: 108° to 72° (Neutro) */}
+        <path d={arcPath(108, 72)} fill="none" stroke="hsl(45, 85%, 50%)" strokeWidth={strokeWidth} strokeLinecap="butt" />
+        {/* Light green: 72° to 60° */}
+        <path d={arcPath(72, 60)} fill="none" stroke="hsl(100, 50%, 45%)" strokeWidth={strokeWidth} strokeLinecap="butt" />
+        {/* Green zone: 60° to 0° (Comprar) */}
+        <path d={arcPath(60, 0)} fill="none" stroke="hsl(142, 72%, 45%)" strokeWidth={strokeWidth} strokeLinecap="butt" />
+
+        {/* Tick marks */}
+        {[0, 25, 50, 75, 100].map((tick) => {
+          const angle = 180 - (tick / 100) * 180;
+          const rad = (angle * Math.PI) / 180;
+          const inner = radius + strokeWidth / 2 + 2;
+          const outer = inner + 6;
+          return (
+            <line
+              key={tick}
+              x1={cx + inner * Math.cos(rad)}
+              y1={cy - inner * Math.sin(rad)}
+              x2={cx + outer * Math.cos(rad)}
+              y2={cy - outer * Math.sin(rad)}
+              stroke="hsl(220, 14%, 30%)"
+              strokeWidth={1.5}
+            />
+          );
+        })}
+
+        {/* Needle shadow */}
+        <line
+          x1={cx}
+          y1={cy + 1}
+          x2={needleX}
+          y2={needleY + 1}
+          stroke="hsl(0, 0%, 0%)"
+          strokeWidth={4}
+          strokeLinecap="round"
+          opacity={0.3}
         />
 
         {/* Needle */}
@@ -97,15 +97,17 @@ export function RecommendationGauge({ score, label, color }: GaugeProps) {
           strokeWidth={3}
           strokeLinecap="round"
         />
-        <circle cx={cx} cy={cy} r={7} fill="hsl(var(--foreground))" />
+
+        {/* Needle center */}
+        <circle cx={cx} cy={cy} r={8} fill="hsl(220, 14%, 14%)" stroke="hsl(220, 14%, 25%)" strokeWidth={2} />
         <circle cx={cx} cy={cy} r={4} fill={color} />
 
         {/* Labels */}
-        <text x={8} y={cy + 18} fill="hsl(var(--loss))" fontSize="10" fontWeight="600">Vender</text>
-        <text x={cx - 12} y={18} fill="hsl(var(--warning))" fontSize="10" fontWeight="600">Neutro</text>
-        <text x={width - 52} y={cy + 18} fill="hsl(var(--gain))" fontSize="10" fontWeight="600">Comprar</text>
+        <text x={12} y={cy + 20} fill="hsl(0, 72%, 55%)" fontSize="10" fontWeight="600">Vender</text>
+        <text x={cx - 14} y={16} fill="hsl(45, 85%, 55%)" fontSize="10" fontWeight="600">Neutro</text>
+        <text x={width - 58} y={cy + 20} fill="hsl(142, 72%, 50%)" fontSize="10" fontWeight="600">Comprar</text>
       </svg>
-      <div className="text-center -mt-2">
+      <div className="text-center -mt-1">
         <p className="text-3xl font-bold font-mono" style={{ color }}>{score}</p>
         <p className="text-sm font-semibold mt-0.5" style={{ color }}>{recText}</p>
       </div>

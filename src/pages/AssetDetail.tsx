@@ -35,7 +35,6 @@ const AssetDetail = () => {
     price: Math.round(asset.price * (d.price / 140) * 100) / 100,
   }));
 
-  // "Se você tivesse investido R$ 1.000" data
   const investmentComparison = assetHistoryData.map((d, i) => ({
     month: d.month,
     [asset.symbol]: Math.round((1000 * d.price) / assetHistoryData[0].price * 100) / 100,
@@ -107,59 +106,7 @@ const AssetDetail = () => {
           </div>
         </div>
 
-        {/* Price Chart */}
-        <div className="glass-card p-5">
-          <h3 className="text-base font-semibold mb-4">Histórico de Preço</h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={priceHistory}>
-              <defs>
-                <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
-              <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="hsl(215, 14%, 50%)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
-              <Tooltip contentStyle={{ backgroundColor: "hsl(220, 18%, 10%)", border: "1px solid hsl(220, 14%, 16%)", borderRadius: "8px", fontSize: "13px", fontFamily: "JetBrains Mono" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Preço"]} />
-              <Area type="monotone" dataKey="price" stroke={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} strokeWidth={2} fill="url(#priceGrad)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Investment Comparison Chart */}
-        <div className="glass-card p-5">
-          <h3 className="text-base font-semibold mb-1">Se você tivesse investido R$ 1.000</h3>
-          <p className="text-xs text-muted-foreground mb-4">Comparação educacional: {asset.symbol} vs IBOV vs CDI vs IPCA</p>
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={investmentComparison}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
-              <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="hsl(215, 14%, 50%)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
-              <Tooltip contentStyle={{ backgroundColor: "hsl(220, 18%, 10%)", border: "1px solid hsl(220, 14%, 16%)", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`]} />
-              <Legend wrapperStyle={{ fontSize: "12px" }} />
-              <Line type="monotone" dataKey={asset.symbol} stroke="hsl(0, 72%, 55%)" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="IBOV" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="CDI" stroke="hsl(142, 72%, 48%)" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="IPCA" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-            {[
-              { name: asset.symbol, value: lastComparison[asset.symbol], color: "hsl(0, 72%, 55%)" },
-              { name: "IBOV", value: lastComparison.IBOV, color: "hsl(217, 91%, 60%)" },
-              { name: "CDI", value: lastComparison.CDI, color: "hsl(142, 72%, 48%)" },
-              { name: "IPCA", value: lastComparison.IPCA, color: "hsl(38, 92%, 50%)" },
-            ].map((item) => (
-              <div key={item.name} className="bg-muted/50 rounded-lg p-3 flex items-center gap-2">
-                <span className="text-[10px] px-2 py-0.5 rounded font-bold" style={{ backgroundColor: item.color + "22", color: item.color }}>{item.name}</span>
-                <span className="text-xs font-mono">R$ {item.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recommendation + Fair Price + AI */}
+        {/* Recommendation + Fair Price + Graham */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="glass-card p-5 flex flex-col items-center justify-center">
             <h3 className="text-base font-semibold mb-3 self-start">Recomendação</h3>
@@ -216,14 +163,65 @@ const AssetDetail = () => {
           </div>
         </div>
 
-        {/* AI Widget */}
-        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-          <AiChatWidget
-            compact
-            context={`Análise de ${asset.symbol}`}
-            welcomeMessage={`📊 Analisando ${asset.symbol}... Score: ${recommendation.score}/100 (${recommendation.label}). ${fairPrice ? `Preço justo estimado: R$ ${fairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}. ` : ""}${grahamPrice ? `Preço Graham: R$ ${grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}. ` : ""}A IA será integrada via RAG para insights em tempo real.`}
-          />
+        {/* Price History + Investment Comparison side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="glass-card p-5">
+            <h3 className="text-base font-semibold mb-4">Preço histórico</h3>
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={priceHistory}>
+                <defs>
+                  <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
+                <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
+                <Tooltip contentStyle={{ backgroundColor: "hsl(220, 18%, 10%)", border: "1px solid hsl(220, 14%, 16%)", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Preço"]} />
+                <Area type="monotone" dataKey="price" stroke={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} strokeWidth={2} fill="url(#priceGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="glass-card p-5">
+            <h3 className="text-base font-semibold mb-1">Se você tivesse investido R$ 1.000</h3>
+            <p className="text-xs text-muted-foreground mb-4">{asset.symbol} vs IBOV vs CDI vs IPCA</p>
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={investmentComparison}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
+                <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
+                <Tooltip contentStyle={{ backgroundColor: "hsl(220, 18%, 10%)", border: "1px solid hsl(220, 14%, 16%)", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`]} />
+                <Legend wrapperStyle={{ fontSize: "11px" }} />
+                <Line type="monotone" dataKey={asset.symbol} stroke="hsl(0, 72%, 55%)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="IBOV" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="CDI" stroke="hsl(142, 72%, 48%)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="IPCA" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
+              {[
+                { name: asset.symbol, value: lastComparison[asset.symbol], color: "hsl(0, 72%, 55%)" },
+                { name: "IBOV", value: lastComparison.IBOV, color: "hsl(217, 91%, 60%)" },
+                { name: "CDI", value: lastComparison.CDI, color: "hsl(142, 72%, 48%)" },
+                { name: "IPCA", value: lastComparison.IPCA, color: "hsl(38, 92%, 50%)" },
+              ].map((item) => (
+                <div key={item.name} className="bg-muted/50 rounded-lg p-2 flex items-center gap-1.5">
+                  <span className="text-[9px] px-1.5 py-0.5 rounded font-bold" style={{ backgroundColor: item.color + "22", color: item.color }}>{item.name}</span>
+                  <span className="text-[11px] font-mono">R$ {item.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
+
+        {/* AI Widget */}
+        <AiChatWidget
+          compact
+          context={`Análise de ${asset.symbol}`}
+          welcomeMessage={`📊 Analisando ${asset.symbol}... Score: ${recommendation.score}/100 (${recommendation.label}). ${fairPrice ? `Preço justo estimado: R$ ${fairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}. ` : ""}${grahamPrice ? `Preço Graham: R$ ${grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}. ` : ""}A IA será integrada via RAG para insights em tempo real.`}
+        />
 
         {/* Indicators */}
         {hasFundamentals && (
@@ -272,24 +270,6 @@ const AssetDetail = () => {
             </div>
           </>
         )}
-
-        {/* Position */}
-        <div className="glass-card p-5">
-          <h3 className="text-base font-semibold mb-4">Sua Posição</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { label: "Valor Total", value: `R$ ${asset.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` },
-              { label: "Quantidade", value: asset.shares.toString() },
-              { label: "Preço Médio", value: `R$ ${(asset.price * 0.92).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` },
-              { label: "Lucro/Prejuízo", value: `R$ ${(asset.value * 0.08).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` },
-            ].map((item) => (
-              <div key={item.label}>
-                <p className="text-xs text-muted-foreground">{item.label}</p>
-                <p className="text-lg font-semibold font-mono mt-1">{item.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
       </main>
 
       {/* Buy/Sell Modal */}

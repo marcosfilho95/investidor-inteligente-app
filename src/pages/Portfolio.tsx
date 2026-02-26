@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, Settings, Search, TrendingUp, TrendingDown, ArrowUpRight } from "lucide-react";
+import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, Settings, Search, TrendingUp, ArrowUpRight } from "lucide-react";
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { holdings, portfolioData } from "@/data/investments";
 import { AiChatWidget } from "@/components/AiChatWidget";
@@ -21,14 +21,12 @@ const chartColors = [
 const Portfolio = () => {
   const [viewMode, setViewMode] = useState<"ativos" | "setor">("ativos");
 
-  // Allocation by asset
   const assetAllocation = holdings.map((h, i) => ({
     name: h.symbol,
     value: h.allocation,
     color: chartColors[i % chartColors.length],
   }));
 
-  // Allocation by sector
   const sectorMap: Record<string, number> = {};
   holdings.forEach((h) => {
     sectorMap[h.sector] = (sectorMap[h.sector] || 0) + h.allocation;
@@ -40,15 +38,6 @@ const Portfolio = () => {
   }));
 
   const currentData = viewMode === "ativos" ? assetAllocation : sectorAllocation;
-
-  // Category summary
-  const categoryMap: Record<string, { count: number; value: number; allocation: number }> = {};
-  holdings.forEach((h) => {
-    if (!categoryMap[h.category]) categoryMap[h.category] = { count: 0, value: 0, allocation: 0 };
-    categoryMap[h.category].count++;
-    categoryMap[h.category].value += h.value;
-    categoryMap[h.category].allocation += h.allocation;
-  });
 
   const totalInvested = portfolioData.totalValue - portfolioData.totalGain;
   const variacao = portfolioData.dailyChangePercent;
@@ -115,9 +104,7 @@ const Portfolio = () => {
         {/* Indicators row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="glass-card p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs text-muted-foreground">Patrimônio total</span>
-            </div>
+            <span className="text-xs text-muted-foreground">Patrimônio total</span>
             <p className="text-xl font-semibold font-mono">
               R$ {portfolioData.totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </p>
@@ -162,9 +149,8 @@ const Portfolio = () => {
           </div>
         </div>
 
-        {/* Allocation + Categories */}
+        {/* Allocation + AI Chat */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Allocation chart with toggle */}
           <div className="glass-card p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -228,7 +214,6 @@ const Portfolio = () => {
             </div>
           </div>
 
-          {/* AI Chat */}
           <div className="lg:col-span-2">
             <AiChatWidget
               welcomeMessage="📊 Sua carteira tem boa diversificação! Cripto (38.9%) está acima da exposição recomendada para perfil moderado. Quer que eu analise o balanceamento ideal?"
@@ -236,67 +221,62 @@ const Portfolio = () => {
           </div>
         </div>
 
-        {/* Holdings table + AI */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 glass-card overflow-hidden">
-            <div className="p-5 border-b border-border/50">
-              <h3 className="text-base font-semibold">Ativos na Carteira</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border/50">
-                    <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Ativo</th>
-                    <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Quant.</th>
-                    <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Preço Médio</th>
-                    <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Preço Atual</th>
-                    <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Variação</th>
-                    <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Rentabilidade</th>
-                    <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Saldo</th>
-                    <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">% Carteira</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {holdings.map((h) => {
-                    const avgPrice = h.price * 0.92;
-                    const variation = h.changePercent;
-                    const rentab = ((h.price / avgPrice - 1) * 100);
-                    return (
-                      <tr key={h.symbol} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
-                        <td className="px-5 py-3">
-                          <Link to={`/ativos/${h.symbol}`} className="flex items-center gap-2.5 hover:underline">
-                            <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
-                              {h.symbol.slice(0, 2)}
-                            </div>
-                            <span className="text-sm font-medium">{h.symbol}</span>
-                          </Link>
-                        </td>
-                        <td className="text-right px-4 py-3 text-sm font-mono">{h.shares}</td>
-                        <td className="text-right px-4 py-3 text-sm font-mono">R$ {avgPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                        <td className="text-right px-4 py-3 text-sm font-mono">R$ {h.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                        <td className="text-right px-4 py-3">
-                          <span className={`text-sm font-mono ${variation >= 0 ? "text-gain" : "text-loss"}`}>
-                            {variation >= 0 ? "+" : ""}{variation.toFixed(2)}% {variation >= 0 ? "▲" : "▼"}
-                          </span>
-                        </td>
-                        <td className="text-right px-4 py-3">
-                          <div className="flex items-center justify-end gap-1">
-                            <span className="text-sm font-mono text-gain">{rentab.toFixed(2)}%</span>
-                            <ArrowUpRight className="h-3 w-3 text-gain" />
-                          </div>
-                        </td>
-                        <td className="text-right px-4 py-3 text-sm font-mono">R$ {h.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                        <td className="text-right px-5 py-3 text-sm font-mono">{h.allocation}%</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+        {/* Holdings table */}
+        <div className="glass-card overflow-hidden">
+          <div className="p-5 border-b border-border/50">
+            <h3 className="text-base font-semibold">Ativos na Carteira</h3>
           </div>
-          <AiChatWidget
-            welcomeMessage="📊 Sua carteira tem boa diversificação! Cripto (38.9%) está acima da exposição recomendada para perfil moderado. Quer que eu analise o balanceamento ideal?"
-          />
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border/50">
+                  <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Ativo</th>
+                  <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Quant.</th>
+                  <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Preço Médio</th>
+                  <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Preço Atual</th>
+                  <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Variação</th>
+                  <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Rentabilidade</th>
+                  <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Saldo</th>
+                  <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">% Carteira</th>
+                </tr>
+              </thead>
+              <tbody>
+                {holdings.map((h) => {
+                  const avgPrice = h.price * 0.92;
+                  const variation = h.changePercent;
+                  const rentab = ((h.price / avgPrice - 1) * 100);
+                  return (
+                    <tr key={h.symbol} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
+                      <td className="px-5 py-3">
+                        <Link to={`/ativos/${h.symbol}`} className="flex items-center gap-2.5 hover:underline">
+                          <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
+                            {h.symbol.slice(0, 2)}
+                          </div>
+                          <span className="text-sm font-medium">{h.symbol}</span>
+                        </Link>
+                      </td>
+                      <td className="text-right px-4 py-3 text-sm font-mono">{h.shares}</td>
+                      <td className="text-right px-4 py-3 text-sm font-mono">R$ {avgPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                      <td className="text-right px-4 py-3 text-sm font-mono">R$ {h.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                      <td className="text-right px-4 py-3">
+                        <span className={`text-sm font-mono ${variation >= 0 ? "text-gain" : "text-loss"}`}>
+                          {variation >= 0 ? "+" : ""}{variation.toFixed(2)}% {variation >= 0 ? "▲" : "▼"}
+                        </span>
+                      </td>
+                      <td className="text-right px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <span className="text-sm font-mono text-gain">{rentab.toFixed(2)}%</span>
+                          <ArrowUpRight className="h-3 w-3 text-gain" />
+                        </div>
+                      </td>
+                      <td className="text-right px-4 py-3 text-sm font-mono">R$ {h.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                      <td className="text-right px-5 py-3 text-sm font-mono">{h.allocation}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </main>
     </div>
