@@ -104,7 +104,7 @@ const Portfolio = () => {
                           {currentData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                         </Pie>
                         <Tooltip
-                          contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", color: "hsl(var(--foreground))" }}
+                          contentStyle={{ backgroundColor: "hsl(220, 18%, 16%)", border: "1px solid hsl(220, 14%, 22%)", borderRadius: "8px", fontSize: "12px", color: "hsl(210, 20%, 92%)", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}
                           formatter={(value: number, name: string) => [`${value}%`, name]}
                         />
                       </RechartsPie>
