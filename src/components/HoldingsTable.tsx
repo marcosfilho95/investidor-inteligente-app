@@ -1,11 +1,26 @@
+import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown } from "lucide-react";
-import { holdings } from "@/data/investments";
+import { Holding } from "@/data/investments";
 
-export function HoldingsTable() {
+interface HoldingsTableProps {
+  holdings?: (Holding & { avgPrice?: number })[];
+}
+
+export function HoldingsTable({ holdings: userHoldings }: HoldingsTableProps) {
+  const items = userHoldings || [];
+
+  if (items.length === 0) {
+    return (
+      <div className="glass-card p-8 text-center">
+        <p className="text-sm text-muted-foreground">Nenhum ativo na carteira ainda.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="glass-card overflow-hidden">
       <div className="p-5 border-b border-border/50">
-        <h3 className="text-base font-semibold">Holdings</h3>
+        <h3 className="text-base font-semibold">Posições</h3>
         <p className="text-sm text-muted-foreground">Seus ativos em carteira</p>
       </div>
       <div className="overflow-x-auto">
@@ -21,10 +36,10 @@ export function HoldingsTable() {
             </tr>
           </thead>
           <tbody>
-            {holdings.map((holding) => (
+            {items.map((holding) => (
               <tr key={holding.symbol} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
                 <td className="px-5 py-3.5">
-                  <div className="flex items-center gap-3">
+                  <Link to={`/ativos/${holding.symbol}`} className="flex items-center gap-3 hover:underline">
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
                       {holding.symbol.slice(0, 2)}
                     </div>
@@ -32,7 +47,7 @@ export function HoldingsTable() {
                       <p className="text-sm font-medium">{holding.symbol}</p>
                       <p className="text-xs text-muted-foreground">{holding.name}</p>
                     </div>
-                  </div>
+                  </Link>
                 </td>
                 <td className="text-right px-5 py-3.5">
                   <span className="text-sm font-mono">
@@ -64,7 +79,7 @@ export function HoldingsTable() {
                     <div className="w-12 h-1.5 rounded-full bg-muted overflow-hidden">
                       <div
                         className="h-full rounded-full bg-primary"
-                        style={{ width: `${holding.allocation}%` }}
+                        style={{ width: `${Math.min(holding.allocation, 100)}%` }}
                       />
                     </div>
                     <span className="text-xs font-mono text-muted-foreground">{holding.allocation}%</span>

@@ -7,9 +7,15 @@ import { RecommendationGauge } from "@/components/RecommendationGauge";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { useState } from "react";
+import { useUserHoldings } from "@/hooks/useUserHoldings";
 
 const periods = ["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
 const periodMap: Record<string, string> = { "1 DIA": "1D", "7 DIAS": "7D", "30 DIAS": "30D", "6 MESES": "6M", "YTD": "YTD", "1 ANO": "1A", "5 ANOS": "5A" };
+
+// Realistic daily benchmark returns
+const IBOV_DAILY = 0.00038;
+const CDI_DAILY = 0.000425;
+const IPCA_DAILY = 0.000185;
 
 const AssetDetail = () => {
   const { symbol } = useParams<{ symbol: string }>();
@@ -17,6 +23,8 @@ const AssetDetail = () => {
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [orderType, setOrderType] = useState<"buy" | "sell">("buy");
   const [selectedPeriod, setSelectedPeriod] = useState("1 ANO");
+  const [orderQty, setOrderQty] = useState(1);
+  const { addHolding, sellHolding, userHoldings } = useUserHoldings();
 
   if (!asset) {
     return (
@@ -29,6 +37,7 @@ const AssetDetail = () => {
     );
   }
 
+  const userHolding = userHoldings.find(h => h.symbol === asset.symbol);
   const isPositive = asset.changePercent >= 0;
   const recommendation = calcRecommendationScore(asset);
   const grahamPrice = calcGrahamPrice(asset);
@@ -36,17 +45,35 @@ const AssetDetail = () => {
 
   const priceHistory = generatePriceHistory(asset.price, asset.changePercent, periodMap[selectedPeriod]);
 
-  const investBase = priceHistory[0]?.price || asset.price;
-  const investmentComparison = priceHistory.map((d, i) => ({
-    month: d.month,
-    [asset.symbol]: Math.round((1000 * d.price / investBase) * 100) / 100,
-    IBOV: Math.round(1000 * (1 + 0.003 * i) * 100) / 100,
-    CDI: Math.round(1000 * Math.pow(1.0008, (i + 1) * 30) * 100) / 100,
-    IPCA: Math.round(1000 * Math.pow(1.0004, (i + 1) * 30) * 100) / 100,
-  }));
+  // Realistic benchmark comparison using compound returns
+  const daysMap: Record<string, number> = { "1D": 1, "7D": 7, "30D": 30, "6M": 126, "YTD": 40, "1A": 252, "5A": 1260 };
+  const totalDays = daysMap[periodMap[selectedPeriod]] || 252;
+  const points = priceHistory.length;
+
+  const investmentComparison = priceHistory.map((d, i) => {
+    const investBase = priceHistory[0]?.price || asset.price;
+    const daysElapsed = (totalDays / points) * (i + 1);
+    return {
+      month: d.month,
+      [asset.symbol]: Math.round((1000 * d.price / investBase) * 100) / 100,
+      IBOV: Math.round(1000 * Math.pow(1 + IBOV_DAILY, daysElapsed) * (1 + (Math.random() - 0.48) * 0.005) * 100) / 100,
+      CDI: Math.round(1000 * Math.pow(1 + CDI_DAILY, daysElapsed) * 100) / 100,
+      IPCA: Math.round(1000 * Math.pow(1 + IPCA_DAILY, daysElapsed) * 100) / 100,
+    };
+  });
 
   const lastComparison = investmentComparison[investmentComparison.length - 1];
   const hasFundamentals = asset.pe !== null;
+
+  const handleOrder = async () => {
+    if (orderType === "buy") {
+      const success = await addHolding(asset.symbol, orderQty, asset.price);
+      if (success) setShowBuyModal(false);
+    } else {
+      const success = await sellHolding(asset.symbol, orderQty);
+      if (success) setShowBuyModal(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -76,6 +103,7 @@ const AssetDetail = () => {
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{asset.subsetor}</span>
                 </div>
                 <p className="text-sm text-muted-foreground">{asset.name}</p>
+                {userHolding && <p className="text-[10px] text-primary mt-0.5">Você possui {userHolding.shares} ações</p>}
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -86,12 +114,12 @@ const AssetDetail = () => {
                   <span className={`text-sm font-mono font-medium ${isPositive ? "text-gain" : "text-loss"}`}>{isPositive ? "+" : ""}{asset.changePercent}%</span>
                 </div>
               </div>
-              <button onClick={() => { setOrderType("buy"); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"><ShoppingCart className="h-4 w-4" /> Comprar</button>
-              <button onClick={() => { setOrderType("sell"); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors"><DollarSign className="h-4 w-4" /> Vender</button>
+              <button onClick={() => { setOrderType("buy"); setOrderQty(1); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"><ShoppingCart className="h-4 w-4" /> Comprar</button>
+              <button onClick={() => { setOrderType("sell"); setOrderQty(1); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors"><DollarSign className="h-4 w-4" /> Vender</button>
             </div>
           </div>
 
-          {/* Recommendation + Graham - Only 2 cards now */}
+          {/* Recommendation + Graham */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <AnimatedCard delay={0.1}>
               <div className="glass-card p-5 flex flex-col items-center justify-center">
@@ -169,9 +197,9 @@ const AssetDetail = () => {
                       <stop offset="95%" stopColor={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} stopOpacity={0} />
                     </linearGradient></defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
-                    <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} />
+                    <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} interval={Math.max(0, Math.floor(priceHistory.length / 8))} />
                     <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
-                    <Tooltip contentStyle={{ backgroundColor: "hsl(220, 18%, 10%)", border: "1px solid hsl(220, 14%, 16%)", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Preço"]} />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Preço"]} />
                     <Area type="monotone" dataKey="price" stroke={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} strokeWidth={2} fill="url(#priceGrad)" />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -185,26 +213,26 @@ const AssetDetail = () => {
                 <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={investmentComparison}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
-                    <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} />
+                    <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} interval={Math.max(0, Math.floor(investmentComparison.length / 8))} />
                     <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
-                    <Tooltip contentStyle={{ backgroundColor: "hsl(220, 18%, 10%)", border: "1px solid hsl(220, 14%, 16%)", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`]} />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`]} />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
-                    <Line type="monotone" dataKey={asset.symbol} stroke="hsl(0, 72%, 55%)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="IBOV" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="CDI" stroke="hsl(142, 72%, 48%)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="IPCA" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey={asset.symbol} stroke="hsl(142, 72%, 48%)" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="IBOV" stroke="hsl(217, 91%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" />
+                    <Line type="monotone" dataKey="CDI" stroke="hsl(38, 92%, 50%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" />
+                    <Line type="monotone" dataKey="IPCA" stroke="hsl(280, 65%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" />
                   </LineChart>
                 </ResponsiveContainer>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
                   {[
-                    { name: asset.symbol, value: lastComparison[asset.symbol], color: "hsl(0, 72%, 55%)" },
+                    { name: asset.symbol, value: lastComparison[asset.symbol], color: "hsl(142, 72%, 48%)" },
                     { name: "IBOV", value: lastComparison.IBOV, color: "hsl(217, 91%, 60%)" },
-                    { name: "CDI", value: lastComparison.CDI, color: "hsl(142, 72%, 48%)" },
-                    { name: "IPCA", value: lastComparison.IPCA, color: "hsl(38, 92%, 50%)" },
+                    { name: "CDI", value: lastComparison.CDI, color: "hsl(38, 92%, 50%)" },
+                    { name: "IPCA", value: lastComparison.IPCA, color: "hsl(280, 65%, 60%)" },
                   ].map((item) => (
                     <div key={item.name} className="bg-muted/50 rounded-lg p-2 flex items-center gap-1.5">
                       <span className="text-[9px] px-1.5 py-0.5 rounded font-bold" style={{ backgroundColor: item.color + "22", color: item.color }}>{item.name}</span>
-                      <span className="text-[11px] font-mono">R$ {item.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                      <span className="text-[11px] font-mono">R$ {Number(item.value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                     </div>
                   ))}
                 </div>
@@ -280,19 +308,22 @@ const AssetDetail = () => {
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowBuyModal(false)}>
           <div className="glass-card p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold">{orderType === "buy" ? "Comprar" : "Vender"} {asset.symbol}</h3>
+            {orderType === "sell" && userHolding && (
+              <p className="text-xs text-muted-foreground">Você possui {userHolding.shares} ações</p>
+            )}
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-muted-foreground">Quantidade</label>
-                <input type="number" defaultValue={1} min={1} className="w-full mt-1 bg-muted/50 rounded-lg px-3 py-2.5 text-sm font-mono text-foreground border border-border/50 focus:outline-none focus:ring-1 focus:ring-primary/50" />
+                <input type="number" value={orderQty} onChange={e => setOrderQty(Math.max(1, parseInt(e.target.value) || 1))} min={1} className="w-full mt-1 bg-muted/50 rounded-lg px-3 py-2.5 text-sm font-mono text-foreground border border-border/50 focus:outline-none focus:ring-1 focus:ring-primary/50" />
               </div>
               <div className="bg-muted/30 rounded-lg p-3 space-y-1">
                 <div className="flex justify-between text-xs"><span className="text-muted-foreground">Preço unitário</span><span className="font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
-                <div className="flex justify-between text-xs font-medium"><span className="text-muted-foreground">Total estimado</span><span className="font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
+                <div className="flex justify-between text-xs font-medium"><span className="text-muted-foreground">Total estimado</span><span className="font-mono">R$ {(asset.price * orderQty).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
               </div>
             </div>
             <div className="flex gap-3">
               <button onClick={() => setShowBuyModal(false)} className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-accent transition-colors">Cancelar</button>
-              <button className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${orderType === "buy" ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}`}>
+              <button onClick={handleOrder} className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${orderType === "buy" ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}`}>
                 Confirmar {orderType === "buy" ? "compra" : "venda"}
               </button>
             </div>

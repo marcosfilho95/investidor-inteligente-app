@@ -41,6 +41,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_holdings: {
+        Row: {
+          avg_price: number
+          created_at: string
+          id: string
+          shares: number
+          symbol: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avg_price?: number
+          created_at?: string
+          id?: string
+          shares?: number
+          symbol: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avg_price?: number
+          created_at?: string
+          id?: string
+          shares?: number
+          symbol?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
