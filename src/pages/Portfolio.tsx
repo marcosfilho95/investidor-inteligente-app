@@ -228,40 +228,11 @@ const Portfolio = () => {
             </div>
           </div>
 
-          {/* Category summary */}
-          <div className="lg:col-span-2 glass-card p-5">
-            <h3 className="text-base font-semibold mb-1">Meus Ativos ({holdings.length})</h3>
-            <p className="text-xs text-muted-foreground mb-4">Agrupado por categoria</p>
-            <div className="space-y-3">
-              {Object.entries(categoryMap).map(([cat, data]) => (
-                <div key={cat} className="bg-muted/30 rounded-lg p-4">
-                  <div className="grid grid-cols-5 items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                        {cat.charAt(0)}
-                      </div>
-                      <span className="text-sm font-medium">{cat}</span>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[10px] text-muted-foreground">Ativos</p>
-                      <p className="text-sm font-mono font-medium">{data.count}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[10px] text-muted-foreground">Valor total</p>
-                      <p className="text-sm font-mono font-medium">R$ {data.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[10px] text-muted-foreground">Variação</p>
-                      <p className="text-sm font-mono font-medium text-gain">+{(Math.random() * 10 + 2).toFixed(2)}%</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[10px] text-muted-foreground">% na carteira</p>
-                      <p className="text-sm font-mono font-medium">{data.allocation.toFixed(1)}%</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          {/* AI Chat */}
+          <div className="lg:col-span-2">
+            <AiChatWidget
+              welcomeMessage="📊 Sua carteira tem boa diversificação! Cripto (38.9%) está acima da exposição recomendada para perfil moderado. Quer que eu analise o balanceamento ideal?"
+            />
           </div>
         </div>
 
