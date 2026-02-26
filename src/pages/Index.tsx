@@ -6,8 +6,22 @@ import { AllocationChart } from "@/components/AllocationChart";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { portfolioData } from "@/data/investments";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
+  const [userName, setUserName] = useState("Investidor");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const name = data.user?.user_metadata?.name;
+      if (name) setUserName(name.split(" ")[0]);
+    });
+  }, []);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
@@ -26,15 +40,10 @@ const Index = () => {
                 { label: "Ativos", icon: PieChart, href: "/ativos" },
                 { label: "Aprender", icon: BookOpen, href: "/aprender" },
               ].map((item) => (
-                <Link
-                  key={item.label}
-                  to={item.href}
+                <Link key={item.label} to={item.href}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                    item.active
-                      ? "bg-accent text-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                  }`}
-                >
+                    item.active ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  }`}>
                   <item.icon className="h-3.5 w-3.5" />
                   {item.label}
                 </Link>
@@ -53,7 +62,7 @@ const Index = () => {
               <Settings className="h-4 w-4" />
             </button>
             <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center text-xs font-bold text-primary ml-1">
-              JD
+              {userName.slice(0, 2).toUpperCase()}
             </div>
           </div>
         </div>
@@ -61,7 +70,7 @@ const Index = () => {
 
       <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
         <div>
-          <h1 className="text-xl font-semibold">Bom dia, João 👋</h1>
+          <h1 className="text-xl font-semibold">{greeting}, {userName} 👋</h1>
           <p className="text-sm text-muted-foreground">Aqui está o resumo do seu portfólio hoje.</p>
         </div>
 
@@ -83,7 +92,10 @@ const Index = () => {
           <div className="lg:col-span-2">
             <HoldingsTable />
           </div>
-          <AiChatWidget welcomeMessage="Bom dia, João! 👋 Sua carteira subiu 1.54% hoje. NVDA e ETH foram os destaques positivos. Quer que eu analise algum ativo específico?" />
+          <AiChatWidget
+            page="dashboard"
+            welcomeMessage={`${greeting}, ${userName}! 👋 Sou o Hodl, seu assistente de investimentos. Sua carteira tem 25 ativos da B3 distribuídos em 8 setores. Explore seus ativos, confira indicadores ou visite a aba "Aprender" para se aprofundar nos conceitos. Estou aqui para te ajudar! 🚀`}
+          />
         </div>
       </main>
     </div>
