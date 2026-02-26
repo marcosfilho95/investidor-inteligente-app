@@ -6,8 +6,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Index";
+import Portfolio from "./pages/Portfolio";
 import Assets from "./pages/Assets";
 import AssetDetail from "./pages/AssetDetail";
+import Education from "./pages/Education";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,8 +24,10 @@ const App = () => (
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/carteira" element={<Portfolio />} />
           <Route path="/ativos" element={<Assets />} />
           <Route path="/ativos/:symbol" element={<AssetDetail />} />
+          <Route path="/aprender" element={<Education />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
