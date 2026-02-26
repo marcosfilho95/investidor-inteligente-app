@@ -43,7 +43,7 @@ const AssetDetail = () => {
   const grahamPrice = calcGrahamPrice(asset);
   const grahamUpside = grahamPrice ? ((grahamPrice / asset.price - 1) * 100).toFixed(1) : null;
 
-  const priceHistory = generatePriceHistory(asset.price, asset.changePercent, periodMap[selectedPeriod]);
+  const priceHistory = generatePriceHistory(asset.price, asset.changePercent, periodMap[selectedPeriod], asset.symbol);
 
   // Realistic benchmark comparison using compound returns
   const daysMap: Record<string, number> = { "1D": 1, "7D": 7, "30D": 30, "6M": 126, "YTD": 40, "1A": 252, "5A": 1260 };
@@ -197,7 +197,7 @@ const AssetDetail = () => {
                       <stop offset="95%" stopColor={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} stopOpacity={0} />
                     </linearGradient></defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
-                    <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} interval={Math.max(0, Math.floor(priceHistory.length / 8))} />
+                    <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={9} tickLine={false} axisLine={false} tick={({ x, y, payload }: any) => payload.value ? <text x={x} y={y + 12} textAnchor="middle" fill="hsl(215, 14%, 50%)" fontSize={9}>{payload.value}</text> : null} interval={Math.max(0, Math.floor(priceHistory.length / 10))} />
                     <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
                     <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Preço"]} />
                     <Area type="monotone" dataKey="price" stroke={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} strokeWidth={2} fill="url(#priceGrad)" />
