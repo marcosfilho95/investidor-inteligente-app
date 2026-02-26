@@ -374,41 +374,65 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
  */
 function cleanOHLCVOutliers(data: OHLCVDay[]): OHLCVDay[] {
   if (data.length < 3) return data;
-  const result = [...data];
-  
-  for (let i = 1; i < result.length - 1; i++) {
-    const prev = result[i - 1].close;
+  const result = data.map(d => ({ ...d }));
+
+  // Multi-pass cleaning with progressively tighter thresholds
+  // Pass 1: fix extreme outliers (>25% deviation from neighbors)
+  // Pass 2: fix moderate outliers (>12% deviation)
+  // Pass 3: fix subtle outliers (>7% deviation from 5-day moving average)
+  const thresholds = [0.25, 0.12, 0.07];
+
+  for (const threshold of thresholds) {
+    for (let i = 1; i < result.length - 1; i++) {
+      const prev = result[i - 1].close;
+      const curr = result[i].close;
+      const next = result[i + 1].close;
+      const avg = (prev + next) / 2;
+
+      if (avg > 0 && Math.abs(curr - avg) / avg > threshold) {
+        const interpolated = Math.round(avg * 100) / 100;
+        result[i] = {
+          ...result[i],
+          open: interpolated,
+          high: Math.max(prev, next) * 1.002,
+          low: Math.min(prev, next) * 0.998,
+          close: interpolated,
+        };
+      }
+    }
+  }
+
+  // Pass 4: 5-day moving average pass to catch remaining spikes
+  for (let i = 2; i < result.length - 2; i++) {
+    const window = [result[i - 2].close, result[i - 1].close, result[i + 1].close, result[i + 2].close];
+    const ma = window.reduce((a, b) => a + b, 0) / window.length;
     const curr = result[i].close;
-    const next = result[i + 1].close;
-    const avg = (prev + next) / 2;
-    
-    // If current value deviates >40% from average of neighbors, it's likely corrupted
-    if (avg > 0 && (curr < avg * 0.6 || curr > avg * 1.4)) {
-      const interpolated = Math.round(avg * 100) / 100;
+    if (ma > 0 && Math.abs(curr - ma) / ma > 0.06) {
+      const interpolated = Math.round(((result[i - 1].close + result[i + 1].close) / 2) * 100) / 100;
       result[i] = {
         ...result[i],
         open: interpolated,
-        high: Math.max(prev, next, interpolated),
-        low: Math.min(prev, next, interpolated),
+        high: Math.max(result[i - 1].close, result[i + 1].close) * 1.002,
+        low: Math.min(result[i - 1].close, result[i + 1].close) * 0.998,
         close: interpolated,
       };
     }
   }
-  
-  // Also fix first/last if they look wrong compared to neighbors
+
+  // Fix first/last
   if (result.length > 1) {
     const first = result[0].close;
     const second = result[1].close;
-    if (second > 0 && (first < second * 0.6 || first > second * 1.4)) {
+    if (second > 0 && Math.abs(first - second) / second > 0.10) {
       result[0] = { ...result[0], open: second, high: second, low: second, close: second };
     }
     const last = result[result.length - 1].close;
     const prev = result[result.length - 2].close;
-    if (prev > 0 && (last < prev * 0.6 || last > prev * 1.4)) {
+    if (prev > 0 && Math.abs(last - prev) / prev > 0.10) {
       result[result.length - 1] = { ...result[result.length - 1], open: prev, high: prev, low: prev, close: prev };
     }
   }
-  
+
   return result;
 }
 

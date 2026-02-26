@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Bot, Send, Sparkles, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { buildDatasetContext, buildAssetContext } from "@/data/investments";
 
 interface AiChatWidgetProps {
@@ -149,13 +150,15 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${
+              className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
                 msg.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted/80 text-foreground"
+                  ? "bg-primary text-primary-foreground whitespace-pre-wrap"
+                  : "bg-muted/80 text-foreground prose prose-xs prose-invert max-w-none [&_p]:m-0 [&_p]:mb-1.5 [&_ul]:m-0 [&_ol]:m-0 [&_li]:m-0 [&_strong]:text-foreground [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:mt-1.5 [&_h2]:mb-0.5 [&_h3]:mt-1 [&_h3]:mb-0.5"
               }`}
             >
-              {msg.content}
+              {msg.role === "user" ? msg.content : (
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
+              )}
             </div>
           </div>
         ))}
