@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { TrendingUp, ArrowUpRight } from "lucide-react";
+import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { AppHeader } from "@/components/AppHeader";
@@ -212,6 +213,7 @@ const Portfolio = () => {
                 <AnimatedCard delay={0.4} className="lg:col-span-2">
                   <AiChatWidget
                     page="carteira"
+                    userSymbols={enrichedHoldings.map(h => h.symbol)}
                     welcomeMessage={`📊 Sua carteira possui ${enrichedHoldings.length} ativos distribuídos em ${Object.keys(sectorMap).length} setores. Posso ajudar a analisar se a distribuição está adequada ao seu perfil ou sugerir rebalanceamento. O que gostaria de saber?`}
                   />
                 </AnimatedCard>
@@ -252,9 +254,7 @@ const Portfolio = () => {
                             >
                               <td className="px-5 py-3">
                                 <Link to={`/ativos/${h.symbol}`} className="flex items-center gap-2.5 hover:underline">
-                                  <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
-                                    {h.symbol.slice(0, 2)}
-                                  </div>
+                                  <AssetLogoWithFallback symbol={h.symbol} size={28} />
                                   <div>
                                     <span className="text-sm font-medium">{h.symbol}</span>
                                     <p className="text-[10px] text-muted-foreground">{h.sector}</p>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, TrendingUp, TrendingDown } from "lucide-react";
+import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import { holdings } from "@/data/investments";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
@@ -48,7 +49,7 @@ const Assets = () => {
                 <Link to={`/ativos/${asset.symbol}`} className="glass-card p-5 hover:border-primary/30 transition-all group block">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">{asset.symbol.slice(0, 2)}</div>
+                      <AssetLogoWithFallback symbol={asset.symbol} size={40} />
                       <div>
                         <p className="text-sm font-semibold group-hover:text-primary transition-colors">{asset.symbol}</p>
                         <p className="text-xs text-muted-foreground">{asset.name}</p>

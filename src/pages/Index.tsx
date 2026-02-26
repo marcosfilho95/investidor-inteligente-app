@@ -139,6 +139,7 @@ const Index = () => {
             <AnimatedCard delay={0.6} className={isEmpty ? "lg:col-span-3" : ""}>
               <AiChatWidget
                 page="dashboard"
+                userSymbols={enrichedHoldings.map(h => h.symbol)}
                 welcomeMessage={`${greeting}, ${userName}! 👋 Sou o Hodl, seu assistente de investimentos focado em análise fundamentalista e value investing. ${isEmpty ? "Sua carteira está vazia — vá em Ativos para começar a investir!" : `Sua carteira tem ${enrichedHoldings.length} ativos.`} Pergunte-me sobre indicadores, valuation ou estratégias! 🚀`}
               />
             </AnimatedCard>
