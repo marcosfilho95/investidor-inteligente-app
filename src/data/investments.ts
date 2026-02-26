@@ -45,19 +45,19 @@ export interface Holding {
 
 export const holdings: Holding[] = [
   // 🏦 Financeiro (4)
-  { symbol: "ITUB4", name: "Itaú Unibanco", shares: 200, price: 33.45, change: 0.52, changePercent: 1.58, value: 6690, allocation: 2.34, category: "Financeiro", description: "Maior banco privado do Brasil, líder em varejo, cartões e seguros. Reconhecido pela eficiência operacional e retornos consistentes aos acionistas.", marketCap: "310B", pe: 8.2, dividend: 5.8, sector: "Financeiro", subsetor: "Bancos", pvp: 1.82, lpa: 4.08, vpa: 18.38, psr: 3.1, pEbit: 6.5, evEbit: 8.2, evEbitda: 6.8, roe: 20.8, roic: 15.2, margemBruta: 68.5, margemEbit: 32.5, margemLiquida: 24.5, cReceita5a: 8.2, cLucro5a: 12.5, giroAtivos: 0.08, liqCorrente: 1.65, divLiqPl: 2.15, divLiqEbitda: 3.85, plAtivos: 0.08 },
-  { symbol: "BBAS3", name: "Banco do Brasil", shares: 150, price: 28.92, change: 0.38, changePercent: 1.33, value: 4338, allocation: 1.52, category: "Financeiro", description: "Maior banco público do Brasil com forte presença no agronegócio. Dividendos consistentes e papel relevante no crédito rural.", marketCap: "162B", pe: 5.1, dividend: 8.2, sector: "Financeiro", subsetor: "Bancos", pvp: 0.92, lpa: 5.67, vpa: 31.43, psr: 1.8, pEbit: 4.2, evEbit: 5.8, evEbitda: 4.5, roe: 18.5, roic: 13.8, margemBruta: 62.2, margemEbit: 28.8, margemLiquida: 21.8, cReceita5a: 10.5, cLucro5a: 15.2, giroAtivos: 0.06, liqCorrente: 1.52, divLiqPl: 1.85, divLiqEbitda: 3.25, plAtivos: 0.06 },
-  { symbol: "BBDC4", name: "Bradesco", shares: 300, price: 15.28, change: -0.12, changePercent: -0.78, value: 4584, allocation: 1.61, category: "Financeiro", description: "Um dos maiores bancos do Brasil, com forte atuação em seguros (Bradesco Seguros) e presença nacional em todas as faixas de renda.", marketCap: "158B", pe: 9.5, dividend: 4.2, sector: "Financeiro", subsetor: "Bancos", pvp: 1.05, lpa: 1.61, vpa: 14.55, psr: 2.4, pEbit: 7.8, evEbit: 9.8, evEbitda: 7.5, roe: 11.2, roic: 8.5, margemBruta: 58.5, margemEbit: 22.8, margemLiquida: 15.8, cReceita5a: 5.8, cLucro5a: 3.2, giroAtivos: 0.07, liqCorrente: 1.42, divLiqPl: 2.35, divLiqEbitda: 4.15, plAtivos: 0.07 },
-  { symbol: "B3SA3", name: "B3 S.A.", shares: 400, price: 12.85, change: 0.22, changePercent: 1.74, value: 5140, allocation: 1.80, category: "Financeiro", description: "Única bolsa de valores do Brasil, responsável por toda a infraestrutura do mercado de capitais nacional. Modelo de negócio com receita recorrente.", marketCap: "68B", pe: 15.8, dividend: 3.5, sector: "Financeiro", subsetor: "Mercado de Capitais", pvp: 3.45, lpa: 0.81, vpa: 3.72, psr: 8.2, pEbit: 12.1, evEbit: 13.5, evEbitda: 11.2, roe: 22.5, roic: 18.3, margemBruta: 72.5, margemEbit: 62.8, margemLiquida: 48.2, cReceita5a: 12.8, cLucro5a: 8.5, giroAtivos: 0.28, liqCorrente: 1.85, divLiqPl: 1.12, divLiqEbitda: 1.45, plAtivos: 0.32 },
+  { symbol: "ITUB4", name: "Itaú Unibanco", shares: 200, price: 47.79, change: -0.38, changePercent: -0.79, value: 9558, allocation: 2.34, category: "Financeiro", description: "Maior banco privado do Brasil, líder em varejo, cartões e seguros. Reconhecido pela eficiência operacional e retornos consistentes aos acionistas.", marketCap: "310B", pe: 8.2, dividend: 5.8, sector: "Financeiro", subsetor: "Bancos", pvp: 1.82, lpa: 4.08, vpa: 18.38, psr: 3.1, pEbit: 6.5, evEbit: 8.2, evEbitda: 6.8, roe: 20.8, roic: 15.2, margemBruta: 68.5, margemEbit: 32.5, margemLiquida: 24.5, cReceita5a: 8.2, cLucro5a: 12.5, giroAtivos: 0.08, liqCorrente: 1.65, divLiqPl: 2.15, divLiqEbitda: 3.85, plAtivos: 0.08 },
+  { symbol: "BBAS3", name: "Banco do Brasil", shares: 150, price: 27.58, change: 0.46, changePercent: 1.70, value: 4137, allocation: 1.52, category: "Financeiro", description: "Maior banco público do Brasil com forte presença no agronegócio. Dividendos consistentes e papel relevante no crédito rural.", marketCap: "162B", pe: 5.1, dividend: 8.2, sector: "Financeiro", subsetor: "Bancos", pvp: 0.92, lpa: 5.67, vpa: 31.43, psr: 1.8, pEbit: 4.2, evEbit: 5.8, evEbitda: 4.5, roe: 18.5, roic: 13.8, margemBruta: 62.2, margemEbit: 28.8, margemLiquida: 21.8, cReceita5a: 10.5, cLucro5a: 15.2, giroAtivos: 0.06, liqCorrente: 1.52, divLiqPl: 1.85, divLiqEbitda: 3.25, plAtivos: 0.06 },
+  { symbol: "BBDC4", name: "Bradesco", shares: 300, price: 21.17, change: -0.23, changePercent: -1.07, value: 6351, allocation: 1.61, category: "Financeiro", description: "Um dos maiores bancos do Brasil, com forte atuação em seguros (Bradesco Seguros) e presença nacional em todas as faixas de renda.", marketCap: "158B", pe: 9.5, dividend: 4.2, sector: "Financeiro", subsetor: "Bancos", pvp: 1.05, lpa: 1.61, vpa: 14.55, psr: 2.4, pEbit: 7.8, evEbit: 9.8, evEbitda: 7.5, roe: 11.2, roic: 8.5, margemBruta: 58.5, margemEbit: 22.8, margemLiquida: 15.8, cReceita5a: 5.8, cLucro5a: 3.2, giroAtivos: 0.07, liqCorrente: 1.42, divLiqPl: 2.35, divLiqEbitda: 4.15, plAtivos: 0.07 },
+  { symbol: "B3SA3", name: "B3 S.A.", shares: 400, price: 18.14, change: -0.08, changePercent: -0.44, value: 7256, allocation: 1.80, category: "Financeiro", description: "Única bolsa de valores do Brasil, responsável por toda a infraestrutura do mercado de capitais nacional. Modelo de negócio com receita recorrente.", marketCap: "68B", pe: 15.8, dividend: 3.5, sector: "Financeiro", subsetor: "Mercado de Capitais", pvp: 3.45, lpa: 0.81, vpa: 3.72, psr: 8.2, pEbit: 12.1, evEbit: 13.5, evEbitda: 11.2, roe: 22.5, roic: 18.3, margemBruta: 72.5, margemEbit: 62.8, margemLiquida: 48.2, cReceita5a: 12.8, cLucro5a: 8.5, giroAtivos: 0.28, liqCorrente: 1.85, divLiqPl: 1.12, divLiqEbitda: 1.45, plAtivos: 0.32 },
 
   // ⚡ Utilidades Públicas (4)
-  { symbol: "ELET3", name: "Eletrobras", shares: 120, price: 42.18, change: 0.65, changePercent: 1.56, value: 5061.60, allocation: 1.77, category: "Utilidades Públicas", description: "Maior empresa de energia elétrica da América Latina. Privatizada em 2022, gera e transmite energia em todo o território nacional.", marketCap: "95B", pe: 6.8, dividend: 4.5, sector: "Utilidades Públicas", subsetor: "Energia Elétrica", pvp: 0.78, lpa: 6.20, vpa: 54.08, psr: 2.1, pEbit: 5.2, evEbit: 7.8, evEbitda: 5.5, roe: 12.5, roic: 8.8, margemBruta: 55.2, margemEbit: 38.5, margemLiquida: 28.2, cReceita5a: 6.5, cLucro5a: 18.5, giroAtivos: 0.15, liqCorrente: 1.42, divLiqPl: 0.58, divLiqEbitda: 2.85, plAtivos: 0.42 },
-  { symbol: "CPFE3", name: "CPFL Energia", shares: 80, price: 35.72, change: 0.28, changePercent: 0.79, value: 2857.60, allocation: 1.00, category: "Utilidades Públicas", description: "Grupo do setor elétrico que atua em geração, transmissão e distribuição de energia, principalmente no interior de São Paulo.", marketCap: "41B", pe: 7.5, dividend: 6.8, sector: "Utilidades Públicas", subsetor: "Energia Elétrica", pvp: 2.15, lpa: 4.76, vpa: 16.61, psr: 1.2, pEbit: 5.8, evEbit: 8.2, evEbitda: 5.8, roe: 28.5, roic: 12.5, margemBruta: 42.8, margemEbit: 22.5, margemLiquida: 15.8, cReceita5a: 9.2, cLucro5a: 14.8, giroAtivos: 0.42, liqCorrente: 0.95, divLiqPl: 1.25, divLiqEbitda: 2.52, plAtivos: 0.28 },
-  { symbol: "ISAE4", name: "ISA CTEEP", shares: 100, price: 25.40, change: 0.15, changePercent: 0.59, value: 2540, allocation: 0.89, category: "Utilidades Públicas", description: "Maior empresa privada de transmissão de energia do Brasil. Receita estável e previsível com contratos de longo prazo.", marketCap: "17B", pe: 8.2, dividend: 7.5, sector: "Utilidades Públicas", subsetor: "Transmissão Energia", pvp: 1.65, lpa: 3.10, vpa: 15.39, psr: 4.5, pEbit: 6.8, evEbit: 9.5, evEbitda: 7.2, roe: 20.2, roic: 11.5, margemBruta: 68.5, margemEbit: 55.2, margemLiquida: 38.5, cReceita5a: 8.5, cLucro5a: 12.2, giroAtivos: 0.18, liqCorrente: 1.15, divLiqPl: 0.92, divLiqEbitda: 2.15, plAtivos: 0.35 },
+  { symbol: "AXIA6", name: "Eletrobras", shares: 120, price: 67.70, change: 0.56, changePercent: 0.83, value: 8124, allocation: 1.77, category: "Utilidades Públicas", description: "Maior empresa de energia elétrica da América Latina. Privatizada em 2022, gera e transmite energia em todo o território nacional. Ticker migrado de ELET3 para AXIA6.", marketCap: "95B", pe: 6.8, dividend: 4.5, sector: "Utilidades Públicas", subsetor: "Energia Elétrica", pvp: 0.78, lpa: 6.20, vpa: 54.08, psr: 2.1, pEbit: 5.2, evEbit: 7.8, evEbitda: 5.5, roe: 12.5, roic: 8.8, margemBruta: 55.2, margemEbit: 38.5, margemLiquida: 28.2, cReceita5a: 6.5, cLucro5a: 18.5, giroAtivos: 0.15, liqCorrente: 1.42, divLiqPl: 0.58, divLiqEbitda: 2.85, plAtivos: 0.42 },
+  { symbol: "CPFE3", name: "CPFL Energia", shares: 80, price: 50.87, change: -0.29, changePercent: -0.57, value: 4069.60, allocation: 1.00, category: "Utilidades Públicas", description: "Grupo do setor elétrico que atua em geração, transmissão e distribuição de energia, principalmente no interior de São Paulo.", marketCap: "41B", pe: 7.5, dividend: 6.8, sector: "Utilidades Públicas", subsetor: "Energia Elétrica", pvp: 2.15, lpa: 4.76, vpa: 16.61, psr: 1.2, pEbit: 5.8, evEbit: 8.2, evEbitda: 5.8, roe: 28.5, roic: 12.5, margemBruta: 42.8, margemEbit: 22.5, margemLiquida: 15.8, cReceita5a: 9.2, cLucro5a: 14.8, giroAtivos: 0.42, liqCorrente: 0.95, divLiqPl: 1.25, divLiqEbitda: 2.52, plAtivos: 0.28 },
+  { symbol: "ISAE4", name: "ISA CTEEP", shares: 100, price: 28.63, change: -1.33, changePercent: -4.44, value: 2863, allocation: 0.89, category: "Utilidades Públicas", description: "Maior empresa privada de transmissão de energia do Brasil. Receita estável e previsível com contratos de longo prazo.", marketCap: "17B", pe: 8.2, dividend: 7.5, sector: "Utilidades Públicas", subsetor: "Transmissão Energia", pvp: 1.65, lpa: 3.10, vpa: 15.39, psr: 4.5, pEbit: 6.8, evEbit: 9.5, evEbitda: 7.2, roe: 20.2, roic: 11.5, margemBruta: 68.5, margemEbit: 55.2, margemLiquida: 38.5, cReceita5a: 8.5, cLucro5a: 12.2, giroAtivos: 0.18, liqCorrente: 1.15, divLiqPl: 0.92, divLiqEbitda: 2.15, plAtivos: 0.35 },
   { symbol: "SAPR11", name: "Sanepar", shares: 200, price: 6.25, change: 0.08, changePercent: 1.30, value: 1250, allocation: 0.44, category: "Utilidades Públicas", description: "Companhia de saneamento do Paraná, responsável por abastecimento de água e esgoto. Receita regulada e previsível.", marketCap: "8.5B", pe: 6.2, dividend: 5.5, sector: "Utilidades Públicas", subsetor: "Saneamento", pvp: 0.95, lpa: 1.01, vpa: 6.58, psr: 1.5, pEbit: 4.8, evEbit: 6.5, evEbitda: 4.8, roe: 15.8, roic: 9.5, margemBruta: 52.5, margemEbit: 28.2, margemLiquida: 18.5, cReceita5a: 7.8, cLucro5a: 10.5, giroAtivos: 0.32, liqCorrente: 1.05, divLiqPl: 0.65, divLiqEbitda: 1.85, plAtivos: 0.38 },
 
   // 🛢️ Commodities Cíclicas (3)
-  { symbol: "PETR4", name: "Petrobras", shares: 250, price: 36.82, change: -0.45, changePercent: -1.21, value: 9205, allocation: 3.23, category: "Commodities", description: "Maior empresa de petróleo e gás do Brasil. Líder em exploração de águas profundas (pré-sal), com forte geração de caixa e dividendos expressivos.", marketCap: "480B", pe: 4.5, dividend: 12.5, sector: "Commodities", subsetor: "Petróleo", pvp: 1.25, lpa: 8.18, vpa: 29.46, psr: 1.2, pEbit: 3.2, evEbit: 3.8, evEbitda: 2.5, roe: 28.5, roic: 18.2, margemBruta: 52.8, margemEbit: 38.5, margemLiquida: 25.2, cReceita5a: 15.8, cLucro5a: 32.5, giroAtivos: 0.35, liqCorrente: 1.18, divLiqPl: 0.62, divLiqEbitda: 1.05, plAtivos: 0.42 },
+  { symbol: "PETR4", name: "Petrobras", shares: 250, price: 39.57, change: 0.00, changePercent: 0.00, value: 9892.50, allocation: 3.23, category: "Commodities", description: "Maior empresa de petróleo e gás do Brasil. Líder em exploração de águas profundas (pré-sal), com forte geração de caixa e dividendos expressivos.", marketCap: "480B", pe: 4.5, dividend: 12.5, sector: "Commodities", subsetor: "Petróleo", pvp: 1.25, lpa: 8.18, vpa: 29.46, psr: 1.2, pEbit: 3.2, evEbit: 3.8, evEbitda: 2.5, roe: 28.5, roic: 18.2, margemBruta: 52.8, margemEbit: 38.5, margemLiquida: 25.2, cReceita5a: 15.8, cLucro5a: 32.5, giroAtivos: 0.35, liqCorrente: 1.18, divLiqPl: 0.62, divLiqEbitda: 1.05, plAtivos: 0.42 },
   { symbol: "VALE3", name: "Vale S.A.", shares: 180, price: 62.50, change: -1.20, changePercent: -1.88, value: 11250, allocation: 3.94, category: "Commodities", description: "Uma das maiores mineradoras do mundo, líder na produção de minério de ferro. Presença global e dividendos expressivos.", marketCap: "268B", pe: 5.8, dividend: 9.2, sector: "Commodities", subsetor: "Mineração", pvp: 1.35, lpa: 10.78, vpa: 46.30, psr: 2.2, pEbit: 4.5, evEbit: 5.2, evEbitda: 3.8, roe: 24.5, roic: 16.8, margemBruta: 48.5, margemEbit: 35.8, margemLiquida: 22.5, cReceita5a: 12.5, cLucro5a: 18.2, giroAtivos: 0.38, liqCorrente: 1.52, divLiqPl: 0.45, divLiqEbitda: 0.85, plAtivos: 0.48 },
   { symbol: "GGBR4", name: "Gerdau", shares: 200, price: 22.35, change: 0.32, changePercent: 1.45, value: 4470, allocation: 1.57, category: "Commodities", description: "Maior produtora de aço do Brasil e uma das maiores das Américas. Atua com aços longos e especiais em diversos mercados.", marketCap: "38B", pe: 5.2, dividend: 6.5, sector: "Commodities", subsetor: "Siderurgia", pvp: 0.88, lpa: 4.30, vpa: 25.40, psr: 0.8, pEbit: 3.8, evEbit: 4.5, evEbitda: 3.2, roe: 17.2, roic: 12.5, margemBruta: 28.5, margemEbit: 15.8, margemLiquida: 10.5, cReceita5a: 14.2, cLucro5a: 22.8, giroAtivos: 0.62, liqCorrente: 2.15, divLiqPl: 0.25, divLiqEbitda: 0.65, plAtivos: 0.52 },
 
@@ -239,6 +239,26 @@ function generateAssetOHLCV(symbol: string, currentPrice: number, annualReturn5y
   return data;
 }
 
+// Real IPCA monthly rates (%) — source: IBGE
+const IPCA_MONTHLY: Record<number, number[]> = {
+  2021: [0.25, 0.86, 0.93, 0.31, 0.83, 0.53, 0.96, 0.87, 1.16, 1.25, 0.95, 0.73],
+  2022: [0.54, 1.01, 1.62, 1.06, 0.47, 0.67, -0.68, -0.36, -0.29, 0.59, 0.41, 0.62],
+  2023: [0.53, 0.84, 0.71, 0.61, 0.23, -0.08, 0.12, 0.23, 0.26, 0.24, 0.28, 0.56],
+  2024: [0.42, 0.83, 0.16, 0.38, 0.46, 0.21, 0.38, -0.02, 0.44, 0.56, 0.39, 0.52],
+  2025: [0.16, 1.31, 0.56, 0.43, 0.26, 0.24, 0.26, -0.11, 0.48, 0.09, 0.18, 0.33],
+  2026: [0.33, 0.20], // Jan + estimated Feb
+};
+
+// Real CDI annual rates (%) — source: B3/Banco Central
+const CDI_ANNUAL: Record<number, number> = {
+  2021: 4.42,
+  2022: 12.39,
+  2023: 13.04,
+  2024: 10.88,
+  2025: 14.32,
+  2026: 14.15, // Selic target annualized for 2026
+};
+
 function generateBenchmarkSeries(key: string): { date: string; value: number }[] {
   const rand = seededRandom(hashStr(key) + 99);
   let value = 100000;
@@ -246,22 +266,27 @@ function generateBenchmarkSeries(key: string): { date: string; value: number }[]
   const totalDays = TRADING_DAYS.length;
 
   if (key === "CDI") {
-    // CDI: ~11% a.a. pro-rata die, near-zero volatility
-    const annualRate = 0.11;
-    const dailyRate = Math.pow(1 + annualRate, 1 / 252) - 1;
+    // CDI: use real annual rates, pro-rata die per year
     for (let i = 0; i < totalDays; i++) {
+      const dateStr = TRADING_DAYS[i];
+      const year = parseInt(dateStr.slice(0, 4));
+      const annualRate = (CDI_ANNUAL[year] ?? 14.15) / 100;
+      const dailyRate = Math.pow(1 + annualRate, 1 / 252) - 1;
       value *= (1 + dailyRate);
-      result.push({ date: TRADING_DAYS[i], value: Math.round(value * 100) / 100 });
+      result.push({ date: dateStr, value: Math.round(value * 100) / 100 });
     }
   } else if (key === "IPCA") {
-    // IPCA: ~4.7% a.a. with small monthly noise
-    const annualRate = 0.047;
-    const dailyRate = Math.pow(1 + annualRate, 1 / 252) - 1;
+    // IPCA: use real monthly rates, distribute daily within each month
     for (let i = 0; i < totalDays; i++) {
-      // Add small monthly perturbation (simulates monthly IPCA releases)
-      const monthNoise = (rand() - 0.5) * 0.0004;
-      value *= (1 + dailyRate + monthNoise);
-      result.push({ date: TRADING_DAYS[i], value: Math.round(value * 100) / 100 });
+      const dateStr = TRADING_DAYS[i];
+      const year = parseInt(dateStr.slice(0, 4));
+      const month = parseInt(dateStr.slice(5, 7)) - 1; // 0-indexed
+      const monthlyRates = IPCA_MONTHLY[year];
+      const monthlyRate = monthlyRates ? (monthlyRates[month] ?? 0.30) : 0.30;
+      // ~21 trading days per month
+      const dailyRate = Math.pow(1 + monthlyRate / 100, 1 / 21) - 1;
+      value *= (1 + dailyRate);
+      result.push({ date: dateStr, value: Math.round(value * 100) / 100 });
     }
   } else if (key === "IBOV") {
     // IBOV: Geometric Brownian Motion (GBM) — drift 12% a.a., vol 18%
@@ -272,11 +297,10 @@ function generateBenchmarkSeries(key: string): { date: string; value: number }[]
     const dailyVol = annualVol * Math.sqrt(dt);
     let momentum = 0;
     for (let i = 0; i < totalDays; i++) {
-      // Box-Muller for normal distribution from uniform
       const u1 = Math.max(1e-10, rand());
       const u2 = rand();
       const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-      momentum = momentum * 0.92 + z * 0.08; // slight autocorrelation
+      momentum = momentum * 0.92 + z * 0.08;
       const shock = dailyDrift + dailyVol * (z * 0.85 + momentum * 0.15);
       value *= Math.exp(shock);
       result.push({ date: TRADING_DAYS[i], value: Math.round(value * 100) / 100 });
@@ -289,7 +313,7 @@ function generateBenchmarkSeries(key: string): { date: string; value: number }[]
 // Estimated 5-year CAGR per asset (realistic)
 const ASSET_5Y_CAGR: Record<string, number> = {
   ITUB4: 0.08, BBAS3: 0.12, BBDC4: -0.02, B3SA3: 0.05,
-  ELET3: 0.15, CPFE3: 0.10, ISAE4: 0.09, SAPR11: 0.07,
+  AXIA6: 0.15, CPFE3: 0.10, ISAE4: 0.09, SAPR11: 0.07,
   PETR4: 0.18, VALE3: 0.10, GGBR4: 0.12,
   WEGE3: 0.22, EMBR3: 0.35, TUPY3: 0.06,
   LREN3: -0.05, MGLU3: -0.40, MRVE3: -0.08,
