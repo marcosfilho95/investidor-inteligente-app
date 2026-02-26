@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Holding } from "@/data/investments";
+import { Holding, getFilteredBenchmarks } from "@/data/investments";
 
 const benchmarks = [
   { key: "carteira", label: "Carteira", color: "hsl(142, 72%, 48%)", active: true },
@@ -16,11 +16,6 @@ interface PerformanceChartProps {
   totalValue?: number;
 }
 
-// Realistic benchmark annual returns
-const IBOV_DAILY = 0.00038; // ~10% a.a.
-const CDI_DAILY = 0.000425; // ~11.25% a.a. (Selic)
-const IPCA_DAILY = 0.000185; // ~4.8% a.a.
-
 export function PerformanceChart({ userHoldings, totalValue }: PerformanceChartProps) {
   const [activeBenchmarks, setActiveBenchmarks] = useState(
     benchmarks.reduce((acc, b) => ({ ...acc, [b.key]: b.active }), {} as Record<string, boolean>)
@@ -33,104 +28,26 @@ export function PerformanceChart({ userHoldings, totalValue }: PerformanceChartP
 
   const baseValue = totalValue || 100000;
 
-  const getFilteredData = () => {
-    const pointsMap: Record<string, number> = {
-      "1 DIA": 42, "7 DIAS": 56, "30 DIAS": 60, "6 MESES": 120, "YTD": 40, "1 ANO": 120, "5 ANOS": 120,
-    };
-    const daysMap: Record<string, number> = {
-      "1 DIA": 1, "7 DIAS": 7, "30 DIAS": 30, "6 MESES": 126, "YTD": 40, "1 ANO": 252, "5 ANOS": 1260,
-    };
-    const points = pointsMap[selectedPeriod] || 120;
-    const totalDays = daysMap[selectedPeriod] || 252;
-
-    const result = [];
-    let carteiraVal = baseValue * 0.85;
-    let ibovVal = baseValue * 0.88;
-    let cdiVal = baseValue * 0.9;
-    let ipcaVal = baseValue * 0.92;
-
-    const carteiraTarget = baseValue;
-    const ibovTarget = baseValue * 0.95;
-
-    for (let i = 0; i < points; i++) {
-      const progress = i / (points - 1);
-      const daysPerPoint = totalDays / points;
-
-      // Carteira: trending up with realistic volatility
-      const carteiraReturn = (carteiraTarget / (baseValue * 0.85) - 1) / points;
-      const carteiraVol = selectedPeriod === "1 DIA" ? 0.002 : 0.008;
-      carteiraVal *= (1 + carteiraReturn + (Math.random() - 0.45) * carteiraVol);
-
-      // IBOV: realistic daily returns with market-like volatility
-      const ibovReturn = IBOV_DAILY * daysPerPoint;
-      const ibovVol = selectedPeriod === "1 DIA" ? 0.003 : 0.012;
-      ibovVal *= (1 + ibovReturn + (Math.random() - 0.48) * ibovVol);
-
-      // CDI: smooth compounding (virtually no volatility)
-      cdiVal *= (1 + CDI_DAILY * daysPerPoint);
-
-      // IPCA: smooth with very minor noise
-      ipcaVal *= (1 + IPCA_DAILY * daysPerPoint + (Math.random() - 0.5) * 0.0002);
-
-      // Labels
-      let label = "";
-      if (selectedPeriod === "1 DIA") {
-        const h = 9 + Math.floor(i * 8 / points);
-        const m = Math.round(((i * 8 / points) % 1) * 60);
-        label = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-      } else if (selectedPeriod === "7 DIAS") {
-        const dayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "Seg", "Ter"];
-        const dayIdx = Math.floor(i * 7 / points);
-        const h = 9 + Math.floor(((i * 7 / points) % 1) * 8);
-        label = `${dayNames[dayIdx]} ${h}h`;
-      } else if (selectedPeriod === "30 DIAS") {
-        const day = Math.floor(i * 30 / points) + 1;
-        label = `${day.toString().padStart(2, '0')}/Fev`;
-      } else if (selectedPeriod === "6 MESES") {
-        const months = ["Set", "Out", "Nov", "Dez", "Jan", "Fev"];
-        const mIdx = Math.floor(i * 6 / points);
-        const day = Math.floor(((i * 6 / points) % 1) * 28) + 1;
-        label = `${day.toString().padStart(2, '0')}/${months[mIdx]}`;
-      } else if (selectedPeriod === "YTD") {
-        const mIdx = Math.floor(i * 2 / points);
-        const day = Math.floor(((i * 2 / points) % 1) * 28) + 1;
-        label = `${day.toString().padStart(2, '0')}/${mIdx === 0 ? "Jan" : "Fev"}`;
-      } else if (selectedPeriod === "1 ANO") {
-        const months = ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev"];
-        const mIdx = Math.floor(i * 12 / points);
-        const day = Math.floor(((i * 12 / points) % 1) * 28) + 1;
-        label = `${day.toString().padStart(2, '0')}/${months[mIdx]}`;
-      } else {
-        const year = 2021 + Math.floor(i * 5 / points);
-        const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        const mIdx = Math.floor(((i * 5 / points) % 1) * 12);
-        label = `${months[mIdx]}/${year.toString().slice(2)}`;
-      }
-
-      result.push({
-        month: label,
-        carteira: Math.round(carteiraVal),
-        ibovespa: Math.round(ibovVal),
-        cdi: Math.round(cdiVal),
-        ipca: Math.round(ipcaVal),
-      });
-    }
-
-    // Ensure last point matches current value
-    result[result.length - 1].carteira = Math.round(baseValue);
-
-    return result;
-  };
-
-  const data = getFilteredData();
+  // Use the real MARKET_HISTORY-backed benchmark data
+  const data = getFilteredBenchmarks(selectedPeriod, baseValue);
   const tickInterval = Math.max(0, Math.floor(data.length / 8));
+
+  const periodLabel: Record<string, string> = {
+    "1 DIA": "Hoje",
+    "7 DIAS": "Últimos 7 dias",
+    "30 DIAS": "Últimos 30 dias",
+    "6 MESES": "Últimos 6 meses",
+    "YTD": "Ano até agora",
+    "1 ANO": "Últimos 12 meses",
+    "5 ANOS": "Últimos 5 anos",
+  };
 
   return (
     <div className="glass-card p-5">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-base font-semibold">Performance vs Benchmarks</h3>
-          <p className="text-sm text-muted-foreground">{selectedPeriod === "1 ANO" ? "Últimos 12 meses" : selectedPeriod}</p>
+          <p className="text-sm text-muted-foreground">{periodLabel[selectedPeriod] || selectedPeriod}</p>
         </div>
       </div>
 

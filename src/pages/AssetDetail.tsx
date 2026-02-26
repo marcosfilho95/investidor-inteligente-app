@@ -1,12 +1,13 @@
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
-import { holdings, generatePriceHistory, indicatorTooltips, calcRecommendationScore, calcGrahamPrice } from "@/data/investments";
+import { holdings, getFilteredPriceHistory, indicatorTooltips, calcRecommendationScore, calcGrahamPrice } from "@/data/investments";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { useState } from "react";
+import logoImg from "@/assets/logo.png";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 
 const periods = ["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
@@ -43,7 +44,7 @@ const AssetDetail = () => {
   const grahamPrice = calcGrahamPrice(asset);
   const grahamUpside = grahamPrice ? ((grahamPrice / asset.price - 1) * 100).toFixed(1) : null;
 
-  const priceHistory = generatePriceHistory(asset.price, asset.changePercent, periodMap[selectedPeriod], asset.symbol);
+  const priceHistory = getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]);
 
   // Realistic benchmark comparison using compound returns
   const daysMap: Record<string, number> = { "1D": 1, "7D": 7, "30D": 30, "6M": 126, "YTD": 40, "1A": 252, "5A": 1260 };
@@ -84,7 +85,7 @@ const AssetDetail = () => {
           </Link>
           <div className="h-4 w-px bg-border" />
           <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center"><LayoutDashboard className="h-4 w-4 text-primary-foreground" /></div>
+            <img src={logoImg} alt="Investidor Inteligente" className="h-7 w-7 rounded-lg object-cover" />
             <span className="font-semibold text-sm tracking-tight">Investidor Inteligente</span>
           </div>
         </div>
@@ -243,6 +244,7 @@ const AssetDetail = () => {
           {/* AI Widget */}
           <AiChatWidget
             page="ativo"
+            ticker={asset.symbol}
             context={`Análise de ${asset.symbol}`}
             welcomeMessage={`📊 Analisando ${asset.symbol} (${asset.name})...\n\n${asset.description}\n\n🏷️ Setor: ${asset.sector} / ${asset.subsetor}\n📈 Score: ${recommendation.score}/100 (${recommendation.label})\n💰 P/L: ${asset.pe ?? 'N/A'} | DY: ${asset.dividend}% | ROE: ${asset.roe ?? 'N/A'}%\n${grahamPrice ? `📐 Graham: R$ ${grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${grahamUpside}% upside)` : ""}\n\nPergunte-me sobre indicadores, riscos ou estratégias para este ativo!`}
           />

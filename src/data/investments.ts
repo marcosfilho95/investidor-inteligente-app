@@ -138,149 +138,358 @@ export const allocationData = (() => {
   }));
 })();
 
-// Seeded random for deterministic charts per asset
+// =============================================
+// MARKET_HISTORY — 5 years of deterministic daily OHLCV data
+// =============================================
+
+// Seeded PRNG for deterministic data
 function seededRandom(seed: number) {
   let s = seed;
   return () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; };
 }
 
-// Generate price history data for different periods — high granularity like real stock charts
-export function generatePriceHistory(basePrice: number, changePercent: number, period: string, symbol?: string) {
-  // Seed based on symbol hash for consistency
-  const seedVal = symbol ? symbol.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 1000 + period.length : Math.floor(basePrice * 100);
-  const rand = seededRandom(seedVal);
+function hashStr(str: string): number {
+  return str.split('').reduce((a, c) => ((a << 5) - a) + c.charCodeAt(0), 0) & 0x7fffffff;
+}
 
-  const configs: Record<string, { points: number; labelFn: (i: number, total: number) => string; volatility: number; startFactor: number }> = {
-    // 1D: every ~10min from 10:05 to 18:36 (like reference: 10:05, 10:30, 10:56, ...)
-    "1D": {
-      points: 100,
-      labelFn: (i, total) => {
-        const totalMinutes = (18 * 60 + 36) - (10 * 60 + 5); // 10:05 to 18:36
-        const min = 10 * 60 + 5 + Math.floor(i * totalMinutes / (total - 1));
-        const h = Math.floor(min / 60);
-        const m = min % 60;
-        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-      },
-      volatility: 0.0015,
-      startFactor: 1.005,
-    },
-    // 7D: many points per day, labels like 20/02, 23/02, 24/02, 25/02
-    "7D": {
-      points: 200,
-      labelFn: (i, total) => {
-        const dayOffset = Math.floor(i * 5 / total); // 5 trading days
-        const baseDay = 20;
-        const day = baseDay + dayOffset + (dayOffset >= 1 ? 1 : 0) + (dayOffset >= 2 ? 1 : 0); // skip weekends: 20,23,24,25,26
-        const h = 10 + Math.floor(((i * 5 / total) % 1) * 8);
-        if (i % Math.floor(total / 20) === 0) return `${day.toString().padStart(2, '0')}/02`;
-        return "";
-      },
-      volatility: 0.003,
-      startFactor: 0.95,
-    },
-    // 30D: daily points with dates like 26/01/26, 29/01/26, etc
-    "30D": {
-      points: 60,
-      labelFn: (i, total) => {
-        const startDay = 26;
-        const dayOffset = Math.floor(i * 30 / total);
-        const totalDay = startDay + dayOffset;
-        const month = totalDay > 31 ? "02" : "01";
-        const day = totalDay > 31 ? totalDay - 31 : totalDay;
-        return `${day.toString().padStart(2, '0')}/${month}/26`;
-      },
-      volatility: 0.008,
-      startFactor: 0.88,
-    },
-    // 6M: many points, dates like 27/08/25, 09/09/25, etc
-    "6M": {
-      points: 150,
-      labelFn: (i, total) => {
-        const months = ["08", "09", "10", "11", "12", "01", "02"];
-        const years = ["25", "25", "25", "25", "25", "26", "26"];
-        const mIdx = Math.floor(i * 6 / total);
-        const dayInMonth = Math.floor(((i * 6 / total) % 1) * 28) + 1;
-        return `${dayInMonth.toString().padStart(2, '0')}/${months[mIdx]}/${years[mIdx]}`;
-      },
-      volatility: 0.012,
-      startFactor: 0.75,
-    },
-    // YTD: from Jan 2 to Feb 26
-    "YTD": {
-      points: 80,
-      labelFn: (i, total) => {
-        const totalDays = 56; // ~Jan 2 to Feb 26
-        const dayOffset = Math.floor(i * totalDays / total);
-        const month = dayOffset < 30 ? "01" : "02";
-        const day = dayOffset < 30 ? dayOffset + 2 : dayOffset - 28;
-        return `${day.toString().padStart(2, '0')}/${month}/26`;
-      },
-      volatility: 0.01,
-      startFactor: 0.75,
-    },
-    // 1A: 12 months of data
-    "1A": {
-      points: 120,
-      labelFn: (i, total) => {
-        const months = ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev"];
-        const years = ["25", "25", "25", "25", "25", "25", "25", "25", "25", "25", "26", "26"];
-        const mIdx = Math.floor(i * 12 / total);
-        const day = Math.floor(((i * 12 / total) % 1) * 28) + 1;
-        return `${day.toString().padStart(2, '0')}/${months[mIdx]}/${years[mIdx]}`;
-      },
-      volatility: 0.015,
-      startFactor: 0.70,
-    },
-    // 5A: from Feb 2021 to Feb 2026
-    "5A": {
-      points: 300,
-      labelFn: (i, total) => {
-        const startYear = 2021;
-        const totalMonths = 60;
-        const monthOffset = Math.floor(i * totalMonths / total);
-        const year = startYear + Math.floor(monthOffset / 12);
-        const month = (monthOffset % 12) + 1;
-        const day = Math.floor(((i * totalMonths / total) % 1) * 28) + 1;
-        return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year.toString().slice(2)}`;
-      },
-      volatility: 0.018,
-      startFactor: 0.25,
-    },
+export interface OHLCVDay {
+  date: string; // YYYY-MM-DD
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+// Annual benchmark data (cumulative from base 100000)
+const BENCHMARK_ANNUAL_RETURNS: Record<string, number[]> = {
+  // CDI annual rates 2021-2025
+  CDI:  [0.0490, 0.1215, 0.1315, 0.1125, 0.1075],
+  // IPCA annual rates
+  IPCA: [0.1006, 0.0562, 0.0462, 0.0483, 0.0480],
+  // IBOV annual returns
+  IBOV: [-0.1180, 0.0467, 0.2205, -0.1012, 0.1580],
+};
+
+function generateTradingDays(): string[] {
+  const days: string[] = [];
+  const start = new Date(2021, 1, 1); // Feb 1 2021
+  const end = new Date(2026, 1, 26); // Feb 26 2026
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dow = d.getDay();
+    if (dow === 0 || dow === 6) continue; // skip weekends
+    days.push(d.toISOString().slice(0, 10));
+  }
+  return days;
+}
+
+const TRADING_DAYS = generateTradingDays();
+
+function generateAssetOHLCV(symbol: string, currentPrice: number, annualReturn5y: number): OHLCVDay[] {
+  const rand = seededRandom(hashStr(symbol) + 42);
+  const totalDays = TRADING_DAYS.length;
+  
+  // Work backward from current price
+  const totalReturn = Math.pow(1 + annualReturn5y, 5);
+  const startPrice = currentPrice / totalReturn;
+  const dailyDrift = Math.pow(totalReturn, 1 / totalDays) - 1;
+  
+  // Sector-based volatility
+  const volMap: Record<string, number> = {
+    "Financeiro": 0.018, "Utilidades Públicas": 0.015, "Commodities": 0.025,
+    "Indústria": 0.020, "Consumo Cíclico": 0.028, "Consumo Não Cíclico": 0.016,
+    "Telecom": 0.014, "Tecnologia": 0.022, "Saúde": 0.020,
   };
-
-  const config = configs[period] || configs["1A"];
-  const { points, labelFn, volatility, startFactor } = config;
-
-  // Start price and generate realistic walk
-  let currentPrice = basePrice * startFactor;
-  const targetPrice = basePrice;
-  const data: { month: string; price: number }[] = [];
-
-  // Create realistic price movements with momentum and mean reversion
+  const asset = holdings.find(h => h.symbol === symbol);
+  const dailyVol = volMap[asset?.sector || "Financeiro"] || 0.02;
+  
+  const data: OHLCVDay[] = [];
+  let price = startPrice;
   let momentum = 0;
-
-  for (let i = 0; i < points; i++) {
-    const progress = i / (points - 1);
-    // Drift toward target
-    const drift = (targetPrice - currentPrice) / (points - i) * 0.3;
-    // Momentum (autocorrelation like real markets)
-    momentum = momentum * 0.7 + (rand() - 0.48) * volatility * basePrice;
-    // Random shock
-    const shock = (rand() - 0.5) * volatility * basePrice * 0.5;
-
-    currentPrice += drift + momentum + shock;
-    currentPrice = Math.max(currentPrice, basePrice * 0.15);
-
-    const label = labelFn(i, points);
+  
+  for (let i = 0; i < totalDays; i++) {
+    // Mean reversion + momentum + random
+    const targetPrice = startPrice * Math.pow(totalReturn, (i + 1) / totalDays);
+    const meanRev = (targetPrice - price) * 0.005;
+    momentum = momentum * 0.85 + (rand() - 0.48) * dailyVol * price;
+    const shock = (rand() - 0.5) * dailyVol * price * 0.3;
+    
+    const open = price;
+    const closeRaw = price + dailyDrift * price + meanRev + momentum + shock;
+    const close = Math.max(closeRaw, startPrice * 0.1);
+    
+    const intraVol = dailyVol * 0.6;
+    const high = Math.max(open, close) * (1 + rand() * intraVol);
+    const low = Math.min(open, close) * (1 - rand() * intraVol);
+    
+    // Volume with some variation
+    const baseVol = asset ? parseFloat(asset.marketCap) * 1e6 : 50e6;
+    const volume = Math.round((baseVol * 0.003 + baseVol * 0.005 * rand()) * (0.5 + rand()));
+    
     data.push({
-      month: label,
-      price: Math.round(currentPrice * 100) / 100,
+      date: TRADING_DAYS[i],
+      open: Math.round(open * 100) / 100,
+      high: Math.round(high * 100) / 100,
+      low: Math.round(low * 100) / 100,
+      close: Math.round(close * 100) / 100,
+      volume,
+    });
+    
+    price = close;
+  }
+  
+  // Ensure last close = current price
+  if (data.length > 0) data[data.length - 1].close = currentPrice;
+  
+  return data;
+}
+
+function generateBenchmarkSeries(key: string): { date: string; value: number }[] {
+  const annualRates = BENCHMARK_ANNUAL_RETURNS[key];
+  if (!annualRates) return [];
+  
+  const rand = seededRandom(hashStr(key) + 99);
+  let value = 100000;
+  const result: { date: string; value: number }[] = [];
+  
+  const totalDays = TRADING_DAYS.length;
+  // Map each day to a year index
+  for (let i = 0; i < totalDays; i++) {
+    const yearStr = TRADING_DAYS[i].slice(0, 4);
+    const yearIdx = Math.min(parseInt(yearStr) - 2021, annualRates.length - 1);
+    const dailyRate = Math.pow(1 + annualRates[yearIdx], 1 / 252) - 1;
+    
+    // CDI/IPCA are smooth; IBOV has volatility
+    const noise = key === "IBOV" ? (rand() - 0.48) * 0.012 : (key === "IPCA" ? (rand() - 0.5) * 0.0003 : 0);
+    value *= (1 + dailyRate + noise);
+    
+    result.push({
+      date: TRADING_DAYS[i],
+      value: Math.round(value * 100) / 100,
     });
   }
+  
+  return result;
+}
 
-  // Ensure last point matches current price
+// Estimated 5-year CAGR per asset (realistic)
+const ASSET_5Y_CAGR: Record<string, number> = {
+  ITUB4: 0.08, BBAS3: 0.12, BBDC4: -0.02, B3SA3: 0.05,
+  ELET3: 0.15, CPFE3: 0.10, ISAE4: 0.09, SAPR11: 0.07,
+  PETR4: 0.18, VALE3: 0.10, GGBR4: 0.12,
+  WEGE3: 0.22, EMBR3: 0.35, TUPY3: 0.06,
+  LREN3: -0.05, MGLU3: -0.40, MRVE3: -0.08,
+  ABEV3: 0.03, JBSS3: 0.15,
+  VIVT3: 0.06, TIMS3: 0.10, TOTS3: 0.12,
+  RDOR3: 0.08, HAPV3: -0.10, FLRY3: 0.05,
+};
+
+// Lazy-computed cache
+let _marketHistoryCache: Record<string, OHLCVDay[]> | null = null;
+let _benchmarkCache: Record<string, { date: string; value: number }[]> | null = null;
+
+export function getMarketHistory(): Record<string, OHLCVDay[]> {
+  if (_marketHistoryCache) return _marketHistoryCache;
+  const result: Record<string, OHLCVDay[]> = {};
+  for (const h of holdings) {
+    const cagr = ASSET_5Y_CAGR[h.symbol] ?? 0.05;
+    result[h.symbol] = generateAssetOHLCV(h.symbol, h.price, cagr);
+  }
+  _marketHistoryCache = result;
+  return result;
+}
+
+export function getBenchmarkHistory(): Record<string, { date: string; value: number }[]> {
+  if (_benchmarkCache) return _benchmarkCache;
+  _benchmarkCache = {
+    CDI: generateBenchmarkSeries("CDI"),
+    IPCA: generateBenchmarkSeries("IPCA"),
+    IBOV: generateBenchmarkSeries("IBOV"),
+  };
+  return _benchmarkCache;
+}
+
+// Filter OHLCV data by period, returning simplified { month, price } for charts
+export function getFilteredPriceHistory(symbol: string, period: string): { month: string; price: number }[] {
+  const allData = getMarketHistory()[symbol];
+  if (!allData || allData.length === 0) return [];
+  
+  const now = new Date(2026, 1, 26);
+  let startDate: Date;
+  
+  switch (period) {
+    case "1D": {
+      // Simulate intraday from last trading day
+      const lastDay = allData[allData.length - 1];
+      const prevDay = allData.length > 1 ? allData[allData.length - 2] : lastDay;
+      const rand = seededRandom(hashStr(symbol + "1D"));
+      const points: { month: string; price: number }[] = [];
+      let p = prevDay.close;
+      const target = lastDay.close;
+      for (let i = 0; i < 100; i++) {
+        const totalMin = (17 * 60 + 55) - (10 * 60);
+        const min = 10 * 60 + Math.floor(i * totalMin / 99);
+        const h = Math.floor(min / 60);
+        const m = min % 60;
+        const label = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        const drift = (target - p) / (100 - i) * 0.4;
+        p += drift + (rand() - 0.48) * lastDay.close * 0.002;
+        points.push({ month: label, price: Math.round(p * 100) / 100 });
+      }
+      points[points.length - 1].price = target;
+      return points;
+    }
+    case "7D": startDate = new Date(now); startDate.setDate(now.getDate() - 10); break;
+    case "30D": startDate = new Date(now); startDate.setDate(now.getDate() - 35); break;
+    case "6M": startDate = new Date(now); startDate.setMonth(now.getMonth() - 6); break;
+    case "YTD": startDate = new Date(2026, 0, 1); break;
+    case "1A": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1); break;
+    case "5A": startDate = new Date(2021, 1, 1); break;
+    default: startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1);
+  }
+  
+  const startStr = startDate.toISOString().slice(0, 10);
+  const filtered = allData.filter(d => d.date >= startStr);
+  
+  // Thin out if too many points
+  const maxPoints = period === "5A" ? 300 : period === "1A" ? 150 : period === "6M" ? 120 : 60;
+  const step = Math.max(1, Math.floor(filtered.length / maxPoints));
+  
+  return filtered
+    .filter((_, i) => i % step === 0 || i === filtered.length - 1)
+    .map(d => {
+      // Format label based on period
+      const parts = d.date.split("-");
+      const day = parts[2];
+      const month = parts[1];
+      const year = parts[0].slice(2);
+      const monthNames = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+      
+      let label: string;
+      if (period === "7D" || period === "30D") {
+        label = `${day}/${month}`;
+      } else if (period === "6M" || period === "YTD") {
+        label = `${day}/${monthNames[parseInt(month)]}`;
+      } else if (period === "1A") {
+        label = `${monthNames[parseInt(month)]}/${year}`;
+      } else {
+        label = `${monthNames[parseInt(month)]}/${year}`;
+      }
+      
+      return { month: label, price: d.close };
+    });
+}
+
+// Get benchmark data filtered by period for PerformanceChart
+export function getFilteredBenchmarks(period: string, baseValue: number): { month: string; carteira: number; ibovespa: number; cdi: number; ipca: number }[] {
+  const benchmarks = getBenchmarkHistory();
+  const now = new Date(2026, 1, 26);
+  let startDate: Date;
+  
+  switch (period) {
+    case "1 DIA": {
+      // Intraday simulation
+      const rand = seededRandom(hashStr("portfolio1D"));
+      const points: any[] = [];
+      let cart = baseValue * 0.998, ibov = baseValue * 0.999, cdi = baseValue, ipca = baseValue;
+      for (let i = 0; i < 80; i++) {
+        const totalMin = (17 * 60 + 55) - (10 * 60);
+        const min = 10 * 60 + Math.floor(i * totalMin / 79);
+        const h = Math.floor(min / 60);
+        const m = min % 60;
+        const label = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        cart += (rand() - 0.47) * baseValue * 0.001;
+        ibov += (rand() - 0.48) * baseValue * 0.0012;
+        cdi += baseValue * 0.000425 / 80;
+        ipca += baseValue * 0.000185 / 80;
+        points.push({ month: label, carteira: Math.round(cart), ibovespa: Math.round(ibov), cdi: Math.round(cdi), ipca: Math.round(ipca) });
+      }
+      return points;
+    }
+    case "7 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 10); break;
+    case "30 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 35); break;
+    case "6 MESES": startDate = new Date(now); startDate.setMonth(now.getMonth() - 6); break;
+    case "YTD": startDate = new Date(2026, 0, 1); break;
+    case "1 ANO": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1); break;
+    case "5 ANOS": startDate = new Date(2021, 1, 1); break;
+    default: startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1);
+  }
+  
+  const startStr = startDate.toISOString().slice(0, 10);
+  
+  const ibovData = benchmarks.IBOV.filter(d => d.date >= startStr);
+  const cdiData = benchmarks.CDI.filter(d => d.date >= startStr);
+  const ipcaData = benchmarks.IPCA.filter(d => d.date >= startStr);
+  
+  if (ibovData.length === 0) return [];
+  
+  // Normalize all to start at baseValue
+  const ibovStart = ibovData[0].value;
+  const cdiStart = cdiData[0]?.value || ibovStart;
+  const ipcaStart = ipcaData[0]?.value || ibovStart;
+  
+  // Portfolio = slightly better than IBOV
+  const rand = seededRandom(hashStr("portfolio" + period));
+  
+  const maxPoints = period === "5 ANOS" ? 200 : period === "1 ANO" ? 120 : 60;
+  const step = Math.max(1, Math.floor(ibovData.length / maxPoints));
+  
+  let portfolioVal = baseValue;
+  
+  return ibovData
+    .filter((_, i) => i % step === 0 || i === ibovData.length - 1)
+    .map((ibov, idx) => {
+      const cdi = cdiData.find(d => d.date === ibov.date) || cdiData[Math.min(idx * step, cdiData.length - 1)];
+      const ipca = ipcaData.find(d => d.date === ibov.date) || ipcaData[Math.min(idx * step, ipcaData.length - 1)];
+      
+      const ibovNorm = baseValue * (ibov.value / ibovStart);
+      const cdiNorm = baseValue * ((cdi?.value || cdiStart) / cdiStart);
+      const ipcaNorm = baseValue * ((ipca?.value || ipcaStart) / ipcaStart);
+      
+      // Portfolio tracks above IBOV with slight alpha
+      const alpha = 1 + (rand() - 0.45) * 0.003;
+      portfolioVal = ibovNorm * 1.02 * alpha + (cdiNorm - baseValue) * 0.1;
+      
+      const parts = ibov.date.split("-");
+      const day = parts[2];
+      const month = parts[1];
+      const year = parts[0].slice(2);
+      const monthNames = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+      
+      let label: string;
+      if (period === "7 DIAS" || period === "30 DIAS") {
+        label = `${day}/${month}`;
+      } else if (period === "6 MESES" || period === "YTD") {
+        label = `${day}/${monthNames[parseInt(month)]}`;
+      } else {
+        label = `${monthNames[parseInt(month)]}/${year}`;
+      }
+      
+      return {
+        month: label,
+        carteira: Math.round(portfolioVal),
+        ibovespa: Math.round(ibovNorm),
+        cdi: Math.round(cdiNorm),
+        ipca: Math.round(ipcaNorm),
+      };
+    });
+}
+
+// Legacy generatePriceHistory — now delegates to getFilteredPriceHistory
+export function generatePriceHistory(basePrice: number, changePercent: number, period: string, symbol?: string) {
+  if (symbol) {
+    return getFilteredPriceHistory(symbol, period);
+  }
+  // Fallback for cases without symbol
+  const rand = seededRandom(Math.floor(basePrice * 100));
+  const points = 100;
+  let p = basePrice * 0.9;
+  const data: { month: string; price: number }[] = [];
+  for (let i = 0; i < points; i++) {
+    p += (basePrice - p) * 0.02 + (rand() - 0.48) * basePrice * 0.01;
+    data.push({ month: `${i}`, price: Math.round(p * 100) / 100 });
+  }
   data[data.length - 1].price = basePrice;
-
   return data;
 }
 
@@ -300,76 +509,27 @@ export const performanceData = [
 ];
 
 export const assetHistoryData = [
-  { month: "Set", price: 100 },
-  { month: "Out", price: 105 },
-  { month: "Nov", price: 102 },
-  { month: "Dez", price: 110 },
-  { month: "Jan", price: 115 },
-  { month: "Fev", price: 112 },
-  { month: "Mar", price: 118 },
-  { month: "Abr", price: 125 },
-  { month: "Mai", price: 130 },
-  { month: "Jun", price: 128 },
-  { month: "Jul", price: 135 },
-  { month: "Ago", price: 140 },
+  { month: "Set", price: 100 }, { month: "Out", price: 105 }, { month: "Nov", price: 102 },
+  { month: "Dez", price: 110 }, { month: "Jan", price: 115 }, { month: "Fev", price: 112 },
+  { month: "Mar", price: 118 }, { month: "Abr", price: 125 }, { month: "Mai", price: 130 },
+  { month: "Jun", price: 128 }, { month: "Jul", price: 135 }, { month: "Ago", price: 140 },
 ];
 
 export function calcRecommendationScore(asset: Holding): { score: number; label: string; color: string } {
   if (asset.pe === null) return { score: 50, label: "Sem dados", color: "hsl(var(--muted-foreground))" };
-
   let score = 50;
-
-  if (asset.pe) {
-    if (asset.pe < 10) score += 15;
-    else if (asset.pe < 15) score += 10;
-    else if (asset.pe < 25) score += 3;
-    else if (asset.pe > 35) score -= 10;
-  }
-
-  if (asset.roe) {
-    if (asset.roe > 25) score += 12;
-    else if (asset.roe > 15) score += 6;
-    else if (asset.roe > 0) score += 2;
-    else score -= 8;
-  }
-
-  if (asset.margemLiquida) {
-    if (asset.margemLiquida > 20) score += 10;
-    else if (asset.margemLiquida > 10) score += 5;
-    else if (asset.margemLiquida > 0) score += 2;
-    else score -= 8;
-  }
-
-  if (asset.divLiqEbitda !== null) {
-    if (asset.divLiqEbitda < 1) score += 10;
-    else if (asset.divLiqEbitda < 3) score += 3;
-    else score -= 8;
-  }
-
-  if (asset.dividend > 5) score += 10;
-  else if (asset.dividend > 3) score += 6;
-  else if (asset.dividend > 1) score += 2;
-
-  if (asset.cLucro5a) {
-    if (asset.cLucro5a > 15) score += 8;
-    else if (asset.cLucro5a > 5) score += 3;
-    else if (asset.cLucro5a < 0) score -= 5;
-  }
-
-  if (asset.pvp !== null) {
-    if (asset.pvp < 1) score += 8;
-    else if (asset.pvp < 2) score += 4;
-    else if (asset.pvp > 10) score -= 5;
-  }
-
+  if (asset.pe) { if (asset.pe < 10) score += 15; else if (asset.pe < 15) score += 10; else if (asset.pe < 25) score += 3; else if (asset.pe > 35) score -= 10; }
+  if (asset.roe) { if (asset.roe > 25) score += 12; else if (asset.roe > 15) score += 6; else if (asset.roe > 0) score += 2; else score -= 8; }
+  if (asset.margemLiquida) { if (asset.margemLiquida > 20) score += 10; else if (asset.margemLiquida > 10) score += 5; else if (asset.margemLiquida > 0) score += 2; else score -= 8; }
+  if (asset.divLiqEbitda !== null) { if (asset.divLiqEbitda < 1) score += 10; else if (asset.divLiqEbitda < 3) score += 3; else score -= 8; }
+  if (asset.dividend > 5) score += 10; else if (asset.dividend > 3) score += 6; else if (asset.dividend > 1) score += 2;
+  if (asset.cLucro5a) { if (asset.cLucro5a > 15) score += 8; else if (asset.cLucro5a > 5) score += 3; else if (asset.cLucro5a < 0) score -= 5; }
+  if (asset.pvp !== null) { if (asset.pvp < 1) score += 8; else if (asset.pvp < 2) score += 4; else if (asset.pvp > 10) score -= 5; }
   score = Math.max(0, Math.min(100, score));
-
-  let label: string;
-  let color: string;
+  let label: string, color: string;
   if (score >= 70) { label = "Bom"; color = "hsl(var(--gain))"; }
   else if (score >= 40) { label = "Médio"; color = "hsl(var(--warning))"; }
   else { label = "Ruim"; color = "hsl(var(--loss))"; }
-
   return { score, label, color };
 }
 
@@ -392,4 +552,27 @@ Dív.Líq/EBITDA: ${h.divLiqEbitda ?? 'N/A'} | Liq.Corrente: ${h.liqCorrente ?? 
 Score: ${rec.score}/100 (${rec.label}) | Graham: R$${graham ?? 'N/A'} | Preço Justo: R$${fair ?? 'N/A'}
 ${h.description}`;
   }).join('\n\n');
+}
+
+// Build context for a specific asset (used by AiChatWidget for RAG)
+export function buildAssetContext(symbol: string): string {
+  const h = holdings.find(a => a.symbol === symbol);
+  if (!h) return `Ativo ${symbol} não encontrado no dataset.`;
+  const rec = calcRecommendationScore(h);
+  const graham = calcGrahamPrice(h);
+  const fair = calcFairPrice(h);
+  return `Dados atuais de ${h.symbol} (${h.name}):
+Preço: R$ ${h.price} | Variação: ${h.changePercent >= 0 ? '+' : ''}${h.changePercent}%
+Market Cap: ${h.marketCap} | Setor: ${h.sector} / ${h.subsetor}
+P/L: ${h.pe ?? 'N/A'} | P/VP: ${h.pvp ?? 'N/A'} | DY: ${h.dividend}% | PSR: ${h.psr ?? 'N/A'}
+LPA: ${h.lpa ?? 'N/A'} | VPA: ${h.vpa ?? 'N/A'}
+P/EBIT: ${h.pEbit ?? 'N/A'} | EV/EBIT: ${h.evEbit ?? 'N/A'} | EV/EBITDA: ${h.evEbitda ?? 'N/A'}
+ROE: ${h.roe ?? 'N/A'}% | ROIC: ${h.roic ?? 'N/A'}% 
+Margem Bruta: ${h.margemBruta ?? 'N/A'}% | Margem EBIT: ${h.margemEbit ?? 'N/A'}% | Margem Líq: ${h.margemLiquida ?? 'N/A'}%
+Cresc. Receita 5A: ${h.cReceita5a ?? 'N/A'}% | Cresc. Lucro 5A: ${h.cLucro5a ?? 'N/A'}%
+Giro Ativos: ${h.giroAtivos ?? 'N/A'} | Liq. Corrente: ${h.liqCorrente ?? 'N/A'}
+Dív.Líq/PL: ${h.divLiqPl ?? 'N/A'} | Dív.Líq/EBITDA: ${h.divLiqEbitda ?? 'N/A'} | PL/Ativos: ${h.plAtivos ?? 'N/A'}
+Score de Recomendação: ${rec.score}/100 (${rec.label})
+Preço Graham: R$ ${graham ?? 'N/A'} | Preço Justo: R$ ${fair ?? 'N/A'}
+Descrição: ${h.description}`;
 }

@@ -1,19 +1,20 @@
 import { useState, useRef, useEffect } from "react";
 import { Bot, Send, Sparkles, Loader2 } from "lucide-react";
-import { buildDatasetContext } from "@/data/investments";
+import { buildDatasetContext, buildAssetContext } from "@/data/investments";
 
 interface AiChatWidgetProps {
   context?: string;
   welcomeMessage?: string;
   compact?: boolean;
   page?: "dashboard" | "carteira" | "ativo" | "aprender";
+  ticker?: string;
 }
 
 type Msg = { role: "user" | "assistant"; content: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
-export function AiChatWidget({ context, welcomeMessage, compact, page }: AiChatWidgetProps) {
+export function AiChatWidget({ context, welcomeMessage, compact, page, ticker }: AiChatWidgetProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: welcomeMessage || "Olá! Sou o Hodl 🤖, seu assistente inteligente. Como posso te ajudar hoje?" },
@@ -46,17 +47,27 @@ export function AiChatWidget({ context, welcomeMessage, compact, page }: AiChatW
     };
 
     try {
+      // Build body with RAG context
+      const body: Record<string, any> = {
+        messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+        page: page || "dashboard",
+      };
+
+      // Inject ticker-specific context for asset pages
+      if (ticker) {
+        body.ticker = ticker;
+        body.currentData = buildAssetContext(ticker);
+      } else {
+        body.dataset = buildDatasetContext();
+      }
+
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({
-          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
-          page: page || "dashboard",
-          dataset: buildDatasetContext(),
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!resp.ok || !resp.body) {
@@ -128,7 +139,9 @@ export function AiChatWidget({ context, welcomeMessage, compact, page }: AiChatW
           <p className="text-sm font-semibold flex items-center gap-1.5">
             Hodl AI <Sparkles className="h-3 w-3 text-primary" />
           </p>
-          <p className="text-xs text-muted-foreground">Seu assistente de investimentos</p>
+          <p className="text-xs text-muted-foreground">
+            {ticker ? `Analisando ${ticker}` : "Seu assistente de investimentos"}
+          </p>
         </div>
       </div>
       <div ref={scrollRef} className="p-4 space-y-3 max-h-[300px] overflow-y-auto">
@@ -147,8 +160,9 @@ export function AiChatWidget({ context, welcomeMessage, compact, page }: AiChatW
         ))}
         {isLoading && messages[messages.length - 1]?.role === "user" && (
           <div className="flex justify-start">
-            <div className="bg-muted/80 rounded-xl px-3 py-2">
+            <div className="bg-muted/80 rounded-xl px-4 py-3 flex items-center gap-2">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+              <span className="text-xs text-muted-foreground">Hodl está pensando...</span>
             </div>
           </div>
         )}

@@ -3,6 +3,7 @@ import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, Settings, LogOut, Us
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import logoImg from "@/assets/logo.png";
 
 interface AppHeaderProps {
   activePage: "dashboard" | "carteira" | "ativos" | "aprender";
@@ -51,9 +52,7 @@ export function AppHeader({ activePage }: AppHeaderProps) {
       <div className="max-w-[1400px] mx-auto px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-              <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
-            </div>
+            <img src={logoImg} alt="Investidor Inteligente" className="h-8 w-8 rounded-lg object-cover" />
             <span className="font-semibold text-sm tracking-tight">Investidor Inteligente</span>
           </Link>
           <nav className="hidden md:flex items-center gap-1">
