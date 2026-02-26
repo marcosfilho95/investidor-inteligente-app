@@ -516,20 +516,85 @@ export const assetHistoryData = [
 ];
 
 export function calcRecommendationScore(asset: Holding): { score: number; label: string; color: string } {
-  if (asset.pe === null) return { score: 50, label: "Sem dados", color: "hsl(var(--muted-foreground))" };
-  let score = 50;
-  if (asset.pe) { if (asset.pe < 10) score += 15; else if (asset.pe < 15) score += 10; else if (asset.pe < 25) score += 3; else if (asset.pe > 35) score -= 10; }
-  if (asset.roe) { if (asset.roe > 25) score += 12; else if (asset.roe > 15) score += 6; else if (asset.roe > 0) score += 2; else score -= 8; }
-  if (asset.margemLiquida) { if (asset.margemLiquida > 20) score += 10; else if (asset.margemLiquida > 10) score += 5; else if (asset.margemLiquida > 0) score += 2; else score -= 8; }
-  if (asset.divLiqEbitda !== null) { if (asset.divLiqEbitda < 1) score += 10; else if (asset.divLiqEbitda < 3) score += 3; else score -= 8; }
-  if (asset.dividend > 5) score += 10; else if (asset.dividend > 3) score += 6; else if (asset.dividend > 1) score += 2;
-  if (asset.cLucro5a) { if (asset.cLucro5a > 15) score += 8; else if (asset.cLucro5a > 5) score += 3; else if (asset.cLucro5a < 0) score -= 5; }
-  if (asset.pvp !== null) { if (asset.pvp < 1) score += 8; else if (asset.pvp < 2) score += 4; else if (asset.pvp > 10) score -= 5; }
-  score = Math.max(0, Math.min(100, score));
+  if (asset.pe === null) return { score: 30, label: "Sem dados", color: "hsl(var(--muted-foreground))" };
+  
+  let score = 40; // Start at 40 (neutral-low) instead of 50
+  
+  // Graham valuation check — KEY differentiator
+  const graham = calcGrahamPrice(asset);
+  if (graham) {
+    const upside = (graham / asset.price - 1) * 100;
+    if (upside > 30) score += 18;       // Strong margin of safety
+    else if (upside > 10) score += 10;   // Moderate margin
+    else if (upside > 0) score += 4;     // Slight margin
+    else if (upside > -15) score -= 5;   // Slightly overpriced
+    else score -= 15;                     // Very overpriced — penalize hard
+  }
+  
+  // P/L — lower is cheaper, but negatives are bad
+  if (asset.pe) {
+    if (asset.pe < 0) score -= 12;
+    else if (asset.pe < 8) score += 10;
+    else if (asset.pe < 12) score += 5;
+    else if (asset.pe < 20) score += 0;   // neutral
+    else if (asset.pe < 30) score -= 5;
+    else score -= 12;                      // Very expensive
+  }
+  
+  // P/VP — below 1 is undervalued
+  if (asset.pvp !== null) {
+    if (asset.pvp < 0.8) score += 8;
+    else if (asset.pvp < 1.5) score += 3;
+    else if (asset.pvp < 3) score -= 2;
+    else if (asset.pvp < 6) score -= 6;
+    else score -= 10;                      // Extremely overpriced by book
+  }
+  
+  // ROE — quality metric
+  if (asset.roe !== null) {
+    if (asset.roe < 0) score -= 10;
+    else if (asset.roe > 20) score += 6;
+    else if (asset.roe > 12) score += 3;
+    else score -= 2;
+  }
+  
+  // Margem líquida
+  if (asset.margemLiquida !== null) {
+    if (asset.margemLiquida < 0) score -= 8;
+    else if (asset.margemLiquida > 15) score += 4;
+    else if (asset.margemLiquida > 8) score += 2;
+  }
+  
+  // Endividamento — critical safety check
+  if (asset.divLiqEbitda !== null) {
+    if (asset.divLiqEbitda < 0) score += 6;   // Net cash
+    else if (asset.divLiqEbitda < 1.5) score += 3;
+    else if (asset.divLiqEbitda < 3) score += 0;
+    else if (asset.divLiqEbitda < 4) score -= 5;
+    else score -= 10;                          // Dangerously leveraged
+  }
+  
+  // Dividendos
+  if (asset.dividend > 7) score += 5;
+  else if (asset.dividend > 4) score += 2;
+  else if (asset.dividend < 1) score -= 3;
+  
+  // Crescimento lucro 5 anos
+  if (asset.cLucro5a !== null) {
+    if (asset.cLucro5a === null || asset.cLucro5a < -10) score -= 6;
+    else if (asset.cLucro5a < 0) score -= 3;
+    else if (asset.cLucro5a > 15) score += 4;
+    else if (asset.cLucro5a > 5) score += 2;
+  }
+  
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  
   let label: string, color: string;
-  if (score >= 70) { label = "Bom"; color = "hsl(var(--gain))"; }
-  else if (score >= 40) { label = "Médio"; color = "hsl(var(--warning))"; }
-  else { label = "Ruim"; color = "hsl(var(--loss))"; }
+  if (score >= 70) { label = "Comprar"; color = "hsl(var(--gain))"; }
+  else if (score >= 55) { label = "Bom"; color = "hsl(142, 60%, 40%)"; }
+  else if (score >= 40) { label = "Neutro"; color = "hsl(var(--warning))"; }
+  else if (score >= 25) { label = "Cautela"; color = "hsl(25, 80%, 50%)"; }
+  else { label = "Vender"; color = "hsl(var(--loss))"; }
   return { score, label, color };
 }
 

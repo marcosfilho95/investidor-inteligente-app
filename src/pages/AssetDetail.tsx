@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, TrendingUp, TrendingDown, ShoppingCart, DollarSign } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { holdings, getFilteredPriceHistory, indicatorTooltips, calcRecommendationScore, calcGrahamPrice } from "@/data/investments";
 import { IndicatorCard } from "@/components/IndicatorCard";
@@ -7,7 +7,6 @@ import { RecommendationGauge } from "@/components/RecommendationGauge";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { useState } from "react";
-import logoImg from "@/assets/logo.png";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 
 const periods = ["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
@@ -85,7 +84,7 @@ const AssetDetail = () => {
           </Link>
           <div className="h-4 w-px bg-border" />
           <div className="flex items-center gap-2">
-            <img src={logoImg} alt="Investidor Inteligente" className="h-7 w-7 rounded-lg object-cover" />
+            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center"><LayoutDashboard className="h-4 w-4 text-primary-foreground" /></div>
             <span className="font-semibold text-sm tracking-tight">Investidor Inteligente</span>
           </div>
         </div>
@@ -194,14 +193,14 @@ const AssetDetail = () => {
                 <ResponsiveContainer width="100%" height={280}>
                   <AreaChart data={priceHistory}>
                     <defs><linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} stopOpacity={0.3} />
-                      <stop offset="95%" stopColor={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} stopOpacity={0} />
+                      <stop offset="5%" stopColor="hsl(142, 72%, 48%)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(142, 72%, 48%)" stopOpacity={0} />
                     </linearGradient></defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
                     <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={9} tickLine={false} axisLine={false} tick={({ x, y, payload }: any) => payload.value ? <text x={x} y={y + 12} textAnchor="middle" fill="hsl(215, 14%, 50%)" fontSize={9}>{payload.value}</text> : null} interval={Math.max(0, Math.floor(priceHistory.length / 10))} />
                     <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
                     <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Preço"]} />
-                    <Area type="monotone" dataKey="price" stroke={isPositive ? "hsl(142, 72%, 48%)" : "hsl(0, 72%, 55%)"} strokeWidth={2} fill="url(#priceGrad)" />
+                    <Area type="monotone" dataKey="price" stroke="hsl(142, 72%, 48%)" strokeWidth={2} fill="url(#priceGrad)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
