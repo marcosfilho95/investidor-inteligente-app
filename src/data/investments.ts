@@ -80,7 +80,15 @@ export const indicatorTooltips: Record<string, { title: string; description: str
   divLiqPl: { title: "Dív. Líq. / PL", description: "Endividamento relativo ao patrimônio. Quanto menor, menos alavancada.", formula: "Dívida Líquida ÷ Patrimônio Líquido" },
   divLiqEbitda: { title: "Dív. Líq. / EBITDA", description: "Capacidade de pagar dívida com geração operacional. Abaixo de 3 é bom.", formula: "Dívida Líquida ÷ EBITDA" },
   plAtivos: { title: "PL / Ativos", description: "Proporção do ativo financiada com capital próprio.", formula: "Patrimônio Líquido ÷ Ativo Total" },
+  marketCap: { title: "Market Cap (Valor de Mercado)", description: "Valor total de todas as ações da empresa no mercado. Indica o tamanho da empresa.", formula: "Preço da ação × Número total de ações" },
 };
+
+// Calcula preço justo pelo método Graham
+export function calcGrahamPrice(asset: Holding): number | null {
+  if (!asset.lpa || !asset.vpa || asset.lpa <= 0 || asset.vpa <= 0) return null;
+  // Fórmula de Graham: √(22.5 × LPA × VPA)
+  return Math.round(Math.sqrt(22.5 * asset.lpa * asset.vpa) * 100) / 100;
+}
 
 export const allocationData = [
   { name: "Cripto", value: 38.9, color: "hsl(var(--chart-1))" },

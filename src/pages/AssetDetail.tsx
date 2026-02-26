@@ -1,7 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
-import { holdings, assetHistoryData, indicatorTooltips, calcRecommendationScore, calcFairPrice } from "@/data/investments";
+import { holdings, assetHistoryData, indicatorTooltips, calcRecommendationScore, calcFairPrice, calcGrahamPrice } from "@/data/investments";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
 import { AiChatWidget } from "@/components/AiChatWidget";
@@ -27,6 +27,8 @@ const AssetDetail = () => {
   const isPositive = asset.changePercent >= 0;
   const recommendation = calcRecommendationScore(asset);
   const fairPrice = calcFairPrice(asset);
+  const grahamPrice = calcGrahamPrice(asset);
+  const grahamUpside = grahamPrice ? ((grahamPrice / asset.price - 1) * 100).toFixed(1) : null;
 
   const priceHistory = assetHistoryData.map((d) => ({
     month: d.month,
@@ -184,14 +186,42 @@ const AssetDetail = () => {
             ) : (
               <p className="text-sm text-muted-foreground">Dados insuficientes para calcular</p>
             )}
-            <div className="mt-4">
-              <p className="text-sm text-muted-foreground leading-relaxed">{asset.description}</p>
-            </div>
           </div>
+          <div className="glass-card p-5">
+            <h3 className="text-base font-semibold mb-1">Método Graham</h3>
+            <p className="text-xs text-muted-foreground mb-3">Benjamin Graham — o pai do Value Investing — criou uma fórmula para estimar o preço justo de uma ação com base nos fundamentos.</p>
+            {grahamPrice ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-muted/50 rounded-lg p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">Preço atual</p>
+                    <p className="text-sm font-mono font-semibold mt-1">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className="bg-primary/10 rounded-lg p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">Preço Graham</p>
+                    <p className="text-sm font-mono font-semibold text-primary mt-1">R$ {grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">Upside</p>
+                    <p className={`text-sm font-mono font-semibold mt-1 ${Number(grahamUpside) >= 0 ? "text-gain" : "text-loss"}`}>
+                      {Number(grahamUpside) >= 0 ? "+" : ""}{grahamUpside}%
+                    </p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground font-mono">Fórmula: √(22,5 × LPA × VPA)</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Dados insuficientes (LPA e VPA necessários)</p>
+            )}
+          </div>
+        </div>
+
+        {/* AI Widget */}
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
           <AiChatWidget
             compact
             context={`Análise de ${asset.symbol}`}
-            welcomeMessage={`📊 Analisando ${asset.symbol}... Score: ${recommendation.score}/100 (${recommendation.label}). ${fairPrice ? `Preço justo estimado: R$ ${fairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}. ` : ""}A IA será integrada via RAG para insights em tempo real sobre eventos e projeções.`}
+            welcomeMessage={`📊 Analisando ${asset.symbol}... Score: ${recommendation.score}/100 (${recommendation.label}). ${fairPrice ? `Preço justo estimado: R$ ${fairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}. ` : ""}${grahamPrice ? `Preço Graham: R$ ${grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}. ` : ""}A IA será integrada via RAG para insights em tempo real.`}
           />
         </div>
 
@@ -211,7 +241,7 @@ const AssetDetail = () => {
                 <IndicatorCard label="P/EBIT" value={asset.pEbit?.toFixed(2) ?? null} tooltip={indicatorTooltips.pEbit} />
                 <IndicatorCard label="EV/EBIT" value={asset.evEbit?.toFixed(1) ?? null} tooltip={indicatorTooltips.evEbit} />
                 <IndicatorCard label="EV/EBITDA" value={asset.evEbitda?.toFixed(1) ?? null} tooltip={indicatorTooltips.evEbitda} />
-                <IndicatorCard label="Market Cap" value={asset.marketCap} />
+                <IndicatorCard label="Market Cap" value={asset.marketCap} tooltip={indicatorTooltips.marketCap} />
               </div>
             </div>
 
