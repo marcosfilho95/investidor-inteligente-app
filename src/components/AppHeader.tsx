@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, Settings, LogOut, User } from "lucide-react";
+import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, Settings, LogOut, User, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -96,6 +96,16 @@ export function AppHeader({ activePage }: AppHeaderProps) {
               </div>
             )}
           </div>
+
+          {/* Tutorial replay */}
+          <button onClick={() => {
+              localStorage.removeItem("onboarding_completed");
+              window.location.href = "/dashboard";
+            }}
+            title="Rever tutorial"
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+            <HelpCircle className="h-4 w-4" />
+          </button>
 
           {/* Settings */}
           <button onClick={() => toast({ title: "Configurações", description: "Em breve disponível!" })}
