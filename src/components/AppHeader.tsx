@@ -59,6 +59,7 @@ export function AppHeader({ activePage }: AppHeaderProps) {
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
               <Link key={item.key} to={item.href}
+                data-tour={`nav-${item.key}`}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
                   item.key === activePage ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                 }`}>
@@ -70,7 +71,7 @@ export function AppHeader({ activePage }: AppHeaderProps) {
         </div>
         <div className="flex items-center gap-2">
           {/* Notifications */}
-          <div className="relative" ref={notifRef}>
+          <div className="relative" ref={notifRef} data-tour="notifications">
             <button onClick={() => { setShowNotifications(!showNotifications); setShowUserMenu(false); }}
               className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors relative">
               <Bell className="h-4 w-4" />
@@ -114,7 +115,7 @@ export function AppHeader({ activePage }: AppHeaderProps) {
           </button>
 
           {/* User menu */}
-          <div className="relative" ref={menuRef}>
+          <div className="relative" ref={menuRef} data-tour="user-menu">
             <button onClick={() => { setShowUserMenu(!showUserMenu); setShowNotifications(false); }}
               className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center text-xs font-bold text-primary ml-1 hover:bg-primary/30 transition-colors cursor-pointer">
               {userName.slice(0, 2).toUpperCase()}
