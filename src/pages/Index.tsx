@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { LayoutDashboard, Wallet, Bell, Settings, Search, PieChart } from "lucide-react";
+import { LayoutDashboard, Wallet, Bell, Settings, Search, PieChart, BookOpen } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { PerformanceChart } from "@/components/PerformanceChart";
 import { AllocationChart } from "@/components/AllocationChart";
@@ -10,7 +10,6 @@ import { portfolioData } from "@/data/investments";
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-[1400px] mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-8">
@@ -23,11 +22,13 @@ const Index = () => {
             <nav className="hidden md:flex items-center gap-1">
               {[
                 { label: "Dashboard", icon: LayoutDashboard, active: true, href: "/dashboard" },
+                { label: "Carteira", icon: Wallet, href: "/carteira" },
                 { label: "Ativos", icon: PieChart, href: "/ativos" },
+                { label: "Aprender", icon: BookOpen, href: "/aprender" },
               ].map((item) => (
                 <Link
                   key={item.label}
-                  to={(item as any).href || "/dashboard"}
+                  to={item.href}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
                     item.active
                       ? "bg-accent text-foreground font-medium"
@@ -58,49 +59,19 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Content */}
       <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
-        {/* Welcome */}
         <div>
           <h1 className="text-xl font-semibold">Bom dia, João 👋</h1>
           <p className="text-sm text-muted-foreground">Aqui está o resumo do seu portfólio hoje.</p>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Valor Total"
-            value={`R$ ${portfolioData.totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-            change={portfolioData.dailyChangePercent}
-            changeLabel="hoje"
-            icon="dollar"
-            positive
-          />
-          <StatCard
-            title="Ganho Diário"
-            value={`R$ ${portfolioData.dailyChange.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-            change={portfolioData.dailyChangePercent}
-            icon="activity"
-            positive
-          />
-          <StatCard
-            title="Ganho Total"
-            value={`R$ ${portfolioData.totalGain.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-            change={portfolioData.totalGainPercent}
-            icon="chart"
-            positive
-          />
-          <StatCard
-            title="Rentabilidade"
-            value={`${portfolioData.totalGainPercent}%`}
-            change={portfolioData.totalGainPercent}
-            changeLabel="desde o início"
-            icon="percent"
-            positive
-          />
+          <StatCard title="Valor Total" value={`R$ ${portfolioData.totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} change={portfolioData.dailyChangePercent} changeLabel="hoje" icon="dollar" positive />
+          <StatCard title="Ganho Diário" value={`R$ ${portfolioData.dailyChange.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} change={portfolioData.dailyChangePercent} icon="activity" positive />
+          <StatCard title="Ganho Total" value={`R$ ${portfolioData.totalGain.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} change={portfolioData.totalGainPercent} icon="chart" positive />
+          <StatCard title="Rentabilidade" value={`${portfolioData.totalGainPercent}%`} change={portfolioData.totalGainPercent} changeLabel="desde o início" icon="percent" positive />
         </div>
 
-        {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2">
             <PerformanceChart />
@@ -108,7 +79,6 @@ const Index = () => {
           <AllocationChart />
         </div>
 
-        {/* AI + Holdings */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2">
             <HoldingsTable />
