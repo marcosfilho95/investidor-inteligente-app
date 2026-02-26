@@ -138,38 +138,147 @@ export const allocationData = (() => {
   }));
 })();
 
-// Generate price history data for different periods — with high granularity
-export function generatePriceHistory(basePrice: number, changePercent: number, period: string) {
-  const generateLabels = (count: number, fmt: (i: number) => string) => Array.from({ length: count }, (_, i) => fmt(i));
+// Seeded random for deterministic charts per asset
+function seededRandom(seed: number) {
+  let s = seed;
+  return () => { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; };
+}
 
-  const periods: Record<string, { points: number; labels: string[] }> = {
-    "1D": { points: 42, labels: generateLabels(42, (i) => { const h = 9 + Math.floor(i * 7 / 42); const m = Math.round((i * 7 / 42 - Math.floor(i * 7 / 42)) * 60); return `${h}:${m.toString().padStart(2, '0')}`; }) },
-    "7D": { points: 35, labels: generateLabels(35, (i) => { const days = ["Seg", "Ter", "Qua", "Qui", "Sex"]; const d = Math.floor(i / 7); const h = 9 + (i % 7); return `${days[d % 5]} ${h}h`; }) },
-    "30D": { points: 30, labels: generateLabels(30, (i) => `${(i + 1).toString().padStart(2, '0')}/02`) },
-    "6M": { points: 60, labels: generateLabels(60, (i) => { const months = ["Set", "Out", "Nov", "Dez", "Jan", "Fev"]; const m = Math.floor(i / 10); const d = ((i % 10) * 3 + 1); return `${d.toString().padStart(2, '0')}/${months[m]}`; }) },
-    "YTD": { points: 30, labels: generateLabels(30, (i) => { const m = Math.floor(i / 15); const d = (i % 15) * 2 + 1; return `${d.toString().padStart(2, '0')}/${m === 0 ? 'Jan' : 'Fev'}`; }) },
-    "1A": { points: 52, labels: generateLabels(52, (i) => { const months = ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev"]; const m = Math.floor(i * 12 / 52); const week = (i % Math.ceil(52 / 12)) + 1; return `${months[m]} S${week}`; }) },
-    "5A": { points: 60, labels: generateLabels(60, (i) => { const year = 2021 + Math.floor(i / 12); const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]; return `${months[i % 12]}/${year.toString().slice(2)}`; }) },
+// Generate price history data for different periods — high granularity like real stock charts
+export function generatePriceHistory(basePrice: number, changePercent: number, period: string, symbol?: string) {
+  // Seed based on symbol hash for consistency
+  const seedVal = symbol ? symbol.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 1000 + period.length : Math.floor(basePrice * 100);
+  const rand = seededRandom(seedVal);
+
+  const configs: Record<string, { points: number; labelFn: (i: number, total: number) => string; volatility: number; startFactor: number }> = {
+    // 1D: every ~10min from 10:05 to 18:36 (like reference: 10:05, 10:30, 10:56, ...)
+    "1D": {
+      points: 100,
+      labelFn: (i, total) => {
+        const totalMinutes = (18 * 60 + 36) - (10 * 60 + 5); // 10:05 to 18:36
+        const min = 10 * 60 + 5 + Math.floor(i * totalMinutes / (total - 1));
+        const h = Math.floor(min / 60);
+        const m = min % 60;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      },
+      volatility: 0.0015,
+      startFactor: 1.005,
+    },
+    // 7D: many points per day, labels like 20/02, 23/02, 24/02, 25/02
+    "7D": {
+      points: 200,
+      labelFn: (i, total) => {
+        const dayOffset = Math.floor(i * 5 / total); // 5 trading days
+        const baseDay = 20;
+        const day = baseDay + dayOffset + (dayOffset >= 1 ? 1 : 0) + (dayOffset >= 2 ? 1 : 0); // skip weekends: 20,23,24,25,26
+        const h = 10 + Math.floor(((i * 5 / total) % 1) * 8);
+        if (i % Math.floor(total / 20) === 0) return `${day.toString().padStart(2, '0')}/02`;
+        return "";
+      },
+      volatility: 0.003,
+      startFactor: 0.95,
+    },
+    // 30D: daily points with dates like 26/01/26, 29/01/26, etc
+    "30D": {
+      points: 60,
+      labelFn: (i, total) => {
+        const startDay = 26;
+        const dayOffset = Math.floor(i * 30 / total);
+        const totalDay = startDay + dayOffset;
+        const month = totalDay > 31 ? "02" : "01";
+        const day = totalDay > 31 ? totalDay - 31 : totalDay;
+        return `${day.toString().padStart(2, '0')}/${month}/26`;
+      },
+      volatility: 0.008,
+      startFactor: 0.88,
+    },
+    // 6M: many points, dates like 27/08/25, 09/09/25, etc
+    "6M": {
+      points: 150,
+      labelFn: (i, total) => {
+        const months = ["08", "09", "10", "11", "12", "01", "02"];
+        const years = ["25", "25", "25", "25", "25", "26", "26"];
+        const mIdx = Math.floor(i * 6 / total);
+        const dayInMonth = Math.floor(((i * 6 / total) % 1) * 28) + 1;
+        return `${dayInMonth.toString().padStart(2, '0')}/${months[mIdx]}/${years[mIdx]}`;
+      },
+      volatility: 0.012,
+      startFactor: 0.75,
+    },
+    // YTD: from Jan 2 to Feb 26
+    "YTD": {
+      points: 80,
+      labelFn: (i, total) => {
+        const totalDays = 56; // ~Jan 2 to Feb 26
+        const dayOffset = Math.floor(i * totalDays / total);
+        const month = dayOffset < 30 ? "01" : "02";
+        const day = dayOffset < 30 ? dayOffset + 2 : dayOffset - 28;
+        return `${day.toString().padStart(2, '0')}/${month}/26`;
+      },
+      volatility: 0.01,
+      startFactor: 0.75,
+    },
+    // 1A: 12 months of data
+    "1A": {
+      points: 120,
+      labelFn: (i, total) => {
+        const months = ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez", "Jan", "Fev"];
+        const years = ["25", "25", "25", "25", "25", "25", "25", "25", "25", "25", "26", "26"];
+        const mIdx = Math.floor(i * 12 / total);
+        const day = Math.floor(((i * 12 / total) % 1) * 28) + 1;
+        return `${day.toString().padStart(2, '0')}/${months[mIdx]}/${years[mIdx]}`;
+      },
+      volatility: 0.015,
+      startFactor: 0.70,
+    },
+    // 5A: from Feb 2021 to Feb 2026
+    "5A": {
+      points: 300,
+      labelFn: (i, total) => {
+        const startYear = 2021;
+        const totalMonths = 60;
+        const monthOffset = Math.floor(i * totalMonths / total);
+        const year = startYear + Math.floor(monthOffset / 12);
+        const month = (monthOffset % 12) + 1;
+        const day = Math.floor(((i * totalMonths / total) % 1) * 28) + 1;
+        return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year.toString().slice(2)}`;
+      },
+      volatility: 0.018,
+      startFactor: 0.25,
+    },
   };
 
-  const config = periods[period] || periods["1A"];
-  const volatility = period === "1D" ? 0.003 : period === "7D" ? 0.006 : period === "5A" ? 0.04 : 0.015;
-  const trend = changePercent >= 0 ? 1 : -1;
+  const config = configs[period] || configs["1A"];
+  const { points, labelFn, volatility, startFactor } = config;
 
-  let currentPrice = basePrice * (1 - (trend * volatility * config.points * 0.3));
-  const data = [];
+  // Start price and generate realistic walk
+  let currentPrice = basePrice * startFactor;
+  const targetPrice = basePrice;
+  const data: { month: string; price: number }[] = [];
 
-  for (let i = 0; i < config.points; i++) {
-    const noise = (Math.random() - 0.4) * volatility * basePrice;
-    currentPrice += noise + (trend * volatility * basePrice * 0.2);
-    currentPrice = Math.max(currentPrice, basePrice * 0.5);
+  // Create realistic price movements with momentum and mean reversion
+  let momentum = 0;
+
+  for (let i = 0; i < points; i++) {
+    const progress = i / (points - 1);
+    // Drift toward target
+    const drift = (targetPrice - currentPrice) / (points - i) * 0.3;
+    // Momentum (autocorrelation like real markets)
+    momentum = momentum * 0.7 + (rand() - 0.48) * volatility * basePrice;
+    // Random shock
+    const shock = (rand() - 0.5) * volatility * basePrice * 0.5;
+
+    currentPrice += drift + momentum + shock;
+    currentPrice = Math.max(currentPrice, basePrice * 0.15);
+
+    const label = labelFn(i, points);
     data.push({
-      month: config.labels[i],
+      month: label,
       price: Math.round(currentPrice * 100) / 100,
     });
   }
 
-  // Ensure last point is close to current price
+  // Ensure last point matches current price
   data[data.length - 1].price = basePrice;
 
   return data;
