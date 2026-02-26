@@ -5,13 +5,21 @@ import { HoldingsTable } from "@/components/HoldingsTable";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
+import { OnboardingTour } from "@/components/OnboardingTour";
 import { useEffect, useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 
 const Index = () => {
   const [userName, setUserName] = useState("Investidor");
+  const [showTour, setShowTour] = useState(false);
   const { enrichedHoldings, totalValue, loading } = useUserHoldings();
+
+  useEffect(() => {
+    const seen = localStorage.getItem("onboarding_completed");
+    if (!seen) setShowTour(true);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -46,8 +54,16 @@ const Index = () => {
 
   const isEmpty = enrichedHoldings.length === 0;
 
+  const handleTourComplete = () => {
+    localStorage.setItem("onboarding_completed", "true");
+    setShowTour(false);
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <AnimatePresence>
+        {showTour && <OnboardingTour onComplete={handleTourComplete} />}
+      </AnimatePresence>
       <AppHeader activePage="dashboard" />
       <PageTransition>
         <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
