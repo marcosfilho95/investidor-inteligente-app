@@ -6,20 +6,30 @@ interface AllocationChartProps {
 }
 
 export function AllocationChart({ holdings: userHoldings }: AllocationChartProps) {
-  const data = userHoldings && userHoldings.length > 0
-    ? (() => {
-        const sectorMap: Record<string, number> = {};
-        userHoldings.forEach(h => {
-          sectorMap[h.sector] = (sectorMap[h.sector] || 0) + h.allocation;
-        });
-        const colors = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(217, 91%, 60%)", "hsl(280, 65%, 60%)", "hsl(340, 75%, 55%)"];
-        return Object.entries(sectorMap).map(([name, value], i) => ({
-          name,
-          value: Math.round(value * 100) / 100,
-          color: colors[i % colors.length],
-        }));
-      })()
-    : [];
+  const data =
+    userHoldings && userHoldings.length > 0
+      ? (() => {
+          const sectorMap: Record<string, number> = {};
+          userHoldings.forEach((h) => {
+            sectorMap[h.sector] = (sectorMap[h.sector] || 0) + h.allocation;
+          });
+          const colors = [
+            "hsl(var(--chart-1))",
+            "hsl(var(--chart-2))",
+            "hsl(var(--chart-3))",
+            "hsl(var(--chart-4))",
+            "hsl(var(--chart-5))",
+            "hsl(217, 91%, 60%)",
+            "hsl(280, 65%, 60%)",
+            "hsl(340, 75%, 55%)",
+          ];
+          return Object.entries(sectorMap).map(([name, value], i) => ({
+            name,
+            value: Math.round(value * 100) / 100,
+            color: colors[i % colors.length],
+          }));
+        })()
+      : [];
 
   if (data.length === 0) {
     return (
@@ -60,12 +70,12 @@ export function AllocationChart({ holdings: userHoldings }: AllocationChartProps
             </Pie>
             <Tooltip
               contentStyle={{
-                backgroundColor: "hsl(220, 18%, 16%)",
-                border: "1px solid hsl(220, 14%, 22%)",
-                borderRadius: "8px",
+                backgroundColor: "hsl(210, 40%, 96%)", // fundo claro
+                border: "1px solid hsl(210, 20%, 85%)",
+                borderRadius: "10px",
                 fontSize: "13px",
-                color: "hsl(210, 20%, 92%)",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+                color: "hsl(222, 47%, 11%)", // texto escuro
+                boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
               }}
               formatter={(value: number, name: string) => [`${value}%`, name]}
             />
