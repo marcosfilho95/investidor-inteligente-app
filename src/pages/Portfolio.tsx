@@ -214,6 +214,7 @@ const Portfolio = () => {
                   <AiChatWidget
                     page="carteira"
                     userSymbols={enrichedHoldings.map(h => h.symbol)}
+                    userHoldingsData={enrichedHoldings.map(h => ({ symbol: h.symbol, shares: h.shares, avgPrice: h.avgPrice }))}
                     welcomeMessage={`📊 Sua carteira possui ${enrichedHoldings.length} ativos distribuídos em ${Object.keys(sectorMap).length} setores. Posso ajudar a analisar se a distribuição está adequada ao seu perfil ou sugerir rebalanceamento. O que gostaria de saber?`}
                   />
                 </AnimatedCard>
