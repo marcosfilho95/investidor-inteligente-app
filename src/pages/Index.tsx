@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { LayoutDashboard, Wallet, ArrowLeftRight, Bell, Settings, Search } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { PerformanceChart } from "@/components/PerformanceChart";
@@ -16,16 +17,17 @@ const Index = () => {
               <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
                 <LayoutDashboard className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="font-semibold text-sm tracking-tight">InvestFlow</span>
+              <span className="font-semibold text-sm tracking-tight">Investidor Inteligente</span>
             </div>
             <nav className="hidden md:flex items-center gap-1">
               {[
                 { label: "Dashboard", icon: LayoutDashboard, active: true },
-                { label: "Carteira", icon: Wallet },
+                { label: "Carteira", icon: Wallet, href: "/ativos" },
                 { label: "Transações", icon: ArrowLeftRight },
               ].map((item) => (
-                <button
+                <Link
                   key={item.label}
+                  to={(item as any).href || "/dashboard"}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
                     item.active
                       ? "bg-accent text-foreground font-medium"
@@ -34,7 +36,7 @@ const Index = () => {
                 >
                   <item.icon className="h-3.5 w-3.5" />
                   {item.label}
-                </button>
+                </Link>
               ))}
             </nav>
           </div>
