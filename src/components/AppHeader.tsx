@@ -19,10 +19,12 @@ export function AppHeader({ activePage }: AppHeaderProps) {
   const [userName, setUserName] = useState("IN");
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showTourMenu, setShowTourMenu] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const tourRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -35,6 +37,7 @@ export function AppHeader({ activePage }: AppHeaderProps) {
     const handleClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowUserMenu(false);
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotifications(false);
+      if (tourRef.current && !tourRef.current.contains(e.target as Node)) setShowTourMenu(false);
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -99,14 +102,27 @@ export function AppHeader({ activePage }: AppHeaderProps) {
           </div>
 
           {/* Tutorial replay */}
-          <button onClick={() => {
-              localStorage.removeItem("onboarding_completed");
-              window.location.href = "/dashboard";
-            }}
-            title="Rever tutorial"
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-            <HelpCircle className="h-4 w-4" />
-          </button>
+          <div className="relative" ref={tourRef}>
+            <button onClick={() => setShowTourMenu(!showTourMenu)}
+              title="Ajuda"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+              <HelpCircle className="h-4 w-4" />
+            </button>
+            {showTourMenu && (
+              <div className="absolute right-0 top-10 w-56 glass-card p-2 shadow-xl animate-fade-in z-50">
+                <button
+                  onClick={() => {
+                    setShowTourMenu(false);
+                    localStorage.removeItem("onboarding_completed");
+                    window.location.href = "/dashboard";
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+                >
+                  🎓 Gostaria de rever o tutorial?
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Settings */}
           <button onClick={() => toast({ title: "Configurações", description: "Em breve disponível!" })}
