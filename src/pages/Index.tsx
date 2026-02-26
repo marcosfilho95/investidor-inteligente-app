@@ -20,8 +20,23 @@ const Index = () => {
     });
   }, []);
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const hour = new Date().toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    hour12: false,
+  });
+
+  const currentHour = Number(hour);
+
+  let greeting = "";
+
+  if (currentHour >= 5 && currentHour < 12) {
+    greeting = "Bom dia";
+  } else if (currentHour >= 12 && currentHour < 18) {
+    greeting = "Boa tarde";
+  } else {
+    greeting = "Boa noite";
+  }
 
   const totalInvested = enrichedHoldings.reduce((s, h) => s + h.avgPrice * h.shares, 0);
   const totalGain = totalValue - totalInvested;
@@ -37,18 +52,48 @@ const Index = () => {
       <PageTransition>
         <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
           <div>
-            <h1 className="text-xl font-semibold">{greeting}, {userName} 👋</h1>
+            <h1 className="text-xl font-semibold">
+              {greeting}, {userName} 👋
+            </h1>
             <p className="text-sm text-muted-foreground">
-              {isEmpty ? "Sua carteira está vazia. Vá em Ativos para adicionar ações!" : "Aqui está o resumo do seu portfólio hoje."}
+              {isEmpty
+                ? "Sua carteira está vazia. Vá em Ativos para adicionar ações!"
+                : "Aqui está o resumo do seu portfólio hoje."}
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { title: "Valor Total", value: `R$ ${totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, change: dailyChangePercent, changeLabel: "hoje", icon: "dollar" as const, positive: dailyChangePercent >= 0 },
-              { title: "Ganho Diário", value: `R$ ${dailyChange.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, change: dailyChangePercent, icon: "activity" as const, positive: dailyChangePercent >= 0 },
-              { title: "Ganho Total", value: `R$ ${totalGain.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, change: totalGainPercent, icon: "chart" as const, positive: totalGainPercent >= 0 },
-              { title: "Rentabilidade", value: `${totalGainPercent}%`, change: totalGainPercent, changeLabel: "desde o início", icon: "percent" as const, positive: totalGainPercent >= 0 },
+              {
+                title: "Valor Total",
+                value: `R$ ${totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                change: dailyChangePercent,
+                changeLabel: "hoje",
+                icon: "dollar" as const,
+                positive: dailyChangePercent >= 0,
+              },
+              {
+                title: "Ganho Diário",
+                value: `R$ ${dailyChange.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                change: dailyChangePercent,
+                icon: "activity" as const,
+                positive: dailyChangePercent >= 0,
+              },
+              {
+                title: "Ganho Total",
+                value: `R$ ${totalGain.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                change: totalGainPercent,
+                icon: "chart" as const,
+                positive: totalGainPercent >= 0,
+              },
+              {
+                title: "Rentabilidade",
+                value: `${totalGainPercent}%`,
+                change: totalGainPercent,
+                changeLabel: "desde o início",
+                icon: "percent" as const,
+                positive: totalGainPercent >= 0,
+              },
             ].map((card, i) => (
               <AnimatedCard key={card.title} delay={i * 0.08}>
                 <StatCard {...card} />
@@ -72,8 +117,13 @@ const Index = () => {
               <div className="glass-card p-12 text-center">
                 <p className="text-4xl mb-4">📊</p>
                 <h3 className="text-lg font-semibold mb-2">Comece a montar sua carteira!</h3>
-                <p className="text-sm text-muted-foreground mb-4">Navegue até a página de <strong>Ativos</strong>, analise os indicadores e compre suas primeiras ações.</p>
-                <a href="/ativos" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Navegue até a página de <strong>Ativos</strong>, analise os indicadores e compre suas primeiras ações.
+                </p>
+                <a
+                  href="/ativos"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                >
                   Ver Ativos Disponíveis
                 </a>
               </div>
