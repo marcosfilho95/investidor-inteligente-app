@@ -8,13 +8,14 @@ interface AiChatWidgetProps {
   compact?: boolean;
   page?: "dashboard" | "carteira" | "ativo" | "aprender";
   ticker?: string;
+  userSymbols?: string[];
 }
 
 type Msg = { role: "user" | "assistant"; content: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
-export function AiChatWidget({ context, welcomeMessage, compact, page, ticker }: AiChatWidgetProps) {
+export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, userSymbols }: AiChatWidgetProps) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: welcomeMessage || "Olá! Sou o Hodl 🤖, seu assistente inteligente. Como posso te ajudar hoje?" },
@@ -58,7 +59,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker }:
         body.ticker = ticker;
         body.currentData = buildAssetContext(ticker);
       } else {
-        body.dataset = buildDatasetContext();
+        body.dataset = buildDatasetContext(userSymbols);
       }
 
       const resp = await fetch(CHAT_URL, {

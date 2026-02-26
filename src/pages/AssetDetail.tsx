@@ -1,6 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
+import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import { holdings, getFilteredPriceHistory, indicatorTooltips, calcRecommendationScore, calcGrahamPrice } from "@/data/investments";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
@@ -95,7 +96,7 @@ const AssetDetail = () => {
           {/* Asset header + Actions */}
           <div className="flex flex-col md:flex-row items-start justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">{asset.symbol.slice(0, 2)}</div>
+              <AssetLogoWithFallback symbol={asset.symbol} size={56} />
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-semibold">{asset.symbol}</h1>
@@ -145,20 +146,25 @@ const AssetDetail = () => {
                         <p className="text-[10px] text-primary uppercase tracking-wider font-medium">Preço Graham</p>
                         <p className="text-lg font-mono font-bold text-primary mt-1.5">R$ {grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                       </div>
-                      <div className={`rounded-xl p-4 text-center ${Number(grahamUpside) >= 0 ? "bg-gain/10 border border-gain/20" : "bg-loss/10 border border-loss/20"}`}>
+                      <div className={`rounded-xl p-4 text-center ${Number(grahamUpside) > 10 ? "bg-gain/10 border border-gain/20" : Number(grahamUpside) >= -10 ? "bg-warning/10 border border-warning/20" : "bg-loss/10 border border-loss/20"}`}>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Upside</p>
-                        <p className={`text-lg font-mono font-bold mt-1.5 ${Number(grahamUpside) >= 0 ? "text-gain" : "text-loss"}`}>{Number(grahamUpside) >= 0 ? "+" : ""}{grahamUpside}%</p>
+                        <p className={`text-lg font-mono font-bold mt-1.5 ${Number(grahamUpside) > 10 ? "text-gain" : Number(grahamUpside) >= -10 ? "text-warning" : "text-loss"}`}>{Number(grahamUpside) >= 0 ? "+" : ""}{grahamUpside}%</p>
                       </div>
                     </div>
-                    {Number(grahamUpside) >= 0 ? (
+                    {Number(grahamUpside) > 10 ? (
                       <div className="bg-gain/5 border border-gain/15 rounded-xl px-4 py-3 flex items-center gap-2">
                         <span className="text-gain text-sm">✓</span>
                         <p className="text-xs text-gain font-medium">Ação com margem de segurança — preço atual abaixo do estimado por Graham</p>
                       </div>
+                    ) : Number(grahamUpside) >= -10 ? (
+                      <div className="bg-warning/5 border border-warning/15 rounded-xl px-4 py-3 flex items-center gap-2">
+                        <span className="text-warning text-sm">⚖</span>
+                        <p className="text-xs text-warning font-medium">Preço neutro — dentro da faixa de ±10% do valor estimado por Graham</p>
+                      </div>
                     ) : (
                       <div className="bg-loss/5 border border-loss/15 rounded-xl px-4 py-3 flex items-center gap-2">
                         <span className="text-loss text-sm">⚠</span>
-                        <p className="text-xs text-loss font-medium">Preço atual acima do estimado — menor margem de segurança</p>
+                        <p className="text-xs text-loss font-medium">Preço atual significativamente acima do estimado — menor margem de segurança</p>
                       </div>
                     )}
                     <div className="flex items-center justify-between pt-1">

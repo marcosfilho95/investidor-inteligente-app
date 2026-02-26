@@ -642,9 +642,21 @@ export function calcFairPrice(asset: Holding): number | null {
   return Math.round(asset.lpa * fairPE * 100) / 100;
 }
 
-// Build dataset string for AI context
-export function buildDatasetContext(): string {
-  return holdings.map(h => {
+// Build dataset string for AI context — accepts optional symbol filter for user portfolio
+export function buildDatasetContext(userSymbols?: string[]): string {
+  const assetsToShow = userSymbols && userSymbols.length > 0
+    ? holdings.filter(h => userSymbols.includes(h.symbol))
+    : holdings;
+
+  if (assetsToShow.length === 0) {
+    return "A carteira do usuário está vazia. Ele ainda não adicionou nenhum ativo.";
+  }
+
+  const header = userSymbols
+    ? `CARTEIRA DO USUÁRIO (${assetsToShow.length} ativos):\nATENÇÃO: O usuário possui SOMENTE os ativos listados abaixo. NÃO mencione outros ativos que não estejam nesta lista.\n`
+    : "";
+
+  const body = assetsToShow.map(h => {
     const rec = calcRecommendationScore(h);
     const graham = calcGrahamPrice(h);
     const fair = calcFairPrice(h);
@@ -655,6 +667,8 @@ Dív.Líq/EBITDA: ${h.divLiqEbitda ?? 'N/A'} | Liq.Corrente: ${h.liqCorrente ?? 
 Score: ${rec.score}/100 (${rec.label}) | Graham: R$${graham ?? 'N/A'} | Preço Justo: R$${fair ?? 'N/A'}
 ${h.description}`;
   }).join('\n\n');
+
+  return header + body;
 }
 
 // Build context for a specific asset (used by AiChatWidget for RAG)

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { Holding } from "@/data/investments";
+import { AssetLogoWithFallback } from "@/components/AssetLogo";
 
 interface HoldingsTableProps {
   holdings?: (Holding & { avgPrice?: number })[];
@@ -40,8 +41,8 @@ export function HoldingsTable({ holdings: userHoldings }: HoldingsTableProps) {
               <tr key={holding.symbol} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
                 <td className="px-5 py-3.5">
                   <Link to={`/ativos/${holding.symbol}`} className="flex items-center gap-3 hover:underline">
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                      {holding.symbol.slice(0, 2)}
+                    <div className="h-8 w-8 rounded-lg flex items-center justify-center">
+                      <AssetLogoWithFallback symbol={holding.symbol} size={32} />
                     </div>
                     <div>
                       <p className="text-sm font-medium">{holding.symbol}</p>
