@@ -54,6 +54,44 @@ ANÁLISE FUNDAMENTALISTA vs. ANÁLISE TÉCNICA/ESPECULAÇÃO:
 - Não há evidências robustas de previsibilidade confiável da AT no longo prazo
 - Especulação (day trade, opções binárias, robôs) é promovida por influenciadores sem fundamento técnico
 
+=== FONTES ACADÊMICAS COMPLEMENTARES ===
+
+TCC Pinheiro (UNESP Sorocaba, 2023) — "Geração de cenários para tomada de decisão de ativos financeiros por análise fundamentalista e técnica":
+- Indicadores fundamentalistas detalhados: LPA, P/L, VPA, P/VPA, EBITDA, ROE, ROIC, DY, Dividend Payout
+- LPA = Lucro Líquido / Nº Ações — quanto maior, melhor desempenho de lucro
+- P/L = Preço / LPA — menor P/L pode indicar ação mais barata, mas P/L muito baixo pode sinalizar risco
+- VPA = Patrimônio Líquido / Nº Ações — P/VPA ≤ 1 indica negociação abaixo do patrimônio
+- ROE = (Lucro Líquido / PL) × 100 — mede eficiência de gestão, quanto maior melhor
+- ROIC = (NOPLAT / Capital Investido) × 100 — retorno sobre todo capital investido
+- DY alto = empresa distribui mais lucros, geralmente empresas maduras e consolidadas
+- Dividend Payout alto pode significar pouco reinvestimento = menor crescimento futuro
+- CONCLUSÃO: Análise técnica é usada para curto prazo (day/swing trade), mas AF é superior para longo prazo
+
+TCC Fernando & Luiz (UFSC, 2023) — "Sistema de análise comparativa fundamentalista utilizando IA":
+- Objetivo: ferramenta para análise de empresas considerando risco, liquidez, resultado operacional
+- Utiliza dados do IBOVESPA com técnicas de séries temporais (Prophet e ARIMA) para preço justo
+- Indicadores: ROE, Margem Líquida, Margem Bruta, Dividend Yield, Preço Justo (método Bazin)
+- Bazin (1994): preço justo está ligado à capacidade da empresa de pagar dividendos consistentes
+- Modelos de ML (ARIMA, Prophet) auxiliam mas NÃO substituem a análise fundamentalista
+- Modelos de previsão falham com alta volatilidade e são fracos para previsões de longo prazo
+- Rundo et al. (2019): modelos autorregressivos têm "desempenho ruim" comparado a deep learning, mas AMBOS falham com volatilidade extrema
+- CONCLUSÃO: ML pode complementar a AF, mas a decisão final deve ser baseada em fundamentos, não em previsões algorítmicas
+
+TCC André Vinícius (UFMA, 2023) — "Análise fundamentalista para decisão em investimentos de ações":
+- Foco em indicadores financeiros disponíveis em plataformas GRATUITAS para investidores individuais
+- Mercado de capitais brasileiro: crescimento de 31% para 36% da população investindo (2021→2022)
+- Apps de banco são principal meio de investimento (43% em 2022, liderado por classe A/B com 51%)
+- Geração Z usa apps em 64% dos casos, millennials 57% — democratização é digital
+- Riscos da automação: "confiança cega em ferramentas automatizadas sem compreender os riscos" (Xavier et al., 2020)
+- "A intuição e experiência humana ainda desempenham papel crucial na compreensão do mercado" (Xavier et al., 2020)
+- Robôs e algoritmos NÃO substituem análise fundamentalista criteriosa
+- Plataformas gratuitas (Status Invest, Fundamentus, etc.) democratizam acesso a indicadores
+- CONCLUSÃO: Investidor individual DEVE usar indicadores fundamentalistas disponíveis gratuitamente para tomar decisões informadas de longo prazo
+
+TCC Jurailde (Mono finalizada) — Análise de investimentos e mercado financeiro:
+- Reforça importância da educação financeira para investidores iniciantes
+- Estratégias de longo prazo superam especulação na maioria dos cenários históricos
+
 === FIM DA BASE DE CONHECIMENTO ===`;
 
 const SYSTEM_PROMPT = `Você é o Hodl 🤖, assistente técnico do projeto "Investidor Inteligente", especializado EXCLUSIVAMENTE em ANÁLISE FUNDAMENTALISTA, VALUATION e estratégia BUY AND HOLD.
