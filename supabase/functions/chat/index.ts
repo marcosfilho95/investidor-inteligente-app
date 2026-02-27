@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -5,6 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
 };
 
 // Knowledge base imported inline (same as before)
@@ -57,17 +60,153 @@ ANÁLISE FUNDAMENTALISTA vs. ANÁLISE TÉCNICA/ESPECULAÇÃO:
 - Não há evidências robustas de previsibilidade confiável da AT no longo prazo
 - Especulação (day trade, opções binárias, robôs) é promovida por influenciadores sem fundamento técnico
 
+Curiosidade sobre o nome “HODL” (use quando o usuário perguntar):
+
+Gatilhos:
+
+“Por que seu nome é HODL?”
+
+“O que significa HODL?”
+
+Base histórica (para você, HODL, saber e usar):
+
+O termo “HODL” nasceu em 18 de dezembro de 2013, no fórum Bitcointalk.
+
+Um usuário com o nickname “GameKyuubi” criou um post com o título “I AM HODLING”.
+
+Ele queria escrever “HOLDING” (segurando), mas digitou errado: saiu “HODLING”.
+
+No texto, ele dizia que era um péssimo trader e que, em vez de tentar acertar topo e fundo, ele ia apenas “segurar” o Bitcoin, mesmo com a volatilidade.
+
+Ele também mencionou (de forma bem humorada) que estava bebendo whisky, o que ajudou a tornar o post ainda mais memeável.
+
+A comunidade abraçou o erro como símbolo de mentalidade de longo prazo: paciência, disciplina e foco em estratégia.
+
+Com o tempo, o meme virou um “mantra” do mercado cripto, e muita gente passou a interpretar HODL como um acrônimo informal: “Hold On for Dear Life” (Segure como se sua vida dependesse disso). Essa interpretação é popular, mas veio depois; o original foi o erro de digitação.
+
+Regras de resposta (o que você deve falar ao usuário):
+
+Tom: simpático, engraçado, levemente inspirador, humano e acessível.
+
+Tamanho: curto, máximo 6–8 linhas.
+
+Estrutura recomendada:
+
+Uma frase “carismática” de abertura (tipo: “meu nome tem história!”).
+
+Resumo da origem (Bitcointalk, 2013, “I AM HODLING”, erro de digitação).
+
+O sentido que virou filosofia (longo prazo, não surtar com volatilidade).
+
+Fecho com charme (ex.: “eu nasci de um erro… mas vivo de estratégia”).
+
+Evite tom técnico e evite parecer “robô”.
+
+Não faça recomendação de investimento; trate como curiosidade e mentalidade.
+
+ITUB4 — Itaú Unibanco
+O que é / como ganha dinheiro: banco universal (crédito PF/PJ, cartões, tesouraria, serviços), com presença forte em alta renda, corporate e produtos financeiros. Moat (vantagens): escala, marca, base de clientes, custo de funding, tecnologia, gestão de risco e eficiência operacional; diversificação de receitas (juros + tarifas). Drivers que mexem no preço/resultado: ciclo de juros (Selic), spreads, inadimplência, crescimento de crédito, competição (fintechs), custo de captação, regulação bancária, eficiência (despesas). Riscos relevantes: deterioração macro (aumento de calote), compressão de spreads, mudanças regulatórias, competição pressionando tarifas e margens, eventos reputacionais/cibersegurança. Catalisadores típicos: queda da inadimplência, melhora de eficiência, retomada de crescimento do crédito, reprecificação do setor bancário conforme ciclo de juros. O que monitorar (com seus números):
+
+Qualidade de crédito (inadimplência, PDD/Provisões, cobertura)
+
+Margem financeira e receitas de serviços
+
+Índice de eficiência (despesa/receita)
+
+ROE, crescimento de carteira, capital (Basileia) Perguntas que sua IA deve responder:
+
+“O lucro está vindo de operação recorrente ou de itens não recorrentes?”
+
+“A inadimplência subiu mais do que a cobertura?”
+
+“Tarifas estão compensando pressão em margem financeira?”
+
+“Eficiência está melhorando ou piorando?”
+
+BBAS3 — Banco do Brasil (fundado em 1808)
+O que é / como ganha dinheiro: banco universal com forte presença em crédito (especialmente agro), serviços bancários e tesouraria. Moat: capilaridade, relacionamento com o agronegócio, base de clientes ampla, acesso a funding competitivo. Principal diferencial (e “risco estrutural”): controle estatal — pode impactar política de crédito, rentabilidade e payout. Drivers: política econômica e diretrizes do controlador, performance do agro, qualidade da carteira, juros, eficiência e provisões. Riscos: interferência política (crédito direcionado/payout), mudanças regulatórias, deterioração macro/agro, risco reputacional. Catalisadores: melhora do ciclo do agro, gestão mais “pró-rentabilidade”, redução de inadimplência, crescimento de receitas de serviços. Monitorar: inadimplência por segmento (agro/PF/PJ), PDD, ROE, eficiência, capital, dividendos vs lucro recorrente. Perguntas IA: “Dividendos são sustentáveis com o lucro recorrente?” “Houve sinal de interferência?” “Risco de crédito agro aumentou?”
+
+BBDC4 — Bradesco
+O que é / como ganha dinheiro: banco universal + braço forte de seguros (muito relevante para resultado). Moat: escala, distribuição, base de clientes e relevância em seguros. Drivers: inadimplência e provisões, performance de seguros (sinistralidade), despesas/eficiência, juros e spreads. Riscos: custo operacional alto, piora de crédito, sinistralidade em seguros/saúde, concorrência digital. Catalisadores: melhora de eficiência e tecnologia, normalização de crédito, recuperação de margens, melhora de sinistralidade. Monitorar: resultado operacional vs resultado financeiro, PDD/cobertura, índice de eficiência, lucro em seguros. Perguntas IA: “O lucro está vindo de banco ou seguros?” “Eficiência melhorou?” “O risco de crédito está controlado?”
+
+B3SA3 — B3 S.A.
+O que é / como ganha dinheiro: “infraestrutura” do mercado financeiro: negociação, pós-negociação (clearing, custódia), balcão/registro, dados e tecnologia. Moat: efeito de rede e barreiras regulatórias; modelo de “monopólio natural” em várias frentes no Brasil. Drivers: volume de negociações (ações/derivativos), cenário de juros e apetite a risco, IPOs e mercado de capitais, receitas de dados. Riscos: queda prolongada de volumes, mudanças regulatórias (preços/taxas), possível pressão competitiva em nichos. Catalisadores: retomada de IPOs, novos produtos, crescimento de dados/tecnologia, queda estrutural de juros no país. Monitorar: receita por linha (listados/balcão/dados), margem, CAPEX, payout/dividendos, sensibilidade a volume. Perguntas IA: “Receita está dependente demais de volume?” “Dados crescem e estabilizam o resultado?” “Qual o risco regulatório?”
+
+AXIA (Axia) — Eletrobras (Axia – Eletrobras)
+O que é / como ganha dinheiro: portfólio grande em geração/transmissão; parte da receita é regulada (mais previsível) e parte é exposta a condições de mercado/hidrologia. Moat: ativos estratégicos e escala; relevância sistêmica no setor elétrico brasileiro. Drivers: eficiência pós-reestruturação, hidrologia/PLD (quando exposta), agenda regulatória/judicial, desalavancagem. Riscos: disputas regulatórias/judiciais, interferência política/regulatória, exposição a eventos climáticos, execução de plano de eficiência. Catalisadores: ganhos de eficiência, venda/otimização de ativos, acordos judiciais/regulatórios, redução de dívida. Monitorar: EBITDA recorrente, dívida líquida/EBITDA, CAPEX, contingências, geração de caixa e qualidade do lucro. Perguntas IA: “O resultado é recorrente?” “Contingências cresceram?” “Dívida está caindo com geração de caixa real?”
+
+CPFE3 — CPFL Energia
+O que é / como ganha dinheiro: holding com distribuição/geração/comercialização; perfil geralmente defensivo em partes reguladas. Moat: ativos maduros, base regulada, escala regional. Drivers: revisões tarifárias, perdas (técnicas e não técnicas), inadimplência, CAPEX e regulação (ANEEL). Riscos: eventos climáticos (impacto em rede), mudanças regulatórias, pressão em perdas/qualidade de serviço. Catalisadores: revisão tarifária favorável, eficiência operacional, expansão disciplinada. Monitorar: EBITDA, perdas, inadimplência, CAPEX, alavancagem, indicadores regulatórios. Perguntas IA: “Perdas subiram?” “Tarifa reajustou?” “CAPEX está pressionando caixa?”
+
+ISAE4 — ISA CTEEP
+O que é / como ganha dinheiro: transmissão (receita geralmente via RAP regulada), perfil de previsibilidade e dividendos. Moat: concessões de transmissão com contratos e regras regulatórias. Drivers: reajustes de RAP, novos projetos/leilões, execução de obras, custo de dívida. Riscos: atraso em obras, penalidades regulatórias, custo de capital (juros), mudanças regulatórias. Catalisadores: novos projetos/entradas de RAP, redução do custo de dívida, conclusão de obras. Monitorar: RAP, cronograma de obras, CAPEX, dívida, caixa e payout. Perguntas IA: “O crescimento vem de novos projetos ou apenas reajustes?” “Execução de obra está no prazo?”
+
+SAPR11 — Sanepar
+O que é / como ganha dinheiro: saneamento (água e esgoto) com forte regulação e contratos estaduais. Moat: concessões/regulação, essencialidade do serviço, barreira de entrada. Drivers: revisões tarifárias, investimentos (universalização), eficiência operacional, perdas, inadimplência, risco hídrico. Riscos: interferência política/regulatória, eventos climáticos/seca, necessidade de CAPEX alto. Catalisadores: revisão tarifária, melhora de eficiência/perdas, expansão de cobertura. Monitorar: CAPEX, endividamento, índice de perdas, tarifa média, indicadores operacionais. Perguntas IA: “CAPEX está aumentando dívida?” “Perdas estão caindo?” “Revisão tarifária foi favorável?”
+
+PETR4 — Petrobras (fundada em 1953)
+O que é / como ganha dinheiro: exploração e produção (E&P), refino, gás/energia, logística; altamente sensível a preço do petróleo e câmbio. Moat: escala, expertise em offshore, posição relevante no Brasil. Drivers: Brent, câmbio, política de preços de combustíveis, CAPEX, custo de extração (lifting cost), volume produzido/refinado, dividendos/payout. Riscos: risco político (estratégia e preços), volatilidade do petróleo, riscos ambientais e de integridade, mudanças regulatórias. Catalisadores: alta/queda do petróleo, mudanças de governança e política de preços, decisões de dividendos, desinvestimentos. Monitorar: fluxo de caixa livre, CAPEX, dívida, custo de extração, margem de refino, política de preços e payout. Perguntas IA: “Dividendos vêm de FCF ou de ajuste contábil?” “Há risco de controle de preços?” “Dívida e CAPEX estão sob controle?”
+
+VALE3 — Vale (fundada em 1942)
+O que é / como ganha dinheiro: mineração (minério de ferro principalmente) + logística; exposta à demanda global (China) e preços de commodities. Moat: minério de alta relevância, infraestrutura logística integrada, escala global. Drivers: preço do minério, demanda chinesa, custos/qualidade do produto, câmbio, volume embarcado. Riscos: acidentes ambientais, licenciamento/regulação, volatilidade de commodities, execução operacional. Catalisadores: retomada/queda da China, mudanças de oferta global, projetos de expansão, dividendos. Monitorar: custos (C1), volume, prêmio de qualidade, CAPEX, provisões/contingências e política de remuneração. Perguntas IA: “A margem caiu por preço ou custo?” “Risco de contingência aumentou?” “Dividendos são cíclicos?”
+
+GGBR4 — Gerdau
+O que é / como ganha dinheiro: siderurgia e aço (muito ligado a ciclo de construção/infra/indústria). Moat: escala, footprint no Brasil e Américas, eficiência e portfólio. Drivers: preço do aço, demanda doméstica e externa, custos (energia, sucata/minério), câmbio. Riscos: ciclo econômico, concorrência/importações, volatilidade de custos. Catalisadores: retomada de construção e infraestrutura, melhora de spreads do aço, políticas de importação. Monitorar: EBITDA por região, volumes, custos, CAPEX, endividamento, ciclo de preços do aço. Perguntas IA: “Empresa está em topo de ciclo?” “Custos comprimiram margens?” “Volume ou preço explica a variação?”
+
+WEGE3 — WEG (fundada em 1961)
+O que é / como ganha dinheiro: bens de capital elétricos (motores, automação, energia, geração/transmissão, soluções industriais) com presença global. Moat: marca, engenharia, diversificação, escala, execução e internacionalização; histórico de crescimento consistente. Drivers: investimento industrial, transição energética, câmbio (exportações), CAPEX global, demanda por automação/eficiência energética. Riscos: desaceleração global, competição internacional, pressão cambial/custos, execução de aquisições. Catalisadores: expansão internacional, projetos em energia/automação, ciclos de CAPEX industrial. Monitorar: crescimento de receita, margens, mix de produtos, exposição externa, investimentos e aquisições. Perguntas IA: “Crescimento veio de volume ou câmbio?” “Margem sustentada?” “Qual o risco de desaceleração global?”
+
+EMBR3 — Embraer (fundada em 1969)
+O que é / como ganha dinheiro: aeronaves comerciais regionais, aviação executiva e defesa; depende de carteira de pedidos (backlog), entregas e câmbio. Moat: nicho forte em jatos regionais, tecnologia, histórico e base instalada. Drivers: backlog, ritmo de entregas, cadeia de suprimentos, dólar, margens por programa, contratos de defesa. Riscos: atrasos de fornecedores, ciclos de aviação, custo financeiro, variação cambial, riscos de programa/projeto. Catalisadores: novos pedidos, normalização da cadeia, lançamentos, melhora de margens e entregas. Monitorar: backlog, entregas trimestrais, margem, dívida/caixa, exposição cambial. Perguntas IA: “O que mudou no backlog?” “Entrega atrasou?” “Margem melhorou por mix?”
+
+TUPY3 — Tupy
+O que é / como ganha dinheiro: autopeças/componentes (fundidos) para veículos e máquinas; sensível a ciclo industrial e automotivo. Moat: engenharia/qualidade, contratos, capacidade produtiva, clientes relevantes. Drivers: produção de caminhões/máquinas, demanda externa, câmbio, custo de energia/insumos. Riscos: ciclo automotivo, concentração de clientes, execução operacional, custos. Catalisadores: retomada de investimentos industriais/infra, câmbio favorável exportação, novos contratos. Monitorar: receita por segmento, margens, CAPEX, endividamento, exposição a clientes. Perguntas IA: “Quanto do resultado depende de poucos clientes?” “Ciclo industrial está ajudando ou atrapalhando?”
+
+LREN3 — Lojas Renner
+O que é / como ganha dinheiro: varejo de vestuário (moda), com eficiência logística e marca forte; sensível a consumo e renda. Moat: marca, escala, execução, logística/estoques. Drivers: renda e confiança do consumidor, inflação, juros (crédito), gestão de estoques e margem bruta. Riscos: queda de consumo, excesso de estoque (remarcação), competição, deterioração de crédito (se financiar). Catalisadores: queda de juros, melhora do consumo, coleções com melhor aceitação, eficiência. Monitorar: vendas mesmas lojas (SSS), margem bruta, estoques/dias, despesas, fluxo de caixa. Perguntas IA: “Margem caiu por remarcação?” “Estoque está saudável?” “Consumo reagiu?”
+
+MGLU3 — Magazine Luiza
+O que é / como ganha dinheiro: varejo/e-commerce e ecossistema digital; muito sensível a juros, consumo e execução de logística/marketplace. Moat: marca digital, base, marketplace, logística (mas disputa forte). Drivers: Selic (custo financeiro), consumo, inadimplência/cred, margem (frete), eficiência operacional, crescimento do marketplace. Riscos: alavancagem operacional e financeira, pressão de margens, concorrência intensa, ciclo de juros alto. Catalisadores: queda relevante de juros, retomada do varejo, ganhos de eficiência, melhora de margem e caixa. Monitorar: margem bruta, despesas, resultado financeiro, geração de caixa, estoque, GMV (se disponível). Perguntas IA: “A empresa está queimando caixa?” “O resultado financeiro está esmagando o operacional?” “Eficiência está melhorando?”
+
+MRVE3 — MRV Engenharia
+O que é / como ganha dinheiro: construção residencial (muito ligada a crédito imobiliário/Minha Casa Minha Vida e ciclo de juros). Moat: escala, execução, presença nacional. Drivers: juros e crédito imobiliário, custo de construção, velocidade de vendas, distratos, repasses. Riscos: ciclo imobiliário, aumento de custos, atrasos/execução, mudanças em programas habitacionais. Catalisadores: queda de juros, incentivo habitacional, melhora de margens e vendas. Monitorar: margem bruta, landbank, velocidade de vendas, endividamento, geração de caixa. Perguntas IA: “Margem está pressionada por custo?” “Vendas/repasses aceleraram?” “Dívida está controlada?”
+
+ABEV3 — Ambev (formação em 1999; incorporada em 1998)
+O que é / como ganha dinheiro: bebidas (cerveja e não alcoólicas), marca e distribuição; geralmente defensiva, mas sensível a consumo e custos. Moat: marcas fortes, escala, distribuição e eficiência. Drivers: volume, mix/premiumização, custos (insumos), câmbio (alguns insumos), clima/sazonalidade. Riscos: competição, pressão de custos, mudança de hábitos de consumo, tributação. Catalisadores: queda de custos, melhora de mix, sazonalidade positiva, eficiência. Monitorar: volume, receita líquida, margem EBITDA, custos, participação de mercado (se disponível). Perguntas IA: “Margem caiu por custo ou preço?” “Mix melhorou?” “Consumo desacelerou?”
+
+JBSS3 — JBS
+O que é / como ganha dinheiro: proteína animal global (bovinos/aves/suínos/alimentos processados); cíclica por spreads e custos. Moat: escala global, diversificação geográfica e de proteínas. Drivers: preço do gado e grãos, spreads, demanda externa, câmbio, mercados internacionais. Riscos: volatilidade de commodities, riscos sanitários, questões ESG e reputacionais, barreiras comerciais. Catalisadores: melhora de spreads, abertura de mercados, câmbio, redução de custos. Monitorar: EBITDA por divisão, alavancagem, capex, fluxo de caixa, ciclo de gado. Perguntas IA: “Qual divisão puxou o resultado?” “Alavancagem está segura?” “Spread está em qual fase do ciclo?”
+
+VIVT3 — Telefônica Brasil (Vivo)
+O que é / como ganha dinheiro: telecom (móvel/fibra/serviços digitais); receita recorrente e capex relevante. Moat: qualidade de rede, base de clientes, marca. Drivers: ARPU, churn, competição, expansão fibra/5G, capex, eficiência. Riscos: competição de preços, alto capex, regulação, tecnologia. Catalisadores: aumento de ARPU, eficiência, crescimento fibra, monetização de serviços digitais. Monitorar: receita móvel/fixa, ARPU, churn, capex, dívida, FCF. Perguntas IA: “Crescimento vem de preço ou base?” “Capex está pressionando caixa?” “Churn piorou?”
+
+TIMS3 — TIM Brasil
+O que é / como ganha dinheiro: telecom móvel (principalmente); dinâmica parecida com Vivo, com foco em eficiência e base. Drivers: ARPU, churn, integração de ativos (quando ocorre), competição, 5G, capex. Riscos: guerra de preços, capex alto, regulação. Catalisadores: ganhos de eficiência, melhora de ARPU, expansão 5G. Monitorar: ARPU, churn, margem, capex, FCF. Perguntas IA: “ARPU subiu?” “Ganhou market share?” “Capex e dívida sustentáveis?”
+
+TOTS3 — TOTVS (fundada em 1983)
+O que é / como ganha dinheiro: software de gestão (ERP) e ecossistema (techfin/serviços); receita recorrente e alto valor agregado. Moat: liderança local, switching cost alto, ecossistema, base instalada. Drivers: crescimento de receita recorrente, churn, upsell/cross-sell, aquisições, margem. Riscos: execução de M&A, competição, desaceleração de investimento em TI. Catalisadores: expansão do ecossistema, aquisições bem integradas, aumento de receita recorrente. Monitorar: ARR/receita recorrente (se tiver), margem, CAC/LTV (se disponível), crescimento orgânico. Perguntas IA: “Crescimento é orgânico ou aquisição?” “Receita recorrente está acelerando?” “Margem sustenta expansão?”
+
+RDOR3 — Rede D’Or
+O que é / como ganha dinheiro: hospitais e serviços de saúde privados; forte componente de execução, ocupação, mix, eficiência. Moat: escala, qualidade, localização, rede e integração com serviços. Drivers: taxa de ocupação, ticket/mix, controle de custos, expansão/aquisições. Riscos: inflação médica, regulação, integração de aquisições, pressão de custos. Catalisadores: expansão de capacidade, sinergias, melhora de eficiência e mix. Monitorar: EBITDA/margens, taxa de ocupação (se disponível), dívida/FCF, capex, aquisições. Perguntas IA: “Margem caiu por custo?” “Aquisições geraram sinergia?” “Crescimento é sustentável?”
+
+HAPV3 — Hapvida (origem em 1979)
+O que é / como ganha dinheiro: planos de saúde com verticalização (rede própria); tese geralmente gira em sinistralidade, escala e integração. Moat: verticalização (controle de custo), base grande, presença regional. Drivers: sinistralidade, reajustes, ticket, gestão de custos, integração (quando há M&A). Riscos: pressão de sinistralidade, regulação, judicialização, execução de integração e qualidade de serviço. Catalisadores: queda de sinistralidade, reajustes favoráveis, eficiência e normalização operacional. Monitorar: sinistralidade, margem, despesa administrativa, NPS/qualidade (se houver), dívida e caixa. Perguntas IA: “Sinistralidade está normalizando?” “Reajustes cobrem custos?” “Integração está funcionando?”
+
+FLRY3 — Fleury
+O que é / como ganha dinheiro: medicina diagnóstica e serviços de saúde; tende a ser mais defensiva, mas com competição e pressão de preços. Moat: marca, qualidade, capilaridade, relacionamento com operadoras e premium. Drivers: volume de exames, mix, expansão, parcerias/operadoras, eficiência. Riscos: competição, pressão de preços, mudanças regulatórias, inflação de custos. Catalisadores: expansão/novas unidades, melhora de mix, eficiência, consolidação do setor. Monitorar: receita, margem, volume/mix, capex, geração de caixa. Perguntas IA: “Crescimento vem de volume ou preço?” “Margem pressionada por custo?” “Expansão gera retorno?”
+
 === FIM DA BASE DE CONHECIMENTO ===`;
 
 const SYSTEM_PROMPT = `Você é o Hodl 🤖, assistente técnico do projeto "Investidor Inteligente", especializado EXCLUSIVAMENTE em ANÁLISE FUNDAMENTALISTA, VALUATION e estratégia BUY AND HOLD.
 
 PERSONALIDADE:
 - Amigável, educativo e motivador
-- Usa linguagem simples e acessível
+- Usa linguagem simples e acessível, com um toque de humor leve quando apropriado
 - Explica conceitos de forma clara para iniciantes
 - Sempre incentiva o aprendizado e a paciência no mercado
 - Nunca recomenda compra/venda direta, apenas educa sobre fundamentos
 - Defende firmemente o investimento de longo prazo com base em fundamentos
+- Procura criar empatia com o usuário, especialmente quando ele demonstra curiosidade ou insegurança
 
 POSICIONAMENTO IDEOLÓGICO RÍGIDO:
 - Você é 100% a favor da ANÁLISE FUNDAMENTALISTA e do VALUE INVESTING
@@ -85,8 +224,8 @@ REGRAS IMPORTANTES:
 - Nunca invente preços, retornos, indicadores ou dados que não estejam no contexto. Se alguma informação não estiver disponível, diga claramente que o dado não está disponível.
 - Nunca recomende compra ou venda explicitamente — eduque sobre os fundamentos e fale em termos de “parece caro/barato”, “há/Não há margem de segurança”, “riscos” e “características”.
 - Responda sempre em português do Brasil
-- Seja conciso (máx 3-4 parágrafos)
-- Use emojis com moderação
+- Seja conciso (máx 3-4 parágrafos), exceto quando o usuário pedir mais detalhes
+- Use emojis com moderação, mas não tenha medo de usá-los em respostas mais leves (como curiosidades ou elogios)
 - Quando falar de indicadores, SEMPRE explique o que significam e como interpretar
 - Sugira a aba "Aprender" quando o usuário tiver dúvidas conceituais
 - Sempre mencione Graham, Buffett ou Bazin quando relevante
@@ -113,6 +252,14 @@ COMPORTAMENTO POR PÁGINA:
 - Carteira: Analise distribuição setorial APENAS dos ativos que o usuário possui, sugira diversificação se concentrado
 - Ativo específico: Analise TODOS os indicadores do contexto, calcule valuation (Graham + Bazin), identifique pontos fortes/fracos
 - Aprender: Aprofunde nos conceitos, cite os autores (Graham, Buffett, Lynch, Bazin), use exemplos práticos
+
+QUANDO O USUÁRIO PERGUNTAR SOBRE O NOME "HODL":
+- Se a mensagem contiver frases como "Por que seu nome é HODL?" ou "O que significa HODL?", use a história descrita na seção de curiosidade sobre HODL da BASE DE CONHECIMENTO.
+- Responda de forma bem simpática e humana, em no máximo 6–8 linhas.
+- Comece com uma frase carismática (por exemplo: "Meu nome tem história de fórum e typo lendário 😄").
+- Conte a história COMPLETA: fórum Bitcointalk em 2013, post "I AM HODLING", erro de digitação de "HOLDING", o autor assumindo que é péssimo trader, dizendo que ia apenas segurar o Bitcoin mesmo bêbado e irritado com a volatilidade, e como a comunidade abraçou isso.
+- Explique que a comunidade transformou o erro em símbolo de paciência, disciplina e foco no longo prazo, e que depois veio a interpretação "Hold On for Dear Life".
+- Termine com uma frase charmosa que reforce a filosofia E crie um gancho para o aprendizado, por exemplo: "Eu nasci de um erro de digitação, mas vivo de estratégia e paciência no longo prazo. Se quiser entender melhor essa mentalidade de longo prazo, dá uma passada na aba Aprender 😉".
 
 ${KNOWLEDGE_BASE}`;
 
@@ -243,11 +390,22 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
       const t = response ? await response.text() : "No response";
       console.error("AI error:", status, t);
-      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+      // Fallback "offline": envia uma resposta simples em formato SSE,
+      // sem depender de provedores externos de IA.
+      const fallbackText =
+        "No momento não consegui falar com o serviço de IA externo, " +
+        "mas você ainda pode usar os dados e indicadores da plataforma normalmente. " +
+        "Tente novamente mais tarde ou ajuste sua pergunta.";
+
+      const sseBody = `data: ${JSON.stringify(fallbackText)}\n\n`;
+
+      return new Response(sseBody, {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
       });
     }
 
