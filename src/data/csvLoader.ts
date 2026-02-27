@@ -16,7 +16,7 @@ let _loaded = false;
 let _source: "storage" | "local" | null = null;
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const STORAGE_PRICES_PATH = `${SUPABASE_URL}/storage/v1/object/public/market-data/prices/prices_latest.csv`;
+const STORAGE_PRICES_PATH = `${SUPABASE_URL}/storage/v1/object/market-data/prices/prices_latest.csv`;
 const LOCAL_PRICES_PATH = "/data/prices_daily_24assets_plus_ibov_5y.csv";
 
 /**
