@@ -1,9 +1,10 @@
 /**
  * CSV Data Loader — Smart Source with Supabase Storage fallback
- * 
- * Priority:
- * 1. Try Supabase Storage "latest" CSV (updated by n8n pipeline)
- * 2. Fall back to local public/data/ CSV (static, always works)
+ *
+ * Prioridade:
+ * 1. Tenta primeiro o CSV "latest" em Supabase Storage
+ *    (atualizado automaticamente pelo pipeline OpenBB → GitHub Actions)
+ * 2. Se falhar, faz fallback para o CSV local em public/data/ (sempre disponível)
  */
 
 import type { OHLCVDay } from "./investments";

@@ -1,3 +1,170 @@
+import sys
+from pathlib import Path
+from datetime import datetime
+
+import pandas as pd
+
+try:
+    from openbb import obb
+except Exception as e:  # pragma: no cover - defensive import for CI
+    print("[openbb_refresh] Erro ao importar OpenBB. Verifique se 'openbb' está instalado.", file=sys.stderr)
+    raise
+
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+SOURCE_CSV = ROOT_DIR / "public" / "data" / "prices_daily_24assets_plus_ibov_5y.csv"
+OUTPUT_DIR = ROOT_DIR / "output"
+OUTPUT_CSV = OUTPUT_DIR / "prices_latest.csv"
+
+
+def load_existing_tickers() -> list[str]:
+    """
+    Lê o CSV atual do projeto e extrai a lista de tickers únicos.
+    Garante que o novo dataset terá o MESMO conjunto de ativos (quando disponível no provider).
+    """
+    if not SOURCE_CSV.exists():
+        raise FileNotFoundError(f"CSV de origem não encontrado em {SOURCE_CSV}")
+
+    df = pd.read_csv(SOURCE_CSV)
+    if "ticker" not in df.columns:
+        raise ValueError("CSV de origem não possui coluna 'ticker'.")
+
+    tickers = sorted(set(str(t).strip() for t in df["ticker"].dropna().unique()))
+    return tickers
+
+
+def b3_to_yfinance_symbol(ticker: str) -> str:
+    """
+    Converte ticker B3 simples (ex: TIMS3) para símbolo usado pelo provider yfinance.
+    Regra simples: adiciona sufixo '.SA' quando não houver sufixo/índice explícito.
+    """
+    upper = ticker.upper().strip()
+
+    # Índices ou códigos especiais podem ser tratados aqui se necessário
+    special_map = {
+        "IBOV": "^BVSP",
+    }
+    if upper in special_map:
+        return special_map[upper]
+
+    # Se já parece ter sufixo ou caractere especial, não mexe
+    if any(sep in upper for sep in [".", "=", "^", ":"]):
+        return upper
+
+    return f"{upper}.SA"
+
+
+def fetch_prices_for_ticker(ticker: str) -> pd.DataFrame | None:
+    """
+    Usa OpenBB + provider yfinance para buscar histórico de preços de um ticker.
+    Retorna DataFrame com colunas:
+      date, open, high, low, close, volume, ticker
+    ou None em caso de falha (para não quebrar o pipeline inteiro).
+    """
+    symbol = b3_to_yfinance_symbol(ticker)
+    print(f"[openbb_refresh] Baixando dados para {ticker} (provider: yfinance, symbol: {symbol})...")
+
+    try:
+        # Período longo o suficiente para cobrir o dataset atual
+        data = obb.equity.price.historical(
+            symbol=symbol,
+            provider="yfinance",
+            start_date="2015-01-01",
+        )
+        df = data.to_df()
+    except Exception as e:
+        print(f"[openbb_refresh] Falha ao buscar dados para {ticker}: {e}", file=sys.stderr)
+        return None
+
+    if df is None or df.empty:
+        print(f"[openbb_refresh] Nenhum dado retornado para {ticker}", file=sys.stderr)
+        return None
+
+    # Garante que 'date' vire coluna explícita
+    if "date" in df.index.names or df.index.name == "date":
+        df = df.reset_index()
+
+    if "date" not in df.columns:
+        # Alguns providers podem usar 'datetime' ou similar
+        for alt in ("datetime", "timestamp"):
+            if alt in df.columns:
+                df = df.rename(columns={alt: "date"})
+                break
+
+    if "date" not in df.columns:
+        print(f"[openbb_refresh] DataFrame sem coluna de data para {ticker}. Colunas: {list(df.columns)}", file=sys.stderr)
+        return None
+
+    # Normaliza colunas para o schema do projeto
+    rename_map = {
+        "Open": "open",
+        "High": "high",
+        "Low": "low",
+        "Close": "close",
+        "Adj Close": "close",
+        "Volume": "volume",
+    }
+    df = df.rename(columns=rename_map)
+
+    required_cols = ["open", "high", "low", "close", "volume"]
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        print(
+            f"[openbb_refresh] Colunas obrigatórias faltando para {ticker}: {missing}. "
+            f"Colunas disponíveis: {list(df.columns)}",
+            file=sys.stderr,
+        )
+        return None
+
+    out = pd.DataFrame()
+    out["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+    out["open"] = pd.to_numeric(df["open"], errors="coerce")
+    out["high"] = pd.to_numeric(df["high"], errors="coerce")
+    out["low"] = pd.to_numeric(df["low"], errors="coerce")
+    out["close"] = pd.to_numeric(df["close"], errors="coerce")
+    out["volume"] = pd.to_numeric(df["volume"], errors="coerce")
+    out["ticker"] = ticker
+
+    # Remove linhas totalmente inválidas
+    out = out.dropna(subset=["date", "close"])
+
+    if out.empty:
+        print(f"[openbb_refresh] Dataset filtrado ficou vazio para {ticker}", file=sys.stderr)
+        return None
+
+    return out[["date", "open", "high", "low", "close", "volume", "ticker"]]
+
+
+def main() -> int:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    tickers = load_existing_tickers()
+    print(f"[openbb_refresh] {len(tickers)} tickers encontrados no CSV base.")
+
+    all_frames: list[pd.DataFrame] = []
+
+    for tk in tickers:
+        df = fetch_prices_for_ticker(tk)
+        if df is not None and not df.empty:
+            all_frames.append(df)
+
+    if not all_frames:
+        print("[openbb_refresh] Nenhum ticker pôde ser atualizado. Abortando.", file=sys.stderr)
+        return 1
+
+    combined = pd.concat(all_frames, ignore_index=True)
+
+    # Ordena por ticker e data para manter contrato com o frontend
+    combined = combined.sort_values(["ticker", "date"])
+
+    combined.to_csv(OUTPUT_CSV, index=False)
+    print(f"[openbb_refresh] CSV gerado com sucesso em {OUTPUT_CSV} ({len(combined)} linhas).")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
 #!/usr/bin/env python3
 """
 OpenBB Data Refresh Script

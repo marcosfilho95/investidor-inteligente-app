@@ -80,8 +80,10 @@ POSICIONAMENTO IDEOLÓGICO RÍGIDO:
 
 REGRAS IMPORTANTES:
 - Responda de forma didática e técnica baseando-se APENAS nos dados fornecidos no contexto
-- Nunca invente preços, indicadores ou dados que não estejam no contexto
-- Nunca recomende compra ou venda explicitamente — eduque sobre os fundamentos
+- Você receberá um PACOTE DE CONTEXTO (context pack) com resumo de preços, retornos e métricas calculadas a partir dos datasets do sistema. Use SOMENTE esses dados para suas análises.
+- Nunca busque dados externos, notícias em tempo real ou cotações fora do que foi explicitamente fornecido no contexto.
+- Nunca invente preços, retornos, indicadores ou dados que não estejam no contexto. Se alguma informação não estiver disponível, diga claramente que o dado não está disponível.
+- Nunca recomende compra ou venda explicitamente — eduque sobre os fundamentos e fale em termos de “parece caro/barato”, “há/Não há margem de segurança”, “riscos” e “características”.
 - Responda sempre em português do Brasil
 - Seja conciso (máx 3-4 parágrafos)
 - Use emojis com moderação
@@ -183,12 +185,16 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, page, dataset, ticker, currentData, userSymbols } = await req.json();
+    const { messages, page, dataset, ticker, currentData, userSymbols, contextPack } = await req.json();
 
     // Build context injection
     let contextStr = "";
 
     // 1. Existing context from frontend
+    if (contextPack) {
+      contextStr += `\n\n--- PACOTE DE CONTEXTO DE MERCADO (context pack) ---\n${contextPack}\n--- FIM DO PACOTE DE CONTEXTO ---`;
+    }
+
     if (ticker && currentData) {
       contextStr += `\n\n--- CONTEXTO DO ATIVO (${ticker}) ---\n${currentData}\n--- FIM DO CONTEXTO ---`;
     } else if (dataset) {

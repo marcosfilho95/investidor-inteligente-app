@@ -1,3 +1,78 @@
+import sys
+from pathlib import Path
+
+import pandas as pd
+
+
+def validate_file_exists(path: Path) -> None:
+    if not path.exists():
+        raise FileNotFoundError(f"Arquivo não encontrado: {path}")
+    if not path.is_file():
+        raise ValueError(f"Caminho não é um arquivo: {path}")
+    if path.stat().st_size == 0:
+        raise ValueError(f"Arquivo está vazio: {path}")
+
+
+def validate_schema(df: pd.DataFrame) -> None:
+    # Colunas mínimas obrigatórias para o app funcionar
+    required_min = {"date", "ticker", "close"}
+    missing_min = required_min - set(df.columns)
+    if missing_min:
+        raise ValueError(f"Colunas mínimas ausentes: {sorted(missing_min)}. Esperado pelo menos {sorted(required_min)}.")
+
+    # Colunas esperadas pelo loader atual (schema completo)
+    expected_full = ["date", "open", "high", "low", "close", "volume", "ticker"]
+    missing_full = [c for c in expected_full if c not in df.columns]
+    if missing_full:
+        # Mantém validação flexível, mas deixa claro no log
+        print(
+            f"[validate_dataset] Atenção: colunas esperadas ausentes: {missing_full}. "
+            "O frontend espera exatamente o schema original.",
+            file=sys.stderr,
+        )
+
+
+def validate_dates(df: pd.DataFrame) -> None:
+    if "date" not in df.columns:
+        raise ValueError("Coluna 'date' não encontrada no dataset.")
+
+    parsed = pd.to_datetime(df["date"], errors="coerce", format=None)
+    invalid_count = parsed.isna().sum()
+    if invalid_count > 0:
+        raise ValueError(f"Existem {invalid_count} datas inválidas no dataset.")
+
+
+def validate_not_empty(df: pd.DataFrame) -> None:
+    if df.empty:
+        raise ValueError("Dataset não possui linhas.")
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 2:
+        print("Uso: python scripts/validate_dataset.py <caminho_para_csv>", file=sys.stderr)
+        return 1
+
+    csv_path = Path(argv[1]).resolve()
+
+    try:
+        validate_file_exists(csv_path)
+
+        df = pd.read_csv(csv_path)
+
+        validate_not_empty(df)
+        validate_schema(df)
+        validate_dates(df)
+
+        print(f"[validate_dataset] Dataset válido: {csv_path} ({len(df)} linhas).")
+        return 0
+    except Exception as e:
+        print(f"[validate_dataset] Falha na validação: {e}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))
+
 #!/usr/bin/env python3
 """
 Dataset Validator — validates CSV outputs before upload to Supabase Storage.
