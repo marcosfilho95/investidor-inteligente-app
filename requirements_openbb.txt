@@ -1,2 +1,4 @@
 openbb
 pandas
+yfinance
+supabase

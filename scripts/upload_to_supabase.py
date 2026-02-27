@@ -1,42 +1,82 @@
 #!/usr/bin/env python3
 """
-Upload validated datasets to Supabase Storage and update metadata.
+Upload validated datasets to Supabase Storage and update SQL metadata/cache.
 
 Usage:
-    python scripts/upload_to_supabase.py
-
-Environment variables (required):
-    SUPABASE_URL          - Supabase project URL
-    SUPABASE_SERVICE_KEY  - Service role key (NEVER use anon key for writes)
+  python scripts/upload_to_supabase.py
 """
+
+from __future__ import annotations
 
 import csv
 import hashlib
 import os
 import sys
+import time
+import urllib.request
 from datetime import datetime
 
 try:
     from supabase import create_client
 except ImportError:
-    print("ERROR: supabase package not installed. Run: pip install supabase")
+    print("ERROR: supabase package not installed. Run: pip install supabase", file=sys.stderr)
     sys.exit(1)
+
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
 TODAY = datetime.now().strftime("%Y-%m-%d")
 BUCKET = "market-data"
+PRICES_LATEST_OBJECT = "prices/prices_latest.csv"
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+
+def utc_ts() -> str:
+    return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+
+def log(msg: str) -> None:
+    print(f"[upload_to_supabase] {utc_ts()} {msg}")
+
+
+def load_env_files() -> None:
+    for filename in [".env", ".env.local"]:
+        env_path = os.path.join(ROOT_DIR, filename)
+        if not os.path.exists(env_path):
+            continue
+        with open(env_path, encoding="utf-8") as f:
+            for raw_line in f:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip("'").strip('"')
+                if key and key not in os.environ:
+                    os.environ[key] = value
+        log(f"Loaded env file={env_path}")
+
+
+def project_ref_from_url(url: str) -> str:
+    try:
+        host = url.split("//", 1)[1].split("/", 1)[0]
+        return host.split(".", 1)[0]
+    except Exception:
+        return "unknown"
 
 
 def get_supabase():
     url = os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_SERVICE_KEY")
+    key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
     if not url or not key:
-        print("ERROR: SUPABASE_URL and SUPABASE_SERVICE_KEY must be set")
+        print(
+            "ERROR: SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_SERVICE_ROLE_KEY) must be set",
+            file=sys.stderr,
+        )
         sys.exit(1)
     return create_client(url, key)
 
 
-def file_checksum(filepath):
+def file_checksum(filepath: str) -> str:
     h = hashlib.md5()
     with open(filepath, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
@@ -44,63 +84,90 @@ def file_checksum(filepath):
     return h.hexdigest()
 
 
-def count_rows(filepath):
-    with open(filepath) as f:
-        return sum(1 for _ in f) - 1  # exclude header
+def count_rows(filepath: str) -> int:
+    with open(filepath, encoding="utf-8") as f:
+        return max(0, sum(1 for _ in f) - 1)
 
 
-def upload_file(sb, filepath, storage_path):
-    """Upload a file to Supabase Storage."""
+def upload_file(sb, filepath: str, storage_path: str) -> None:
     with open(filepath, "rb") as f:
         content = f.read()
 
-    # Upload (upsert)
+    local_md5 = hashlib.md5(content).hexdigest()
     try:
         sb.storage.from_(BUCKET).upload(
             storage_path,
             content,
             file_options={"content-type": "text/csv", "upsert": "true"},
         )
-        # Evita caracteres Unicode que quebram em consoles Windows (cp1252)
-        print(f"  OK Uploaded -> {BUCKET}/{storage_path}")
-    except Exception as e:
-        print(f"  FAIL Upload failed for {storage_path}: {e}")
-        raise
+        log(f"Uploaded {BUCKET}/{storage_path} bytes={len(content)} md5={local_md5}")
+    except Exception as exc:
+        raise RuntimeError(f"Upload failed for {BUCKET}/{storage_path}: {exc}") from exc
+
+    # Verification to avoid false negatives from immediate cache reads:
+    # fetch through a short-lived signed URL and retry a few times.
+    remote_md5 = None
+    supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    for attempt in range(1, 7):
+        try:
+            signed = sb.storage.from_(BUCKET).create_signed_url(storage_path, 60)
+            signed_url = signed.get("signedURL") or signed.get("signed_url")
+            if not signed_url:
+                raise RuntimeError(f"Signed URL missing for {BUCKET}/{storage_path}: {signed}")
+            if not signed_url.startswith("http"):
+                signed_url = f"{supabase_url}/storage/v1{signed_url}"
+            sep = "&" if "?" in signed_url else "?"
+            signed_url = f"{signed_url}{sep}t={int(time.time() * 1000)}"
+
+            with urllib.request.urlopen(signed_url, timeout=20) as resp:
+                downloaded = resp.read()
+
+            remote_md5 = hashlib.md5(downloaded).hexdigest()
+            if remote_md5 == local_md5:
+                log(f"Verified {BUCKET}/{storage_path} md5={remote_md5} attempt={attempt}")
+                return
+        except Exception as exc:
+            log(f"Verification attempt={attempt} failed for {BUCKET}/{storage_path}: {exc}")
+
+        time.sleep(min(2 * attempt, 10))
+
+    raise RuntimeError(
+        f"Verification failed for {BUCKET}/{storage_path}: "
+        f"local_md5={local_md5} remote_md5={remote_md5}"
+    )
 
 
 def update_meta(sb, dataset_name, version_date, file_path, row_count, checksum, status="ok", message=None):
-    """Insert a record into dataset_meta."""
-    sb.table("dataset_meta").insert({
-        "dataset_name": dataset_name,
-        "version_date": version_date,
-        "file_path": file_path,
-        "row_count": row_count,
-        "checksum": checksum,
-        "status": status,
-        "message": message,
-    }).execute()
-    print(f"  ✓ Metadata recorded: {dataset_name} ({status})")
+    sb.table("dataset_meta").insert(
+        {
+            "dataset_name": dataset_name,
+            "version_date": version_date,
+            "file_path": file_path,
+            "row_count": row_count,
+            "checksum": checksum,
+            "status": status,
+            "message": message,
+        }
+    ).execute()
+    log(
+        f"Inserted dataset_meta dataset={dataset_name} status={status} "
+        f"version_date={version_date} row_count={row_count}"
+    )
 
 
-def update_price_cache(sb, prices_filepath):
-    """Parse prices CSV and update the price_cache table with summary stats."""
-    print("\n3) Updating price_cache...")
-
-    with open(prices_filepath) as f:
+def update_price_cache(sb, prices_filepath: str) -> None:
+    log("Updating table public.price_cache")
+    with open(prices_filepath, encoding="utf-8") as f:
         reader = csv.DictReader(f)
         rows = list(reader)
 
-    # Group by ticker
     by_ticker = {}
-    for r in rows:
-        tk = r["ticker"]
-        if tk not in by_ticker:
-            by_ticker[tk] = []
-        by_ticker[tk].append(r)
+    for row in rows:
+        tk = row["ticker"]
+        by_ticker.setdefault(tk, []).append(row)
 
-    # Sort each ticker by date
-    for tk in by_ticker:
-        by_ticker[tk].sort(key=lambda x: x["date"])
+    for ticker in by_ticker:
+        by_ticker[ticker].sort(key=lambda x: x["date"])
 
     ibov_data = by_ticker.get("IBOV", [])
 
@@ -133,70 +200,87 @@ def update_price_cache(sb, prices_filepath):
         ret_30d, price_30d = get_return(data, 30)
         ret_12m, price_12m = get_return(data, 252)
 
-        cache_rows.append({
-            "symbol": tk,
-            "current_price": current,
-            "price_7d_ago": price_7d,
-            "price_30d_ago": price_30d,
-            "price_12m_ago": price_12m,
-            "return_7d": ret_7d,
-            "return_30d": ret_30d,
-            "return_12m": ret_12m,
-            "ibov_return_7d": ibov_7d,
-            "ibov_return_30d": ibov_30d,
-            "ibov_return_12m": ibov_12m,
-            "updated_at": datetime.utcnow().isoformat(),
-        })
+        cache_rows.append(
+            {
+                "symbol": tk,
+                "current_price": current,
+                "price_7d_ago": price_7d,
+                "price_30d_ago": price_30d,
+                "price_12m_ago": price_12m,
+                "return_7d": ret_7d,
+                "return_30d": ret_30d,
+                "return_12m": ret_12m,
+                "ibov_return_7d": ibov_7d,
+                "ibov_return_30d": ibov_30d,
+                "ibov_return_12m": ibov_12m,
+                "updated_at": datetime.utcnow().isoformat(),
+            }
+        )
 
-    # Upsert all
     for row in cache_rows:
         sb.table("price_cache").upsert(row, on_conflict="symbol").execute()
-        print(f"  ✓ {row['symbol']}: R${row['current_price']}")
-
-    print(f"  Updated {len(cache_rows)} tickers in price_cache")
+    log(f"Upsert completed on public.price_cache symbols={len(cache_rows)}")
 
 
-def main():
-    print(f"=== Upload to Supabase — {TODAY} ===\n")
+def find_prices_file() -> str | None:
+    latest = os.path.join(OUTPUT_DIR, "prices_latest.csv")
+    if os.path.exists(latest):
+        return latest
+    files = sorted(
+        [f for f in os.listdir(OUTPUT_DIR) if f.startswith("prices_") and f.endswith(".csv")],
+        reverse=True,
+    )
+    if not files:
+        return None
+    return os.path.join(OUTPUT_DIR, files[0])
+
+
+def main() -> int:
+    load_env_files()
+    log(f"Start run date={TODAY}")
     sb = get_supabase()
+    supabase_url = os.environ.get("SUPABASE_URL", "")
+    log(f"Supabase project={project_ref_from_url(supabase_url)} url={supabase_url}")
+    log(f"Storage target bucket={BUCKET} latest_object={PRICES_LATEST_OBJECT}")
 
-    # Find latest files
-    files = os.listdir(OUTPUT_DIR)
-    prices_files = sorted([f for f in files if f.startswith("prices_") and f.endswith(".csv")], reverse=True)
-    macro_files = sorted([f for f in files if f.startswith("macro_") and f.endswith(".csv")], reverse=True)
+    if not os.path.isdir(OUTPUT_DIR):
+        raise RuntimeError(f"Output directory not found: {OUTPUT_DIR}")
 
-    # 1) Upload prices
-    if prices_files:
-        filepath = os.path.join(OUTPUT_DIR, prices_files[0])
-        print(f"1) Uploading prices: {prices_files[0]}")
-        checksum = file_checksum(filepath)
-        rows = count_rows(filepath)
-
-        # Upload versioned + latest
-        upload_file(sb, filepath, f"prices/prices_{TODAY}.csv")
-        upload_file(sb, filepath, "prices/prices_latest.csv")
-        update_meta(sb, "prices", TODAY, f"prices/prices_{TODAY}.csv", rows, checksum)
-
-        # Update price_cache
-        update_price_cache(sb, filepath)
-    else:
-        print("1) ❌ No prices file to upload")
+    prices_filepath = find_prices_file()
+    if not prices_filepath:
         update_meta(sb, "prices", TODAY, "", 0, "", status="failed", message="No prices file generated")
+        raise RuntimeError("No prices file found in output directory")
 
-    # 2) Upload macro
+    prices_checksum = file_checksum(prices_filepath)
+    prices_rows = count_rows(prices_filepath)
+    log(f"Local file selected={prices_filepath} rows={prices_rows} md5={prices_checksum}")
+
+    upload_file(sb, prices_filepath, f"prices/prices_{TODAY}.csv")
+    upload_file(sb, prices_filepath, PRICES_LATEST_OBJECT)
+    update_meta(sb, "prices", TODAY, f"prices/prices_{TODAY}.csv", prices_rows, prices_checksum, status="ok")
+    update_price_cache(sb, prices_filepath)
+
+    macro_files = sorted(
+        [f for f in os.listdir(OUTPUT_DIR) if f.startswith("macro_") and f.endswith(".csv")],
+        reverse=True,
+    )
     if macro_files:
-        filepath = os.path.join(OUTPUT_DIR, macro_files[0])
-        print(f"\n2) Uploading macro: {macro_files[0]}")
-        checksum = file_checksum(filepath)
-        rows = count_rows(filepath)
-        upload_file(sb, filepath, f"macro/macro_{TODAY}.csv")
-        upload_file(sb, filepath, "macro/macro_latest.csv")
-        update_meta(sb, "macro", TODAY, f"macro/macro_{TODAY}.csv", rows, checksum)
+        macro_filepath = os.path.join(OUTPUT_DIR, macro_files[0])
+        macro_checksum = file_checksum(macro_filepath)
+        macro_rows = count_rows(macro_filepath)
+        upload_file(sb, macro_filepath, f"macro/macro_{TODAY}.csv")
+        upload_file(sb, macro_filepath, "macro/macro_latest.csv")
+        update_meta(sb, "macro", TODAY, f"macro/macro_{TODAY}.csv", macro_rows, macro_checksum, status="ok")
     else:
-        print("\n2) ℹ️ No macro file — skipping (existing CSVs remain as fallback)")
+        log("No macro file found. Macro upload skipped.")
 
-    print(f"\n=== Upload complete ===")
+    log("Run completed successfully.")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"[upload_to_supabase] ERROR fatal: {exc}", file=sys.stderr)
+        raise SystemExit(1)

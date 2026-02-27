@@ -1,15 +1,14 @@
-name: Data Refresh (OpenBB → Supabase)
+name: Data Refresh (OpenBB -> Supabase)
 
 on:
   schedule:
-    # 21:00 UTC = 18:00 America/Fortaleza (horário padrão, sem DST)
+    # 21:00 UTC = 18:00 America/Fortaleza
     - cron: "0 21 * * *"
   workflow_dispatch: {}
 
 jobs:
   refresh-market-data:
     runs-on: ubuntu-latest
-
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -23,38 +22,15 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Python dependencies (OpenBB + pandas)
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements_openbb.txt
 
-      - name: Generate latest prices CSV with OpenBB
-        run: |
-          python scripts/openbb_refresh.py
-
-      - name: Validate generated dataset
-        run: |
-          python scripts/validate_dataset.py output/prices_latest.csv
-
-      - name: Upload CSV to Supabase Storage
-        if: success()
+      - name: Refresh, validate and upload
         run: |
           if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
-            echo "SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configurados. Abortando upload."
+            echo "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not configured."
             exit 1
           fi
-
-          set -e
-
-          # Bucket "market-data" (marcado como PUBLIC na UI)
-          STORAGE_BUCKET="market-data"
-          STORAGE_OBJECT="prices/prices_latest.csv"
-
-          echo "Enviando output/prices_latest.csv para Supabase Storage em ${STORAGE_BUCKET}/${STORAGE_OBJECT}..."
-
-          curl -sS -X POST "${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${STORAGE_OBJECT}?upsert=true" \
-            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
-            -H "Content-Type: text/csv" \
-            --data-binary "@output/prices_latest.csv"
-
+          python scripts/run_market_refresh.py
