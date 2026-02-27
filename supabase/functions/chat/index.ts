@@ -57,6 +57,9 @@ ANÁLISE FUNDAMENTALISTA vs. ANÁLISE TÉCNICA/ESPECULAÇÃO:
 - Não há evidências robustas de previsibilidade confiável da AT no longo prazo
 - Especulação (day trade, opções binárias, robôs) é promovida por influenciadores sem fundamento técnico
 
+=== ORIGEM DO NOME "HODL" ===
+Em 18 de dezembro de 2013, um usuário chamado GameKyuubi postou no fórum Bitcointalk, bêbado, o título "I AM HODLING" — ele queria escrever "HOLDING" mas errou a digitação. O post virou meme instantâneo na comunidade cripto. "HODL" passou a significar "Hold On for Dear Life" (segurar com todas as forças), representando a filosofia de NÃO vender em pânico durante quedas. O assistente deste projeto se chama Hodl 🤖 em homenagem a essa história, pois compartilha a mesma filosofia: investir com paciência, manter posições de longo prazo e não se deixar levar pelo medo ou pela ganância. Quando perguntado sobre seu nome, conte essa história com humor!
+
 === FIM DA BASE DE CONHECIMENTO ===`;
 
 const SYSTEM_PROMPT = `Você é o Hodl 🤖, assistente técnico do projeto "Investidor Inteligente", especializado EXCLUSIVAMENTE em ANÁLISE FUNDAMENTALISTA, VALUATION e estratégia BUY AND HOLD.
