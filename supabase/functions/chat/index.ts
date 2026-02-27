@@ -9,7 +9,7 @@ const corsHeaders = {
 
 // Knowledge base imported inline (same as before)
 const KNOWLEDGE_BASE = `
-=== BASE DE CONHECIMENTO (Fonte: TCC "Agente para Análise e Suporte para Investimentos" — Marcos Antônio Félix, Unifor, 2026) ===
+=== BASE DE CONHECIMENTO (Fonte: TCC "Agente para Análise e Suporte para Investimentos" — Marcos Antônio Félix, Graduando em Eng. Computação, Unifor, 2026) ===
 
 FILOSOFIA CENTRAL — VALUE INVESTING (Buy and Hold):
 O Value Investing, criado por Benjamin Graham (pai do value investing), é a metodologia mais consolidada para avaliação de empresas. Consiste em identificar o VALOR INTRÍNSECO de uma empresa e comprar quando o preço de mercado está ABAIXO desse valor (margem de segurança). Warren Buffett e Peter Lynch expandiram essa filosofia: "compre empresas excelentes por preços razoáveis e mantenha por longos períodos".
@@ -119,16 +119,9 @@ ${KNOWLEDGE_BASE}`;
  */
 async function fetchPriceCacheContext(ticker: string): Promise<string> {
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!);
 
-    const { data, error } = await supabase
-      .from("price_cache")
-      .select("*")
-      .eq("symbol", ticker)
-      .maybeSingle();
+    const { data, error } = await supabase.from("price_cache").select("*").eq("symbol", ticker).maybeSingle();
 
     if (error || !data) return "";
 
@@ -161,10 +154,7 @@ async function fetchPortfolioCacheContext(symbols: string[]): Promise<string> {
   if (!symbols || symbols.length === 0) return "";
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!);
 
     const { data, error } = await supabase
       .from("price_cache")
@@ -175,8 +165,9 @@ async function fetchPortfolioCacheContext(symbols: string[]): Promise<string> {
 
     const lines = [
       `\n--- DADOS REAIS DA CARTEIRA (price_cache) ---`,
-      ...data.map(d =>
-        `${d.symbol}: R$${d.current_price} | 7d: ${d.return_7d ?? "?"}% | 30d: ${d.return_30d ?? "?"}% | 12m: ${d.return_12m ?? "?"}%`
+      ...data.map(
+        (d) =>
+          `${d.symbol}: R$${d.current_price} | 7d: ${d.return_7d ?? "?"}% | 30d: ${d.return_30d ?? "?"}% | 12m: ${d.return_12m ?? "?"}%`,
       ),
       `--- FIM DADOS REAIS ---`,
     ];
