@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      dataset_meta: {
+        Row: {
+          checksum: string | null
+          created_at: string
+          dataset_name: string
+          file_path: string
+          id: string
+          message: string | null
+          row_count: number
+          status: string
+          version_date: string
+        }
+        Insert: {
+          checksum?: string | null
+          created_at?: string
+          dataset_name: string
+          file_path: string
+          id?: string
+          message?: string | null
+          row_count?: number
+          status?: string
+          version_date: string
+        }
+        Update: {
+          checksum?: string | null
+          created_at?: string
+          dataset_name?: string
+          file_path?: string
+          id?: string
+          message?: string | null
+          row_count?: number
+          status?: string
+          version_date?: string
+        }
+        Relationships: []
+      }
+      price_cache: {
+        Row: {
+          cdi_annual: number | null
+          current_price: number
+          ibov_return_12m: number | null
+          ibov_return_30d: number | null
+          ibov_return_7d: number | null
+          id: string
+          ipca_12m: number | null
+          price_12m_ago: number | null
+          price_30d_ago: number | null
+          price_7d_ago: number | null
+          return_12m: number | null
+          return_30d: number | null
+          return_7d: number | null
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          cdi_annual?: number | null
+          current_price?: number
+          ibov_return_12m?: number | null
+          ibov_return_30d?: number | null
+          ibov_return_7d?: number | null
+          id?: string
+          ipca_12m?: number | null
+          price_12m_ago?: number | null
+          price_30d_ago?: number | null
+          price_7d_ago?: number | null
+          return_12m?: number | null
+          return_30d?: number | null
+          return_7d?: number | null
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          cdi_annual?: number | null
+          current_price?: number
+          ibov_return_12m?: number | null
+          ibov_return_30d?: number | null
+          ibov_return_7d?: number | null
+          id?: string
+          ipca_12m?: number | null
+          price_12m_ago?: number | null
+          price_30d_ago?: number | null
+          price_7d_ago?: number | null
+          return_12m?: number | null
+          return_30d?: number | null
+          return_7d?: number | null
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

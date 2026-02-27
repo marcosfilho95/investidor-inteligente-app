@@ -1,8 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, Settings, LogOut, User, HelpCircle } from "lucide-react";
+import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, Settings, LogOut, User, HelpCircle, Database } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { fetchDataStatus, type DataStatus } from "@/data/dataStatus";
 
 interface AppHeaderProps {
   activePage: "dashboard" | "carteira" | "ativos" | "aprender";
@@ -20,6 +21,7 @@ export function AppHeader({ activePage }: AppHeaderProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showTourMenu, setShowTourMenu] = useState(false);
+  const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -31,6 +33,8 @@ export function AppHeader({ activePage }: AppHeaderProps) {
       const name = data.user?.user_metadata?.name;
       if (name) setUserName(name.split(" ")[0]);
     });
+    // Fetch data status
+    fetchDataStatus().then(setDataStatus).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -73,6 +77,29 @@ export function AppHeader({ activePage }: AppHeaderProps) {
           </nav>
         </div>
         <div className="flex items-center gap-2">
+          {/* Data status indicator */}
+          {dataStatus && (
+            <div className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] text-muted-foreground" title={
+              dataStatus.health === "ok"
+                ? `Dados atualizados em ${new Date(dataStatus.last_version_date || "").toLocaleDateString("pt-BR")}`
+                : dataStatus.health === "no_data"
+                  ? "Usando dados locais (fallback)"
+                  : "Pipeline degradado — usando último dataset válido"
+            }>
+              <Database className="h-3 w-3" />
+              <span>
+                {dataStatus.health === "ok" && dataStatus.last_version_date
+                  ? `Dados: ${new Date(dataStatus.last_version_date).toLocaleDateString("pt-BR")}`
+                  : dataStatus.health === "degraded"
+                    ? "Dados: fallback"
+                    : "Dados: local"}
+              </span>
+              <div className={`h-1.5 w-1.5 rounded-full ${
+                dataStatus.health === "ok" ? "bg-green-500" : dataStatus.health === "degraded" ? "bg-yellow-500" : "bg-muted-foreground"
+              }`} />
+            </div>
+          )}
+
           {/* Notifications */}
           <div className="relative" ref={notifRef} data-tour="notifications">
             <button onClick={() => { setShowNotifications(!showNotifications); setShowUserMenu(false); }}
