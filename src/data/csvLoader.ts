@@ -1,26 +1,30 @@
 /**
- * CSV Data Loader — loads real market data from CSV files in /public/data/
- * Replaces synthetic/deterministic data with actual historical prices
+ * CSV Data Loader — Smart Source with Supabase Storage fallback
+ * 
+ * Priority:
+ * 1. Try Supabase Storage "latest" CSV (updated by n8n pipeline)
+ * 2. Fall back to local public/data/ CSV (static, always works)
  */
 
 import type { OHLCVDay } from "./investments";
+import { getLatestVersionDate } from "./dataStatus";
 
 let _realPricesCache: Record<string, OHLCVDay[]> | null = null;
 let _loadingPromise: Promise<Record<string, OHLCVDay[]>> | null = null;
 let _loaded = false;
+let _source: "storage" | "local" | null = null;
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const STORAGE_PRICES_PATH = `${SUPABASE_URL}/storage/v1/object/public/market-data/prices/prices_latest.csv`;
+const LOCAL_PRICES_PATH = "/data/prices_daily_24assets_plus_ibov_5y.csv";
 
 /**
- * Parse the prices CSV (31k+ lines) into a Record<ticker, OHLCVDay[]>
+ * Parse a prices CSV string into a Record<ticker, OHLCVDay[]>
  */
-async function fetchAndParsePrices(): Promise<Record<string, OHLCVDay[]>> {
-  const resp = await fetch("/data/prices_daily_24assets_plus_ibov_5y.csv");
-  if (!resp.ok) throw new Error("Failed to load prices CSV");
-  const text = await resp.text();
+function parsePricesCSV(text: string): Record<string, OHLCVDay[]> {
   const lines = text.trim().split("\n");
-
   const result: Record<string, OHLCVDay[]> = {};
 
-  // Skip header line
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
@@ -50,25 +54,86 @@ async function fetchAndParsePrices(): Promise<Record<string, OHLCVDay[]>> {
 }
 
 /**
- * Load real price data. Returns cached data if already loaded.
+ * Try to fetch from Supabase Storage with optional cache-busting.
+ */
+async function fetchFromStorage(): Promise<Record<string, OHLCVDay[]> | null> {
+  try {
+    // Get version date for cache-busting
+    let url = STORAGE_PRICES_PATH;
+    try {
+      const versionDate = await getLatestVersionDate();
+      if (versionDate) {
+        url += `?v=${versionDate}`;
+      }
+    } catch {
+      // Ignore — cache-busting is optional
+    }
+
+    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!resp.ok) return null;
+
+    const text = await resp.text();
+    if (!text || text.length < 100) return null;
+
+    const data = parsePricesCSV(text);
+    const tickerCount = Object.keys(data).length;
+
+    if (tickerCount < 5) {
+      console.warn("[csvLoader] Storage CSV has too few tickers:", tickerCount);
+      return null;
+    }
+
+    console.log(`[csvLoader] ✅ Loaded from Supabase Storage: ${tickerCount} tickers`);
+    _source = "storage";
+    return data;
+  } catch (e) {
+    console.warn("[csvLoader] Storage fetch failed, will use local fallback:", e);
+    return null;
+  }
+}
+
+/**
+ * Fetch from local public/data/ (original behavior).
+ */
+async function fetchFromLocal(): Promise<Record<string, OHLCVDay[]>> {
+  const resp = await fetch(LOCAL_PRICES_PATH);
+  if (!resp.ok) throw new Error("Failed to load local prices CSV");
+  const text = await resp.text();
+  const data = parsePricesCSV(text);
+  console.log(`[csvLoader] ✅ Loaded from local: ${Object.keys(data).length} tickers`);
+  _source = "local";
+  return data;
+}
+
+/**
+ * Load real price data with smart source selection.
  * Safe to call multiple times — deduplicates the fetch.
  */
 export async function loadRealPriceData(): Promise<Record<string, OHLCVDay[]>> {
   if (_realPricesCache) return _realPricesCache;
   if (_loadingPromise) return _loadingPromise;
 
-  _loadingPromise = fetchAndParsePrices()
-    .then(data => {
-      _realPricesCache = data;
+  _loadingPromise = (async () => {
+    try {
+      // Try Storage first
+      const storageData = await fetchFromStorage();
+      if (storageData) {
+        _realPricesCache = storageData;
+        _loaded = true;
+        return storageData;
+      }
+
+      // Fallback to local
+      const localData = await fetchFromLocal();
+      _realPricesCache = localData;
       _loaded = true;
-      console.log(`[csvLoader] Loaded real prices for ${Object.keys(data).length} tickers`);
-      return data;
-    })
-    .catch(err => {
-      console.warn("[csvLoader] Failed to load real prices, falling back to synthetic:", err);
+      return localData;
+    } catch (err) {
+      console.warn("[csvLoader] All sources failed:", err);
       _loadingPromise = null;
       return {} as Record<string, OHLCVDay[]>;
-    });
+    }
+  })();
 
   return _loadingPromise;
 }
@@ -85,4 +150,11 @@ export function getRealPricesSync(): Record<string, OHLCVDay[]> | null {
  */
 export function isRealDataLoaded(): boolean {
   return _loaded;
+}
+
+/**
+ * Get the current data source: "storage" | "local" | null
+ */
+export function getDataSource(): "storage" | "local" | null {
+  return _source;
 }

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,6 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Knowledge base imported inline (same as before)
 const KNOWLEDGE_BASE = `
 === BASE DE CONHECIMENTO (Fonte: TCC "Agente para Análise e Suporte para Investimentos" — Marcos Antônio Félix, Unifor, 2026) ===
 
@@ -112,18 +114,103 @@ COMPORTAMENTO POR PÁGINA:
 
 ${KNOWLEDGE_BASE}`;
 
+/**
+ * Fetch real market context from price_cache table for a given ticker.
+ */
+async function fetchPriceCacheContext(ticker: string): Promise<string> {
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!
+    );
+
+    const { data, error } = await supabase
+      .from("price_cache")
+      .select("*")
+      .eq("symbol", ticker)
+      .maybeSingle();
+
+    if (error || !data) return "";
+
+    const lines = [
+      `\n--- DADOS REAIS DO MERCADO (price_cache) para ${ticker} ---`,
+      `Preço atual: R$ ${data.current_price}`,
+      data.return_7d != null ? `Retorno 7d: ${data.return_7d}%` : null,
+      data.return_30d != null ? `Retorno 30d: ${data.return_30d}%` : null,
+      data.return_12m != null ? `Retorno 12m: ${data.return_12m}%` : null,
+      data.ibov_return_7d != null ? `IBOV 7d: ${data.ibov_return_7d}%` : null,
+      data.ibov_return_30d != null ? `IBOV 30d: ${data.ibov_return_30d}%` : null,
+      data.ibov_return_12m != null ? `IBOV 12m: ${data.ibov_return_12m}%` : null,
+      data.cdi_annual != null ? `CDI anual: ${data.cdi_annual}%` : null,
+      data.ipca_12m != null ? `IPCA 12m: ${data.ipca_12m}%` : null,
+      `Atualizado em: ${data.updated_at}`,
+      `--- FIM DADOS REAIS ---`,
+    ];
+
+    return lines.filter(Boolean).join("\n");
+  } catch (e) {
+    console.warn("Failed to fetch price_cache:", e);
+    return "";
+  }
+}
+
+/**
+ * Fetch context for multiple tickers (portfolio view).
+ */
+async function fetchPortfolioCacheContext(symbols: string[]): Promise<string> {
+  if (!symbols || symbols.length === 0) return "";
+
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!
+    );
+
+    const { data, error } = await supabase
+      .from("price_cache")
+      .select("symbol, current_price, return_7d, return_30d, return_12m")
+      .in("symbol", symbols);
+
+    if (error || !data || data.length === 0) return "";
+
+    const lines = [
+      `\n--- DADOS REAIS DA CARTEIRA (price_cache) ---`,
+      ...data.map(d =>
+        `${d.symbol}: R$${d.current_price} | 7d: ${d.return_7d ?? "?"}% | 30d: ${d.return_30d ?? "?"}% | 12m: ${d.return_12m ?? "?"}%`
+      ),
+      `--- FIM DADOS REAIS ---`,
+    ];
+
+    return lines.join("\n");
+  } catch (e) {
+    console.warn("Failed to fetch portfolio cache:", e);
+    return "";
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, page, dataset, ticker, currentData } = await req.json();
+    const { messages, page, dataset, ticker, currentData, userSymbols } = await req.json();
 
     // Build context injection
     let contextStr = "";
+
+    // 1. Existing context from frontend
     if (ticker && currentData) {
-      contextStr = `\n\n--- CONTEXTO DO ATIVO (${ticker}) ---\n${currentData}\n--- FIM DO CONTEXTO ---`;
+      contextStr += `\n\n--- CONTEXTO DO ATIVO (${ticker}) ---\n${currentData}\n--- FIM DO CONTEXTO ---`;
     } else if (dataset) {
-      contextStr = `\n\n--- DATASET DA CARTEIRA ---\n${dataset}\n--- FIM DO DATASET ---`;
+      contextStr += `\n\n--- DATASET DA CARTEIRA ---\n${dataset}\n--- FIM DO DATASET ---`;
+    }
+
+    // 2. Enrich with real market data from price_cache
+    if (ticker) {
+      const cacheCtx = await fetchPriceCacheContext(ticker);
+      if (cacheCtx) contextStr += cacheCtx;
+    } else if (userSymbols && userSymbols.length > 0) {
+      const portfolioCtx = await fetchPortfolioCacheContext(userSymbols);
+      if (portfolioCtx) contextStr += portfolioCtx;
     }
 
     const systemContent = SYSTEM_PROMPT + contextStr;

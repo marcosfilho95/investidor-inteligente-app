@@ -1,0 +1,7 @@
+# OpenBB SDK + fallback
+openbb[all]>=4.0.0
+yfinance>=0.2.30
+
+# For Supabase upload (used by n8n or upload script)
+supabase>=2.0.0
+python-dotenv>=1.0.0
