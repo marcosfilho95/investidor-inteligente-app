@@ -13,7 +13,7 @@ const LOCAL_LOGOS: Record<string, string> = {
   CPFE3: "/logos/cpfe3.png",
 };
 
-// Fallback favicon domains for assets without local logos
+// External favicon fallback for assets without local logo.
 const LOGO_DOMAINS: Record<string, string> = {
   ITUB4: "itau.com.br",
   BBAS3: "bb.com.br",
@@ -31,6 +31,14 @@ const LOGO_DOMAINS: Record<string, string> = {
   TIMS3: "tim.com.br",
   HAPV3: "hapvida.com.br",
   FLRY3: "fleury.com.br",
+  JBSS3: "jbs.com.br",
+  EMBR3: "embraer.com",
+  RDOR3: "rededorsaoluiz.com.br",
+  ABEV3: "ambev.com.br",
+  TUPY3: "tupy.com.br",
+  GGBR4: "gerdau.com",
+  AXIA6: "eletrobras.com",
+  TOTS3: "totvs.com",
 };
 
 interface AssetLogoProps {
