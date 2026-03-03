@@ -9,7 +9,7 @@ type MacroRow = {
   ipca: number;
 };
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL;
 const STORAGE_MACRO_PATH = `${SUPABASE_URL}/storage/v1/object/public/market-data/macro/macro_latest.csv`;
 const LOCAL_IPCA_PATH = "/data/ipca_monthly_2021_2026.csv";
 const LOCAL_CDI_PATH = "/data/cdi_annual_2017_2026.csv";
