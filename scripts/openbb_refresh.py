@@ -5,9 +5,9 @@ from datetime import datetime
 import pandas as pd
 
 try:
-    from openbb import obb
+    import yfinance as yf
 except Exception as e:  # pragma: no cover - defensive import for CI
-    print("[openbb_refresh] Erro ao importar OpenBB. Verifique se 'openbb' está instalado.", file=sys.stderr)
+    print("[openbb_refresh] Erro ao importar yfinance. Execute 'pip install yfinance'.", file=sys.stderr)
     raise
 
 
@@ -62,16 +62,16 @@ def fetch_prices_for_ticker(ticker: str) -> pd.DataFrame | None:
     ou None em caso de falha (para não quebrar o pipeline inteiro).
     """
     symbol = b3_to_yfinance_symbol(ticker)
-    print(f"[openbb_refresh] Baixando dados para {ticker} (provider: yfinance, symbol: {symbol})...")
+    print(f"[openbb_refresh] Baixando dados para {ticker} via yfinance (symbol: {symbol})...")
 
     try:
         # Período longo o suficiente para cobrir o dataset atual
-        data = obb.equity.price.historical(
-            symbol=symbol,
-            provider="yfinance",
-            start_date="2015-01-01",
+        df = yf.download(
+            symbol,
+            start="2015-01-01",
+            auto_adjust=False,  # mantém preços consistentes
+            progress=False,
         )
-        df = data.to_df()
     except Exception as e:
         print(f"[openbb_refresh] Falha ao buscar dados para {ticker}: {e}", file=sys.stderr)
         return None
@@ -80,59 +80,58 @@ def fetch_prices_for_ticker(ticker: str) -> pd.DataFrame | None:
         print(f"[openbb_refresh] Nenhum dado retornado para {ticker}", file=sys.stderr)
         return None
 
-    # Garante que 'date' vire coluna explícita
-    if "date" in df.index.names or df.index.name == "date":
-        df = df.reset_index()
+    # 1) Garante que a data vire coluna explícita
+    df = df.reset_index()
 
-    if "date" not in df.columns:
-        # Alguns providers podem usar 'datetime' ou similar
-        for alt in ("datetime", "timestamp"):
-            if alt in df.columns:
-                df = df.rename(columns={alt: "date"})
-                break
+    # 2) Se as colunas forem MultiIndex, faz flatten pegando o primeiro nível
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
+
+    # 3) Normaliza nomes de colunas de data
+    if "Date" in df.columns:
+        df = df.rename(columns={"Date": "date"})
+    elif "Datetime" in df.columns:
+        df = df.rename(columns={"Datetime": "date"})
 
     if "date" not in df.columns:
         print(f"[openbb_refresh] DataFrame sem coluna de data para {ticker}. Colunas: {list(df.columns)}", file=sys.stderr)
         return None
 
-    # Normaliza colunas para o schema do projeto
-    rename_map = {
-        "Open": "open",
-        "High": "high",
-        "Low": "low",
-        "Close": "close",
-        "Adj Close": "close",
-        "Volume": "volume",
-    }
-    df = df.rename(columns=rename_map)
-
-    required_cols = ["open", "high", "low", "close", "volume"]
-    missing = [c for c in required_cols if c not in df.columns]
-    if missing:
-        print(
-            f"[openbb_refresh] Colunas obrigatórias faltando para {ticker}: {missing}. "
-            f"Colunas disponíveis: {list(df.columns)}",
-            file=sys.stderr,
-        )
+    # 4) Escolhe colunas de preço/volume e normaliza nomes
+    close_col = None
+    for cand in ["Close", "close", "Adj Close"]:
+        if cand in df.columns:
+            close_col = cand
+            break
+    if close_col is None:
+        print(f"[openbb_refresh] Nenhuma coluna de preço encontrada para {ticker}. Colunas: {list(df.columns)}", file=sys.stderr)
         return None
 
+    volume_col = None
+    for cand in ["Volume", "volume"]:
+        if cand in df.columns:
+            volume_col = cand
+            break
+
+    # 5) Monta DataFrame final (long) com schema: date,ticker,close,volume
     out = pd.DataFrame()
     out["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
-    out["open"] = pd.to_numeric(df["open"], errors="coerce")
-    out["high"] = pd.to_numeric(df["high"], errors="coerce")
-    out["low"] = pd.to_numeric(df["low"], errors="coerce")
-    out["close"] = pd.to_numeric(df["close"], errors="coerce")
-    out["volume"] = pd.to_numeric(df["volume"], errors="coerce")
+    out["close"] = pd.to_numeric(df[close_col], errors="coerce")
+    if volume_col:
+        out["volume"] = pd.to_numeric(df[volume_col], errors="coerce")
+    else:
+        out["volume"] = None
     out["ticker"] = ticker
 
-    # Remove linhas totalmente inválidas
+    # Remove linhas inválidas
     out = out.dropna(subset=["date", "close"])
 
     if out.empty:
         print(f"[openbb_refresh] Dataset filtrado ficou vazio para {ticker}", file=sys.stderr)
         return None
 
-    return out[["date", "open", "high", "low", "close", "volume", "ticker"]]
+    # Garante apenas colunas finais
+    return out[["date", "ticker", "close", "volume"]]
 
 
 def main() -> int:
@@ -146,7 +145,11 @@ def main() -> int:
     for tk in tickers:
         df = fetch_prices_for_ticker(tk)
         if df is not None and not df.empty:
+            # Evita caracteres Unicode que quebram em consoles Windows (cp1252)
+            print(f"[openbb_refresh] OK {tk}: {len(df)} linhas")
             all_frames.append(df)
+        else:
+            print(f"[openbb_refresh] WARN Nenhum dado utilizável para {tk}", file=sys.stderr)
 
     if not all_frames:
         print("[openbb_refresh] Nenhum ticker pôde ser atualizado. Abortando.", file=sys.stderr)
@@ -157,8 +160,11 @@ def main() -> int:
     # Ordena por ticker e data para manter contrato com o frontend
     combined = combined.sort_values(["ticker", "date"])
 
-    combined.to_csv(OUTPUT_CSV, index=False)
-    print(f"[openbb_refresh] CSV gerado com sucesso em {OUTPUT_CSV} ({len(combined)} linhas).")
+    combined.to_csv(OUTPUT_CSV, index=False, encoding="utf-8")
+    print(
+        f"[openbb_refresh] CSV gerado com sucesso em {OUTPUT_CSV} "
+        f"({len(combined)} linhas, {combined['ticker'].nunique()} tickers)."
+    )
     return 0
 
 
