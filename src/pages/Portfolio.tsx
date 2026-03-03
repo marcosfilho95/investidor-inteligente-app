@@ -30,7 +30,7 @@ const Portfolio = () => {
   const [viewMode, setViewMode] = useState<"ativos" | "setor">("ativos");
   const { enrichedHoldings, totalValue, loading } = useUserHoldings();
 
-  const isEmpty = enrichedHoldings.length === 0;
+  const isEmpty = !loading && enrichedHoldings.length === 0;
 
   const assetAllocation = enrichedHoldings.map((h, i) => ({
     name: h.symbol,
@@ -63,7 +63,9 @@ const Portfolio = () => {
           <div>
             <h1 className="text-xl font-semibold">Minha Carteira</h1>
             <p className="text-sm text-muted-foreground">
-              {isEmpty
+              {loading
+                ? "Carregando sua carteira..."
+                : isEmpty
                 ? "Sua carteira está vazia. Adicione ativos pela página de Ativos."
                 : `Visão completa do seu portfólio — ${enrichedHoldings.length} ativos`}
             </p>

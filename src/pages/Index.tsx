@@ -52,7 +52,7 @@ const Index = () => {
   const dailyChange = enrichedHoldings.reduce((s, h) => s + h.change * h.shares, 0);
   const dailyChangePercent = totalValue > 0 ? Math.round((dailyChange / totalValue) * 10000) / 100 : 0;
 
-  const isEmpty = enrichedHoldings.length === 0;
+  const isEmpty = !loading && enrichedHoldings.length === 0;
   const aiDashboardWelcome = `${greeting}, ${userName}! Sou o Hodl, seu assistente de investimentos.
 
 Meu foco aqui no Dashboard é:
@@ -60,7 +60,9 @@ Meu foco aqui no Dashboard é:
 - analisar concentração e risco da carteira,
 - sugerir próximos passos práticos com base no seu perfil.
 
-${isEmpty
+${loading
+    ? "Estou carregando sua carteira agora. Em instantes eu já te passo uma leitura completa dos seus ativos."
+    : isEmpty
     ? "Sua carteira está vazia. Posso te guiar no primeiro aporte e na escolha dos primeiros ativos com critério."
     : `Sua carteira tem ${enrichedHoldings.length} ativos. Posso apontar forças, riscos e oportunidades de rebalanceamento.`}
 
@@ -90,7 +92,9 @@ Você pode começar com:
               {greeting}, {userName} 👋
             </h1>
             <p className="text-sm text-muted-foreground">
-              {isEmpty
+              {loading
+                ? "Carregando dados da sua carteira..."
+                : isEmpty
                 ? "Sua carteira está vazia. Vá em Ativos para adicionar ações!"
                 : "Aqui está o resumo do seu portfólio hoje."}
             </p>
