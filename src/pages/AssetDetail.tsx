@@ -44,7 +44,15 @@ const AssetDetail = () => {
   // Use real benchmark comparison data
   const investmentComparison = getInvestmentComparison(asset.symbol, periodMap[selectedPeriod]);
 
-  const lastComparison = investmentComparison[investmentComparison.length - 1];
+  const hasComparisonData = investmentComparison.length > 0;
+  const lastComparison = hasComparisonData
+    ? investmentComparison[investmentComparison.length - 1]
+    : {
+        [asset.symbol]: 1000,
+        IBOV: 1000,
+        CDI: 1000,
+        IPCA: 1000,
+      };
   const hasFundamentals = asset.pe !== null;
 
   const handleOrder = async () => {

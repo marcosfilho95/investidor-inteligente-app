@@ -87,14 +87,20 @@ export const holdings: Holding[] = [
   { symbol: "FLRY3", name: "Fleury S.A.", shares: 150, price: 16.80, change: 0.22, changePercent: 1.33, value: 2520, allocation: 0.88, category: "Saúde", description: "Líder em medicina diagnóstica no Brasil, com mais de 500 unidades de atendimento e forte presença digital.", marketCap: "11B", pe: 15.8, dividend: 3.5, sector: "Saúde", subsetor: "Diagnósticos", pvp: 2.25, lpa: 1.06, vpa: 7.47, psr: 1.5, pEbit: 10.8, evEbit: 12.5, evEbitda: 8.5, roe: 14.5, roic: 10.2, margemBruta: 35.2, margemEbit: 15.2, margemLiquida: 10.5, cReceita5a: 12.5, cLucro5a: 8.5, giroAtivos: 0.55, liqCorrente: 1.35, divLiqPl: 0.62, divLiqEbitda: 1.52, plAtivos: 0.38 },
 ];
 
-// Recalculate allocations based on actual values
-const totalPortfolioValue = holdings.reduce((sum, h) => sum + h.value, 0);
-holdings.forEach(h => {
-  h.allocation = Math.round((h.value / totalPortfolioValue) * 10000) / 100;
-});
+function refreshHoldingsDerivedFields() {
+  const totalPortfolioValue = holdings.reduce((sum, h) => {
+    h.value = Math.round(h.shares * h.price * 100) / 100;
+    return sum + h.value;
+  }, 0);
+  holdings.forEach(h => {
+    h.allocation = totalPortfolioValue > 0
+      ? Math.round((h.value / totalPortfolioValue) * 10000) / 100
+      : 0;
+  });
+  portfolioData.totalValue = Math.round(totalPortfolioValue * 100) / 100;
+}
 
-// Update portfolio data
-portfolioData.totalValue = Math.round(totalPortfolioValue * 100) / 100;
+refreshHoldingsDerivedFields();
 
 export const indicatorTooltips: Record<string, { title: string; description: string; formula: string }> = {
   pe: { title: "P/L (Preço/Lucro)", description: "Quanto o mercado paga por cada R$ 1 de lucro. Quanto menor, mais \"barato\" o ativo pode estar.", formula: "Preço atual ÷ Lucro por ação (LPA)" },
@@ -345,6 +351,20 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
       _marketHistoryCache[ticker] = cleanOHLCVOutliers(ohlcv);
     }
   }
+
+  // Keep asset cards in sync with latest real close from the loaded series.
+  for (const h of holdings) {
+    const series = _marketHistoryCache[h.symbol];
+    if (!series || series.length === 0) continue;
+    const latest = series[series.length - 1].close;
+    const prev = series.length > 1 ? series[series.length - 2].close : latest;
+    const change = Math.round((latest - prev) * 100) / 100;
+    const changePercent = prev !== 0 ? Math.round((change / prev) * 10000) / 100 : 0;
+    h.price = Math.round(latest * 100) / 100;
+    h.change = change;
+    h.changePercent = changePercent;
+  }
+  refreshHoldingsDerivedFields();
 
   // Also rebuild benchmark cache using real IBOV data if available
   const ibovTicker = data["^BVSP"] || data["IBOV"] || data["BVSP"];

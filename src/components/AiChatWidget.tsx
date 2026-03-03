@@ -18,9 +18,10 @@ type Msg = { role: "user" | "assistant"; content: string };
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, userSymbols, userHoldingsData }: AiChatWidgetProps) {
+  const initialWelcome = welcomeMessage || "Olá! Sou o Hodl 🤖, seu assistente inteligente. Como posso te ajudar hoje?";
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([
-    { role: "assistant", content: welcomeMessage || "Olá! Sou o Hodl 🤖, seu assistente inteligente. Como posso te ajudar hoje?" },
+    { role: "assistant", content: initialWelcome },
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -28,6 +29,18 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  // Keep initial greeting in sync with async-loaded page context
+  // (e.g. holdings loaded after first render on dashboard).
+  useEffect(() => {
+    if (isLoading) return;
+    setMessages((prev) => {
+      if (prev.length !== 1) return prev;
+      if (prev[0]?.role !== "assistant") return prev;
+      if (prev[0].content === initialWelcome) return prev;
+      return [{ role: "assistant", content: initialWelcome }];
+    });
+  }, [initialWelcome, isLoading]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;

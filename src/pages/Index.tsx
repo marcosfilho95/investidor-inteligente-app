@@ -53,6 +53,24 @@ const Index = () => {
   const dailyChangePercent = totalValue > 0 ? Math.round((dailyChange / totalValue) * 10000) / 100 : 0;
 
   const isEmpty = enrichedHoldings.length === 0;
+  const aiDashboardWelcome = `${greeting}, ${userName}! Sou o Hodl, seu assistente de investimentos.
+
+Meu foco aqui no Dashboard é:
+- explicar indicadores em linguagem simples (P/L, P/VP, DY, ROE, margem e dívida),
+- analisar concentração e risco da carteira,
+- sugerir próximos passos práticos com base no seu perfil.
+
+${isEmpty
+    ? "Sua carteira está vazia. Posso te guiar no primeiro aporte e na escolha dos primeiros ativos com critério."
+    : `Sua carteira tem ${enrichedHoldings.length} ativos. Posso apontar forças, riscos e oportunidades de rebalanceamento.`}
+
+Se quiser aprender do zero, posso te direcionar para a aba Aprender com trilhas sobre:
+Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estratégia vs Especulação, Psicologia do Investidor e Gestão de Risco.
+
+Você pode começar com:
+1) "Analise minha carteira como se eu fosse iniciante"
+2) "Quais ativos parecem caros pelos fundamentos?"
+3) "Como reduzir risco sem perder tanto potencial?"`;
 
   const handleTourComplete = () => {
     localStorage.setItem("onboarding_completed", "true");
@@ -156,7 +174,7 @@ const Index = () => {
               <AiChatWidget
                 page="dashboard"
                 userSymbols={enrichedHoldings.map(h => h.symbol)}
-                welcomeMessage={`${greeting}, ${userName}! 👋 Sou o Hodl, seu assistente de investimentos focado em análise fundamentalista e value investing. ${isEmpty ? "Sua carteira está vazia — vá em Ativos para começar a investir!" : `Sua carteira tem ${enrichedHoldings.length} ativos.`} Pergunte-me sobre indicadores, valuation ou estratégias! 🚀`}
+                welcomeMessage={aiDashboardWelcome}
               />
             </AnimatedCard>
           </div>
