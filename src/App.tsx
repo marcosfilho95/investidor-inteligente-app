@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,11 +18,15 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function AppContent() {
+  const [dataVersion, setDataVersion] = useState(0);
+
   useEffect(() => {
     // Preload real CSV price data and inject into market history cache
     loadRealPriceData().then(data => {
       if (Object.keys(data).length > 0) {
         setRealMarketData(data);
+        // Force re-render/remount so UI recomputes values with latest loaded prices
+        setDataVersion(v => v + 1);
       }
     });
   }, []);
@@ -32,7 +36,7 @@ function AppContent() {
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
+        <Routes key={dataVersion}>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
