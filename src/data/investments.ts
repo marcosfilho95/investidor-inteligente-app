@@ -246,6 +246,17 @@ function generateAssetOHLCV(symbol: string, currentPrice: number, annualReturn5y
   return data;
 }
 
+function generateFlatOHLCV(currentPrice: number): OHLCVDay[] {
+  return TRADING_DAYS.map((date) => ({
+    date,
+    open: currentPrice,
+    high: currentPrice,
+    low: currentPrice,
+    close: currentPrice,
+    volume: 0,
+  }));
+}
+
 // Real IPCA monthly rates (%) — source: IBGE
 let IPCA_MONTHLY: Record<number, number[]> = {
   2021: [0.25, 0.86, 0.93, 0.31, 0.83, 0.53, 0.96, 0.87, 1.16, 1.25, 0.95, 0.73],
@@ -363,8 +374,8 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
   if (!_marketHistoryCache) {
     _marketHistoryCache = {};
     for (const h of holdings) {
-      const cagr = ASSET_5Y_CAGR[h.symbol] ?? 0.05;
-      _marketHistoryCache[h.symbol] = generateAssetOHLCV(h.symbol, h.price, cagr);
+      // Safe base series: avoid synthetic volatility when a ticker is missing in loaded CSV.
+      _marketHistoryCache[h.symbol] = generateFlatOHLCV(h.price);
     }
   }
   // Override with real data where available — clean outliers first
@@ -387,6 +398,13 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
     h.changePercent = changePercent;
   }
   refreshHoldingsDerivedFields();
+
+  const missing = holdings
+    .map((h) => h.symbol)
+    .filter((s) => !data[s] || data[s].length === 0);
+  if (missing.length > 0) {
+    console.warn(`[investments] Missing real series for ${missing.length} tickers (using flat fallback):`, missing);
+  }
 
   // Also rebuild benchmark cache using real IBOV data if available
   const ibovTicker = data["^BVSP"] || data["IBOV"] || data["BVSP"];
@@ -522,8 +540,7 @@ export function getMarketHistory(): Record<string, OHLCVDay[]> {
   if (_marketHistoryCache) return _marketHistoryCache;
   const result: Record<string, OHLCVDay[]> = {};
   for (const h of holdings) {
-    const cagr = ASSET_5Y_CAGR[h.symbol] ?? 0.05;
-    result[h.symbol] = generateAssetOHLCV(h.symbol, h.price, cagr);
+    result[h.symbol] = generateFlatOHLCV(h.price);
   }
   _marketHistoryCache = result;
   return result;
