@@ -61,9 +61,10 @@ def upload_file(sb, filepath, storage_path):
             content,
             file_options={"content-type": "text/csv", "upsert": "true"},
         )
-        print(f"  ✓ Uploaded → {BUCKET}/{storage_path}")
+        # Evita caracteres Unicode que quebram em consoles Windows (cp1252)
+        print(f"  OK Uploaded -> {BUCKET}/{storage_path}")
     except Exception as e:
-        print(f"  ✗ Upload failed for {storage_path}: {e}")
+        print(f"  FAIL Upload failed for {storage_path}: {e}")
         raise
 
 
