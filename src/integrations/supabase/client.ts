@@ -3,15 +3,63 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
-});
+function createDisabledClient() {
+  const disabledError = { message: 'Supabase is not configured in this environment.' };
+  const qb = {
+    select: () => qb,
+    eq: () => qb,
+    in: () => qb,
+    maybeSingle: async () => ({ data: null, error: disabledError }),
+    insert: async () => ({ data: null, error: disabledError }),
+    update: async () => ({ data: null, error: disabledError }),
+    delete: async () => ({ data: null, error: disabledError }),
+    upsert: async () => ({ data: null, error: disabledError }),
+    execute: async () => ({ data: null, error: disabledError }),
+  };
+
+  return {
+    auth: {
+      getSession: async () => ({ data: { session: null }, error: null }),
+      getUser: async () => ({ data: { user: null }, error: null }),
+      signOut: async () => ({ error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => undefined } } }),
+    },
+    from: () => qb,
+    functions: {
+      invoke: async () => ({ data: null, error: disabledError }),
+    },
+    storage: {
+      from: () => ({
+        upload: async () => ({ data: null, error: disabledError }),
+      }),
+    },
+  } as any;
+}
+
+const hasSupabaseConfig =
+  typeof SUPABASE_URL === 'string' &&
+  SUPABASE_URL.length > 0 &&
+  typeof SUPABASE_PUBLISHABLE_KEY === 'string' &&
+  SUPABASE_PUBLISHABLE_KEY.length > 0;
+
+if (!hasSupabaseConfig) {
+  console.warn(
+    '[supabase] Missing VITE_SUPABASE_URL or key (VITE_SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_ANON_KEY). Running in offline-safe mode.'
+  );
+}
+
+export const supabase = hasSupabaseConfig
+  ? createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        storage: localStorage,
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    })
+  : createDisabledClient();
