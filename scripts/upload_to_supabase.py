@@ -155,11 +155,65 @@ def update_meta(sb, dataset_name, version_date, file_path, row_count, checksum, 
     )
 
 
-def update_price_cache(sb, prices_filepath: str) -> None:
+def find_macro_file() -> str | None:
+    latest = os.path.join(OUTPUT_DIR, "macro_latest.csv")
+    if os.path.exists(latest):
+        return latest
+    files = sorted(
+        [f for f in os.listdir(OUTPUT_DIR) if f.startswith("macro_") and f.endswith(".csv")],
+        reverse=True,
+    )
+    if not files:
+        return None
+    return os.path.join(OUTPUT_DIR, files[0])
+
+
+def read_latest_macro_values(macro_filepath: str | None) -> tuple[float | None, float | None]:
+    if not macro_filepath or not os.path.exists(macro_filepath):
+        return None, None
+    try:
+        with open(macro_filepath, encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        if not rows:
+            return None, None
+
+        rows = [r for r in rows if r.get("date")]
+        rows.sort(key=lambda r: r.get("date", ""))
+        latest = rows[-1]
+
+        cdi_annual = latest.get("cdi_annual")
+        cdi_annual_val = float(cdi_annual) if cdi_annual not in (None, "") else None
+
+        # Compute IPCA 12m using compounded monthly inflation from the last 12 rows.
+        last_12 = rows[-12:] if len(rows) >= 12 else rows
+        factor = 1.0
+        has_ipca = False
+        for r in last_12:
+            v = r.get("ipca")
+            if v in (None, ""):
+                continue
+            factor *= 1.0 + (float(v) / 100.0)
+            has_ipca = True
+        ipca_12m_val = round((factor - 1.0) * 100.0, 2) if has_ipca else None
+
+        return cdi_annual_val, ipca_12m_val
+    except Exception as exc:
+        log(f"WARN failed to parse macro file={macro_filepath}: {exc}")
+        return None, None
+
+
+def update_price_cache(sb, prices_filepath: str, macro_filepath: str | None = None) -> None:
     log("Updating table public.price_cache")
     with open(prices_filepath, encoding="utf-8") as f:
         reader = csv.DictReader(f)
         rows = list(reader)
+
+    cdi_annual_val, ipca_12m_val = read_latest_macro_values(macro_filepath)
+    if cdi_annual_val is not None or ipca_12m_val is not None:
+        log(
+            f"Macro attached to price_cache cdi_annual={cdi_annual_val} ipca_12m={ipca_12m_val} "
+            f"source={macro_filepath}"
+        )
 
     by_ticker = {}
     for row in rows:
@@ -213,6 +267,8 @@ def update_price_cache(sb, prices_filepath: str) -> None:
                 "ibov_return_7d": ibov_7d,
                 "ibov_return_30d": ibov_30d,
                 "ibov_return_12m": ibov_12m,
+                "cdi_annual": cdi_annual_val,
+                "ipca_12m": ipca_12m_val,
                 "updated_at": datetime.utcnow().isoformat(),
             }
         )
@@ -258,14 +314,10 @@ def main() -> int:
     upload_file(sb, prices_filepath, f"prices/prices_{TODAY}.csv")
     upload_file(sb, prices_filepath, PRICES_LATEST_OBJECT)
     update_meta(sb, "prices", TODAY, f"prices/prices_{TODAY}.csv", prices_rows, prices_checksum, status="ok")
-    update_price_cache(sb, prices_filepath)
+    macro_filepath = find_macro_file()
+    update_price_cache(sb, prices_filepath, macro_filepath)
 
-    macro_files = sorted(
-        [f for f in os.listdir(OUTPUT_DIR) if f.startswith("macro_") and f.endswith(".csv")],
-        reverse=True,
-    )
-    if macro_files:
-        macro_filepath = os.path.join(OUTPUT_DIR, macro_files[0])
+    if macro_filepath:
         macro_checksum = file_checksum(macro_filepath)
         macro_rows = count_rows(macro_filepath)
         upload_file(sb, macro_filepath, f"macro/macro_{TODAY}.csv")

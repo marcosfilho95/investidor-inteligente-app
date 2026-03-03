@@ -58,6 +58,7 @@ def main() -> int:
     log(f"Has service key={'yes' if (os.environ.get('SUPABASE_SERVICE_KEY') or os.environ.get('SUPABASE_SERVICE_ROLE_KEY')) else 'no'}")
 
     run_step("openbb_refresh", [sys.executable, "scripts/openbb_refresh.py"])
+    run_step("macro_refresh", [sys.executable, "scripts/macro_refresh.py"])
     run_step("validate_dataset", [sys.executable, "scripts/validate_dataset.py", "output/prices_latest.csv"])
     run_step("upload_to_supabase", [sys.executable, "scripts/upload_to_supabase.py"])
 

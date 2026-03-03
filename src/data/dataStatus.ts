@@ -22,11 +22,11 @@ export interface DataStatus {
 
 let _cachedStatus: DataStatus | null = null;
 let _cacheTime = 0;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 30 * 1000; // 30 seconds
 
-export async function fetchDataStatus(): Promise<DataStatus> {
+export async function fetchDataStatus(force = false): Promise<DataStatus> {
   const now = Date.now();
-  if (_cachedStatus && now - _cacheTime < CACHE_TTL_MS) {
+  if (!force && _cachedStatus && now - _cacheTime < CACHE_TTL_MS) {
     return _cachedStatus;
   }
 

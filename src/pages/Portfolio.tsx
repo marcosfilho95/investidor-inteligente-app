@@ -72,7 +72,17 @@ const Portfolio = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
+            {loading ? (
+              [0, 1, 2, 3].map((i) => (
+                <AnimatedCard key={`skeleton-${i}`} delay={i * 0.08}>
+                  <div className="glass-card p-4 space-y-3 animate-pulse">
+                    <div className="h-3 w-24 rounded bg-muted/50" />
+                    <div className="h-8 w-36 rounded bg-muted/50" />
+                    <div className="h-3 w-16 rounded bg-muted/50" />
+                  </div>
+                </AnimatedCard>
+              ))
+            ) : [
               <div className="glass-card p-4" key="1">
                 <span className="text-xs text-muted-foreground">Patrimônio total</span>
                 <p className="text-xl font-semibold font-mono">
@@ -128,7 +138,15 @@ const Portfolio = () => {
             ))}
           </div>
 
-          {isEmpty ? (
+          {loading ? (
+            <AnimatedCard delay={0.3}>
+              <div className="glass-card p-12 text-center animate-pulse">
+                <div className="h-6 w-40 mx-auto rounded bg-muted/50 mb-4" />
+                <div className="h-4 w-64 mx-auto rounded bg-muted/50 mb-2" />
+                <div className="h-4 w-56 mx-auto rounded bg-muted/50" />
+              </div>
+            </AnimatedCard>
+          ) : isEmpty ? (
             <AnimatedCard delay={0.3}>
               <div className="glass-card p-12 text-center">
                 <p className="text-4xl mb-4">💼</p>

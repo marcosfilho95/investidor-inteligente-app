@@ -247,7 +247,7 @@ function generateAssetOHLCV(symbol: string, currentPrice: number, annualReturn5y
 }
 
 // Real IPCA monthly rates (%) — source: IBGE
-const IPCA_MONTHLY: Record<number, number[]> = {
+let IPCA_MONTHLY: Record<number, number[]> = {
   2021: [0.25, 0.86, 0.93, 0.31, 0.83, 0.53, 0.96, 0.87, 1.16, 1.25, 0.95, 0.73],
   2022: [0.54, 1.01, 1.62, 1.06, 0.47, 0.67, -0.68, -0.36, -0.29, 0.59, 0.41, 0.62],
   2023: [0.53, 0.84, 0.71, 0.61, 0.23, -0.08, 0.12, 0.23, 0.26, 0.24, 0.28, 0.56],
@@ -257,7 +257,7 @@ const IPCA_MONTHLY: Record<number, number[]> = {
 };
 
 // Real CDI annual rates (%) — source: B3/Banco Central
-const CDI_ANNUAL: Record<number, number> = {
+let CDI_ANNUAL: Record<number, number> = {
   2021: 4.42,
   2022: 12.39,
   2023: 13.04,
@@ -265,6 +265,28 @@ const CDI_ANNUAL: Record<number, number> = {
   2025: 14.32,
   2026: 2.06, // Partial year accumulated (source: CSV real data)
 };
+
+export interface MacroMarketData {
+  cdiAnnual: Record<number, number>;
+  ipcaMonthly: Record<number, number[]>;
+}
+
+/**
+ * Inject real macro series (CDI/IPCA) loaded from Storage/local CSV.
+ * This rebuilds benchmark cache so charts use latest macro values.
+ */
+export function setMacroMarketData(data: MacroMarketData) {
+  if (data?.cdiAnnual && Object.keys(data.cdiAnnual).length > 0) {
+    CDI_ANNUAL = data.cdiAnnual;
+  }
+  if (data?.ipcaMonthly && Object.keys(data.ipcaMonthly).length > 0) {
+    IPCA_MONTHLY = data.ipcaMonthly;
+  }
+  _benchmarkCache = null;
+  console.log(
+    `[investments] Macro data injected: cdiYears=${Object.keys(CDI_ANNUAL).length} ipcaYears=${Object.keys(IPCA_MONTHLY).length}`
+  );
+}
 
 function generateBenchmarkSeries(key: string): { date: string; value: number }[] {
   const rand = seededRandom(hashStr(key) + 99);
@@ -517,12 +539,38 @@ export function getBenchmarkHistory(): Record<string, { date: string; value: num
   return _benchmarkCache;
 }
 
+function toDateAtNoon(dateStr: string): Date {
+  return new Date(`${dateStr}T12:00:00`);
+}
+
+function getLatestDateFromSeries(series: { date: string }[]): Date | null {
+  if (!series || series.length === 0) return null;
+  return toDateAtNoon(series[series.length - 1].date);
+}
+
+function getLatestMarketDate(): Date {
+  const marketHistory = getMarketHistory();
+  const benchmarkHistory = getBenchmarkHistory();
+
+  let latest: Date | null = null;
+
+  for (const rows of Object.values(marketHistory)) {
+    const d = getLatestDateFromSeries(rows);
+    if (d && (!latest || d > latest)) latest = d;
+  }
+
+  const ibovLatest = getLatestDateFromSeries(benchmarkHistory.IBOV);
+  if (ibovLatest && (!latest || ibovLatest > latest)) latest = ibovLatest;
+
+  return latest ?? new Date();
+}
+
 // Filter OHLCV data by period, returning simplified { month, price } for charts
 export function getFilteredPriceHistory(symbol: string, period: string): { month: string; price: number }[] {
   const allData = getMarketHistory()[symbol];
   if (!allData || allData.length === 0) return [];
   
-  const now = new Date(2026, 1, 26);
+  const now = getLatestMarketDate();
   let startDate: Date;
   
   switch (period) {
@@ -550,9 +598,9 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
     case "7D": startDate = new Date(now); startDate.setDate(now.getDate() - 10); break;
     case "30D": startDate = new Date(now); startDate.setDate(now.getDate() - 35); break;
     case "6M": startDate = new Date(now); startDate.setMonth(now.getMonth() - 6); break;
-    case "YTD": startDate = new Date(2026, 0, 1); break;
+    case "YTD": startDate = new Date(now.getFullYear(), 0, 1); break;
     case "1A": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1); break;
-    case "5A": startDate = new Date(2021, 1, 1); break;
+    case "5A": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 5); break;
     default: startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1);
   }
   
@@ -591,7 +639,7 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
 // Get benchmark data filtered by period for PerformanceChart
 export function getFilteredBenchmarks(period: string, baseValue: number): { month: string; carteira: number; ibovespa: number; cdi: number; ipca: number }[] {
   const benchmarks = getBenchmarkHistory();
-  const now = new Date(2026, 1, 26);
+  const now = getLatestMarketDate();
   let startDate: Date;
   
   switch (period) {
@@ -617,9 +665,9 @@ export function getFilteredBenchmarks(period: string, baseValue: number): { mont
     case "7 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 10); break;
     case "30 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 35); break;
     case "6 MESES": startDate = new Date(now); startDate.setMonth(now.getMonth() - 6); break;
-    case "YTD": startDate = new Date(2026, 0, 1); break;
+    case "YTD": startDate = new Date(now.getFullYear(), 0, 1); break;
     case "1 ANO": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1); break;
-    case "5 ANOS": startDate = new Date(2021, 1, 1); break;
+    case "5 ANOS": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 5); break;
     default: startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1);
   }
   
@@ -734,7 +782,7 @@ export function getInvestmentComparison(symbol: string, period: string): Record<
   if (priceHistory.length === 0) return [];
   
   const benchmarkData = getBenchmarkHistory();
-  const now = new Date(2026, 1, 26);
+  const now = getLatestMarketDate();
   let startDate: Date;
   
   switch (p) {
@@ -742,9 +790,9 @@ export function getInvestmentComparison(symbol: string, period: string): Record<
     case "7D": startDate = new Date(now); startDate.setDate(now.getDate() - 10); break;
     case "30D": startDate = new Date(now); startDate.setDate(now.getDate() - 35); break;
     case "6M": startDate = new Date(now); startDate.setMonth(now.getMonth() - 6); break;
-    case "YTD": startDate = new Date(2026, 0, 1); break;
+    case "YTD": startDate = new Date(now.getFullYear(), 0, 1); break;
     case "1A": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1); break;
-    case "5A": startDate = new Date(2021, 1, 1); break;
+    case "5A": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 5); break;
     default: startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1);
   }
   

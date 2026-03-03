@@ -101,7 +101,18 @@ Você pode começar com:
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
+            {loading ? (
+              [0, 1, 2, 3].map((i) => (
+                <AnimatedCard key={`skeleton-${i}`} delay={i * 0.08}>
+                  <div className="glass-card p-4 space-y-3 animate-pulse">
+                    <div className="h-3 w-24 rounded bg-muted/50" />
+                    <div className="h-8 w-36 rounded bg-muted/50" />
+                    <div className="h-3 w-16 rounded bg-muted/50" />
+                  </div>
+                </AnimatedCard>
+              ))
+            ) : (
+              [
               {
                 title: "Valor Total",
                 value: `R$ ${totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
@@ -132,14 +143,15 @@ Você pode começar com:
                 icon: "percent" as const,
                 positive: totalGainPercent >= 0,
               },
-            ].map((card, i) => (
-              <AnimatedCard key={card.title} delay={i * 0.08}>
-                <StatCard {...card} />
-              </AnimatedCard>
-            ))}
+              ].map((card, i) => (
+                <AnimatedCard key={card.title} delay={i * 0.08}>
+                  <StatCard {...card} />
+                </AnimatedCard>
+              ))
+            )}
           </div>
 
-          {!isEmpty && (
+          {!loading && !isEmpty && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <AnimatedCard delay={0.3} className="lg:col-span-2">
                 <PerformanceChart userHoldings={enrichedHoldings} totalValue={totalValue} />
@@ -169,7 +181,7 @@ Você pode começar com:
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {!isEmpty && (
+            {!loading && !isEmpty && (
               <AnimatedCard delay={0.5} className="lg:col-span-2">
                 <HoldingsTable holdings={enrichedHoldings} />
               </AnimatedCard>
