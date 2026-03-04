@@ -2,10 +2,18 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL;
+const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || import.meta.env.SUPABASE_PROJECT_ID;
+const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL ||
+  import.meta.env.SUPABASE_URL ||
+  (typeof SUPABASE_PROJECT_ID === 'string' && SUPABASE_PROJECT_ID.length > 0
+    ? `https://${SUPABASE_PROJECT_ID}.supabase.co`
+    : undefined);
 const SUPABASE_PUBLISHABLE_KEY =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_KEY ||
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.SUPABASE_KEY ||
   import.meta.env.SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.SUPABASE_ANON_KEY;
 
@@ -55,7 +63,7 @@ const hasSupabaseConfig =
 
 if (!hasSupabaseConfig) {
   console.warn(
-    '[supabase] Missing VITE_SUPABASE_URL or key (VITE_SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_ANON_KEY). Running in offline-safe mode.'
+    '[supabase] Missing Supabase URL/key. Expected VITE_SUPABASE_URL (or VITE_SUPABASE_PROJECT_ID) and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY). Running in offline-safe mode.'
   );
 }
 
