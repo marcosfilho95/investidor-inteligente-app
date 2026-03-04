@@ -939,7 +939,10 @@ export function buildDatasetContext(userSymbols?: string[], userHoldingsData?: {
     : holdings;
 
   if (assetsToShow.length === 0) {
-    return "A carteira do usuário está vazia. Ele ainda não adicionou nenhum ativo.";
+    if (userSymbols && userSymbols.length === 0) {
+      return "A carteira do usuário está vazia. Ele ainda não adicionou nenhum ativo.";
+    }
+    return "Nenhum dado de ativos encontrado no momento.";
   }
 
   // Calculate portfolio total and allocations using REAL user holdings if available
@@ -1005,7 +1008,7 @@ export function buildAssetContext(symbol: string): string {
 
   // Calculate 12-month benchmark returns for comparison
   const benchmarks = getBenchmarkHistory();
-  const now = new Date(2026, 1, 26);
+  const now = getLatestMarketDate();
   const oneYearAgo = new Date(now);
   oneYearAgo.setFullYear(now.getFullYear() - 1);
   const startStr = oneYearAgo.toISOString().slice(0, 10);
