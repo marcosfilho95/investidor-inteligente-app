@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Eye, EyeOff, Mail, Lock, ArrowRight, User } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/cloudClient";
 import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
