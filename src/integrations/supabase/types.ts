@@ -131,6 +131,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_trades: {
+        Row: {
+          created_at: string
+          id: string
+          price: number
+          shares: number
+          side: string
+          symbol: string
+          traded_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price: number
+          shares: number
+          side: string
+          symbol: string
+          traded_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price?: number
+          shares?: number
+          side?: string
+          symbol?: string
+          traded_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_holdings: {
         Row: {
           avg_price: number

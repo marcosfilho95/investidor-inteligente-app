@@ -1,11 +1,14 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Holding } from "@/data/investments";
+import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 
 interface AllocationChartProps {
   holdings?: (Holding & { avgPrice?: number })[];
 }
 
 export function AllocationChart({ holdings: userHoldings }: AllocationChartProps) {
+  const [chartKey, setChartKey] = useState(0);
   const data =
     userHoldings && userHoldings.length > 0
       ? (() => {
@@ -31,6 +34,10 @@ export function AllocationChart({ holdings: userHoldings }: AllocationChartProps
         })()
       : [];
 
+  useEffect(() => {
+    setChartKey((k) => k + 1);
+  }, [data.length]);
+
   if (data.length === 0) {
     return (
       <div className="glass-card p-5">
@@ -51,9 +58,14 @@ export function AllocationChart({ holdings: userHoldings }: AllocationChartProps
         <h3 className="text-base font-semibold">Alocação</h3>
         <p className="text-sm text-muted-foreground">Distribuição por setor</p>
       </div>
-      <div className="flex items-center gap-4">
+      <motion.div
+        className="flex items-center gap-4"
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+      >
         <ResponsiveContainer width="100%" height={200}>
-          <PieChart>
+          <PieChart key={chartKey}>
             <Pie
               data={data}
               cx="50%"
@@ -63,6 +75,9 @@ export function AllocationChart({ holdings: userHoldings }: AllocationChartProps
               paddingAngle={3}
               dataKey="value"
               strokeWidth={0}
+              isAnimationActive
+              animationDuration={1700}
+              animationEasing="ease-out"
             >
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
@@ -81,7 +96,7 @@ export function AllocationChart({ holdings: userHoldings }: AllocationChartProps
             />
           </PieChart>
         </ResponsiveContainer>
-      </div>
+      </motion.div>
       <div className="grid grid-cols-2 gap-2 mt-2">
         {data.map((item) => (
           <div key={item.name} className="flex items-center gap-2">

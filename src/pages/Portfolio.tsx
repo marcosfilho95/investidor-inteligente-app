@@ -1,12 +1,25 @@
 import { Link } from "react-router-dom";
 import { TrendingUp, ArrowUpRight } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  PieChart as RechartsPie,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
+import { getMarketHistory } from "@/data/investments";
 
 const chartColors = [
   "hsl(var(--chart-1))",
@@ -28,32 +41,111 @@ const chartColors = [
 
 const Portfolio = () => {
   const [viewMode, setViewMode] = useState<"ativos" | "setor">("ativos");
-  const { enrichedHoldings, totalValue, loading } = useUserHoldings();
+  const { enrichedHoldings, totalValue, loading, userTrades } = useUserHoldings();
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
 
-  const assetAllocation = enrichedHoldings.map((h, i) => ({
-    name: h.symbol,
-    value: h.allocation,
-    color: chartColors[i % chartColors.length],
-  }));
-  const sectorMap: Record<string, number> = {};
-  enrichedHoldings.forEach((h) => {
-    sectorMap[h.sector] = (sectorMap[h.sector] || 0) + h.allocation;
-  });
-  const sectorAllocation = Object.entries(sectorMap).map(([name, value], i) => ({
-    name,
-    value: Math.round(value * 100) / 100,
-    color: chartColors[i % chartColors.length],
-  }));
+  const assetAllocation = useMemo(
+    () =>
+      enrichedHoldings.map((h, i) => ({
+        name: h.symbol,
+        value: h.allocation,
+        color: chartColors[i % chartColors.length],
+      })),
+    [enrichedHoldings]
+  );
+  const sectorMap = useMemo(() => {
+    const acc: Record<string, number> = {};
+    enrichedHoldings.forEach((h) => {
+      acc[h.sector] = (acc[h.sector] || 0) + h.allocation;
+    });
+    return acc;
+  }, [enrichedHoldings]);
+  const sectorAllocation = useMemo(
+    () =>
+      Object.entries(sectorMap).map(([name, value], i) => ({
+        name,
+        value: Math.round(value * 100) / 100,
+        color: chartColors[i % chartColors.length],
+      })),
+    [sectorMap]
+  );
   const currentData = viewMode === "ativos" ? assetAllocation : sectorAllocation;
 
-  const totalInvested = enrichedHoldings.reduce((s, h) => s + h.avgPrice * h.shares, 0);
-  const totalGain = totalValue - totalInvested;
-  const dailyChange = enrichedHoldings.reduce((s, h) => s + h.change * h.shares, 0);
-  const variacao = totalValue > 0 ? Math.round((dailyChange / totalValue) * 10000) / 100 : 0;
-  const rentabilidade = totalInvested > 0 ? Math.round((totalGain / totalInvested) * 10000) / 100 : 0;
-  const proventos = totalValue > 0 ? Math.round(totalValue * 0.035 * 100) / 100 : 0; // ~3.5% estimated yield
+  const metrics = useMemo(() => {
+    const totalInvested = enrichedHoldings.reduce((s, h) => s + h.avgPrice * h.shares, 0);
+    const totalGain = totalValue - totalInvested;
+    const dailyChange = enrichedHoldings.reduce((s, h) => s + h.change * h.shares, 0);
+    const previousValue = totalValue - dailyChange;
+    const variacao = previousValue > 0 ? Math.round((dailyChange / previousValue) * 10000) / 100 : 0;
+    const rentabilidade = totalInvested > 0 ? Math.round((totalGain / totalInvested) * 10000) / 100 : 0;
+    const proventos =
+      totalValue > 0
+        ? Math.round(enrichedHoldings.reduce((sum, h) => sum + h.value * ((h.dividend || 0) / 100), 0) * 100) / 100
+        : 0;
+    return { totalInvested, totalGain, dailyChange, variacao, rentabilidade, proventos };
+  }, [enrichedHoldings, totalValue]);
+  const portfolioEvolution = useMemo(() => {
+    if (userTrades.length === 0) return [];
+    const history = getMarketHistory();
+    const sortedTrades = [...userTrades].sort((a, b) => a.traded_at.localeCompare(b.traded_at));
+    const start = sortedTrades[0].traded_at.slice(0, 10);
+
+    const symbolSet = new Set(sortedTrades.map((t) => t.symbol));
+    const dateSet = new Set<string>();
+    for (const symbol of symbolSet) {
+      const series = history[symbol] || [];
+      for (const row of series) {
+        if (row.date >= start) dateSet.add(row.date);
+      }
+    }
+    const dates = Array.from(dateSet).sort();
+    if (dates.length === 0) return [];
+
+    const qtyBySymbol: Record<string, number> = {};
+    let tradeIdx = 0;
+    let invested = 0;
+    const points: Array<{ date: string; label: string; carteira: number; investido: number; resultado: number }> = [];
+
+    const priceAtOrBefore = (symbol: string, date: string): number | null => {
+      const series = history[symbol] || [];
+      if (series.length === 0) return null;
+      let result: number | null = null;
+      for (const row of series) {
+        if (row.date > date) break;
+        result = row.close;
+      }
+      return result;
+    };
+
+    for (const date of dates) {
+      while (tradeIdx < sortedTrades.length && sortedTrades[tradeIdx].traded_at.slice(0, 10) <= date) {
+        const t = sortedTrades[tradeIdx];
+        qtyBySymbol[t.symbol] = (qtyBySymbol[t.symbol] || 0) + (t.side === "buy" ? t.shares : -t.shares);
+        invested += t.side === "buy" ? t.price * t.shares : -t.price * t.shares;
+        tradeIdx += 1;
+      }
+
+      let carteira = 0;
+      for (const [symbol, qty] of Object.entries(qtyBySymbol)) {
+        if (qty <= 0) continue;
+        const px = priceAtOrBefore(symbol, date);
+        if (px != null) carteira += qty * px;
+      }
+      const d = new Date(`${date}T12:00:00`);
+      points.push({
+        date,
+        label: `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`,
+        carteira: Math.round(carteira * 100) / 100,
+        investido: Math.round(invested * 100) / 100,
+        resultado: Math.round((carteira - invested) * 100) / 100,
+      });
+    }
+
+    const maxPoints = 180;
+    const step = Math.max(1, Math.floor(points.length / maxPoints));
+    return points.filter((_, idx) => idx % step === 0 || idx === points.length - 1);
+  }, [userTrades]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,43 +181,34 @@ const Portfolio = () => {
                   R$ {totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-xs font-medium ${variacao >= 0 ? "text-gain" : "text-loss"}`}>
-                    {variacao}% {variacao >= 0 ? "▲" : "▼"}
+                  <span className={`text-xs font-medium ${metrics.variacao >= 0 ? "text-gain" : "text-loss"}`}>
+                    {metrics.variacao}% {metrics.variacao >= 0 ? "▲" : "▼"}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
-                    Investido R$ {totalInvested.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    Investido R$ {metrics.totalInvested.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>,
               <div className="glass-card p-4" key="2">
                 <span className="text-xs text-muted-foreground">Lucro total</span>
-                <p className={`text-xl font-semibold font-mono ${totalGain >= 0 ? "text-gain" : "text-loss"}`}>
-                  R$ {totalGain.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                <p className={`text-xl font-semibold font-mono ${metrics.totalGain >= 0 ? "text-gain" : "text-loss"}`}>
+                  R$ {metrics.totalGain.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </p>
               </div>,
               <div className="glass-card p-4" key="3">
                 <span className="text-xs text-muted-foreground">Proventos Estimados (12M)</span>
                 <p className="text-xl font-semibold font-mono">
-                  R$ {proventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  R$ {metrics.proventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </p>
               </div>,
               <div className="glass-card p-4" key="4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Variação</span>
                   <span className="text-xs text-muted-foreground">Rentabilidade</span>
                 </div>
-                <div className="flex items-center justify-between mt-1">
+                <div className="flex items-center justify-end mt-1">
                   <div className="flex items-center gap-1">
-                    <span className={`text-lg font-semibold font-mono ${variacao >= 0 ? "text-gain" : "text-loss"}`}>
-                      {variacao}%
-                    </span>
-                    <TrendingUp className="h-3.5 w-3.5 text-gain" />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span
-                      className={`text-lg font-semibold font-mono ${rentabilidade >= 0 ? "text-gain" : "text-loss"}`}
-                    >
-                      {rentabilidade}%
+                    <span className={`text-lg font-semibold font-mono ${metrics.rentabilidade >= 0 ? "text-gain" : "text-loss"}`}>
+                      {metrics.rentabilidade}%
                     </span>
                     <ArrowUpRight className="h-3.5 w-3.5 text-gain" />
                   </div>
@@ -164,6 +247,42 @@ const Portfolio = () => {
             </AnimatedCard>
           ) : (
             <>
+              <AnimatedCard delay={0.28}>
+                <div className="glass-card p-5">
+                  <h3 className="text-base font-semibold mb-1">Evolução da carteira</h3>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Histórico real desde suas operações (compras e vendas registradas)
+                  </p>
+                  {portfolioEvolution.length > 1 ? (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <LineChart data={portfolioEvolution}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
+                        <XAxis dataKey="label" stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} interval={Math.max(0, Math.floor(portfolioEvolution.length / 8))} />
+                        <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${Number(v).toFixed(0)}`} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                          }}
+                          formatter={(value: number, name: string) => {
+                            const labels: Record<string, string> = { carteira: "Carteira", investido: "Capital líquido", resultado: "Resultado" };
+                            return [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, labels[name] || name];
+                          }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: "11px" }} />
+                        <Line type="monotone" dataKey="carteira" stroke="hsl(142, 72%, 48%)" strokeWidth={2} dot={false} isAnimationActive animationDuration={900} animationEasing="ease-out" />
+                        <Line type="monotone" dataKey="investido" stroke="hsl(217, 91%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={900} animationBegin={140} animationEasing="ease-out" />
+                        <Line type="monotone" dataKey="resultado" stroke="hsl(38, 92%, 50%)" strokeWidth={1.5} dot={false} isAnimationActive animationDuration={900} animationBegin={260} animationEasing="ease-out" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Faça ao menos duas operações para visualizar evolução.</p>
+                  )}
+                </div>
+              </AnimatedCard>
+
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <AnimatedCard delay={0.3}>
                   <div className="glass-card p-5">
@@ -198,6 +317,9 @@ const Portfolio = () => {
                           paddingAngle={2}
                           dataKey="value"
                           strokeWidth={0}
+                          isAnimationActive
+                          animationDuration={900}
+                          animationEasing="ease-out"
                         >
                           {currentData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
@@ -255,9 +377,12 @@ const Portfolio = () => {
                             Preço Médio
                           </th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
+                            Data Compra
+                          </th>
+                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
                             Preço Atual
                           </th>
-                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Variação</th>
+                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Variação (dia)</th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
                             Rentabilidade
                           </th>
@@ -285,6 +410,9 @@ const Portfolio = () => {
                               <td className="text-right px-4 py-3 text-sm font-mono">{h.shares}</td>
                               <td className="text-right px-4 py-3 text-sm font-mono">
                                 R$ {h.avgPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                              </td>
+                              <td className="text-right px-4 py-3 text-xs">
+                                {h.firstBuyDate ? new Date(h.firstBuyDate).toLocaleDateString("pt-BR") : "-"}
                               </td>
                               <td className="text-right px-4 py-3 text-sm font-mono">
                                 R$ {h.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}

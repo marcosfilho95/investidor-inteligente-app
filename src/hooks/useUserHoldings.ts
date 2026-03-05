@@ -7,6 +7,16 @@ export interface UserHolding {
   symbol: string;
   shares: number;
   avg_price: number;
+  created_at?: string;
+}
+
+export interface UserTrade {
+  id: string;
+  symbol: string;
+  side: "buy" | "sell";
+  shares: number;
+  price: number;
+  traded_at: string;
 }
 
 type HoldingsCacheEntry = {
@@ -62,6 +72,7 @@ function clearAllCaches() {
 
 export function useUserHoldings() {
   const [userHoldings, setUserHoldings] = useState<UserHolding[]>(() => activeUserCache?.holdings ?? []);
+  const [userTrades, setUserTrades] = useState<UserTrade[]>([]);
   const [loading, setLoading] = useState(() => !activeUserCache);
   const { toast } = useToast();
 
@@ -107,8 +118,29 @@ export function useUserHoldings() {
     const request = (async (): Promise<UserHolding[]> => {
       const { data, error } = await supabase
         .from("user_holdings")
-        .select("symbol, shares, avg_price")
+        .select("symbol, shares, avg_price, created_at")
         .eq("user_id", userId);
+
+      const { data: tradesData } = await supabase
+        .from("user_trades")
+        .select("id, symbol, side, shares, price, traded_at")
+        .eq("user_id", userId)
+        .order("traded_at", { ascending: true });
+
+      if (Array.isArray(tradesData)) {
+        setUserTrades(
+          tradesData.map((t) => ({
+            id: t.id,
+            symbol: t.symbol,
+            side: t.side as "buy" | "sell",
+            shares: t.shares,
+            price: Number(t.price),
+            traded_at: t.traded_at,
+          }))
+        );
+      } else {
+        setUserTrades([]);
+      }
 
       if (error || !data) return bestCache?.holdings ?? [];
 
@@ -116,6 +148,7 @@ export function useUserHoldings() {
         symbol: d.symbol,
         shares: d.shares,
         avg_price: Number(d.avg_price),
+        created_at: d.created_at ?? undefined,
       }));
 
       saveCache({
@@ -144,13 +177,14 @@ export function useUserHoldings() {
       if (event === "SIGNED_OUT") {
         clearAllCaches();
         setUserHoldings([]);
+        setUserTrades([]);
         setLoading(false);
       }
     });
     return () => data.subscription.unsubscribe();
   }, []);
 
-  const addHolding = async (symbol: string, shares: number, price: number) => {
+  const addHolding = async (symbol: string, shares: number, price: number, tradedAt?: string) => {
     const userId = await getCurrentUserId();
     if (!userId) return false;
 
@@ -177,12 +211,25 @@ export function useUserHoldings() {
       }
     }
 
+    const tradePayload: any = {
+      user_id: userId,
+      symbol,
+      side: "buy",
+      shares,
+      price,
+    };
+    if (tradedAt) tradePayload.traded_at = tradedAt;
+    const { error: tradeError } = await supabase.from("user_trades").insert(tradePayload);
+    if (tradeError) {
+      toast({ title: "Aviso", description: "Compra registrada, mas o histórico da operação não foi salvo.", variant: "destructive" });
+    }
+
     toast({ title: "Compra registrada", description: `${shares}x ${symbol} a R$ ${price.toFixed(2)}` });
     await fetchHoldings(true);
     return true;
   };
 
-  const sellHolding = async (symbol: string, shares: number) => {
+  const sellHolding = async (symbol: string, shares: number, tradedAt?: string) => {
     const userId = await getCurrentUserId();
     if (!userId) return false;
 
@@ -202,19 +249,55 @@ export function useUserHoldings() {
         .eq("symbol", symbol);
     }
 
+    const asset = allAssets.find((a) => a.symbol === symbol);
+    const tradePayload: any = {
+      user_id: userId,
+      symbol,
+      side: "sell",
+      shares,
+      price: asset?.price ?? 0,
+    };
+    if (tradedAt) tradePayload.traded_at = tradedAt;
+    const { error: tradeError } = await supabase.from("user_trades").insert(tradePayload);
+    if (tradeError) {
+      toast({ title: "Aviso", description: "Venda registrada, mas o histórico da operação não foi salvo.", variant: "destructive" });
+    }
+
     toast({ title: "Venda registrada", description: `${shares}x ${symbol}` });
     await fetchHoldings(true);
     return true;
   };
+
+  const firstBuyDateBySymbol = userTrades.reduce<Record<string, string>>((acc, trade) => {
+    if (trade.side !== "buy") return acc;
+    if (!acc[trade.symbol] || trade.traded_at < acc[trade.symbol]) {
+      acc[trade.symbol] = trade.traded_at;
+    }
+    return acc;
+  }, {});
+
+  const lastTradeDateBySymbol = userTrades.reduce<Record<string, string>>((acc, trade) => {
+    if (!acc[trade.symbol] || trade.traded_at > acc[trade.symbol]) {
+      acc[trade.symbol] = trade.traded_at;
+    }
+    return acc;
+  }, {});
 
   const enrichedHoldings = userHoldings
     .map((uh) => {
       const asset = allAssets.find((a) => a.symbol === uh.symbol);
       if (!asset) return null;
       const value = uh.shares * asset.price;
-      return { ...asset, shares: uh.shares, avgPrice: uh.avg_price, value };
+      return {
+        ...asset,
+        shares: uh.shares,
+        avgPrice: uh.avg_price,
+        value,
+        firstBuyDate: firstBuyDateBySymbol[uh.symbol] ?? uh.created_at ?? null,
+        lastTradeDate: lastTradeDateBySymbol[uh.symbol] ?? null,
+      };
     })
-    .filter(Boolean) as (typeof allAssets[0] & { avgPrice: number })[];
+    .filter(Boolean) as (typeof allAssets[0] & { avgPrice: number; firstBuyDate: string | null; lastTradeDate: string | null })[];
 
   const totalValue = enrichedHoldings.reduce((sum, h) => sum + h.value, 0);
   enrichedHoldings.forEach((h) => {
@@ -223,6 +306,7 @@ export function useUserHoldings() {
 
   return {
     userHoldings,
+    userTrades,
     enrichedHoldings,
     totalValue,
     loading,

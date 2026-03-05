@@ -20,6 +20,7 @@ const AssetDetail = () => {
   const [orderType, setOrderType] = useState<"buy" | "sell">("buy");
   const [selectedPeriod, setSelectedPeriod] = useState("1 ANO");
   const [orderQty, setOrderQty] = useState(1);
+  const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
   const { addHolding, sellHolding, userHoldings } = useUserHoldings();
 
   if (!asset) {
@@ -56,11 +57,12 @@ const AssetDetail = () => {
   const hasFundamentals = asset.pe !== null;
 
   const handleOrder = async () => {
+    const tradedAt = orderDate ? `${orderDate}T12:00:00` : undefined;
     if (orderType === "buy") {
-      const success = await addHolding(asset.symbol, orderQty, asset.price);
+      const success = await addHolding(asset.symbol, orderQty, asset.price, tradedAt);
       if (success) setShowBuyModal(false);
     } else {
-      const success = await sellHolding(asset.symbol, orderQty);
+      const success = await sellHolding(asset.symbol, orderQty, tradedAt);
       if (success) setShowBuyModal(false);
     }
   };
@@ -104,8 +106,8 @@ const AssetDetail = () => {
                   <span className={`text-sm font-mono font-medium ${isPositive ? "text-gain" : "text-loss"}`}>{isPositive ? "+" : ""}{asset.changePercent}%</span>
                 </div>
               </div>
-              <button onClick={() => { setOrderType("buy"); setOrderQty(1); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"><ShoppingCart className="h-4 w-4" /> Comprar</button>
-              <button onClick={() => { setOrderType("sell"); setOrderQty(1); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors"><DollarSign className="h-4 w-4" /> Vender</button>
+              <button onClick={() => { setOrderType("buy"); setOrderQty(1); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"><ShoppingCart className="h-4 w-4" /> Comprar</button>
+              <button onClick={() => { setOrderType("sell"); setOrderQty(1); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors"><DollarSign className="h-4 w-4" /> Vender</button>
             </div>
           </div>
 
@@ -195,7 +197,16 @@ const AssetDetail = () => {
                     <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={9} tickLine={false} axisLine={false} tick={({ x, y, payload }: any) => payload.value ? <text x={x} y={y + 12} textAnchor="middle" fill="hsl(215, 14%, 50%)" fontSize={9}>{payload.value}</text> : null} interval={Math.max(0, Math.floor(priceHistory.length / 10))} />
                     <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
                     <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Preço"]} />
-                    <Area type="monotone" dataKey="price" stroke="hsl(142, 72%, 48%)" strokeWidth={2} fill="url(#priceGrad)" />
+                    <Area
+                      type="monotone"
+                      dataKey="price"
+                      stroke="hsl(142, 72%, 48%)"
+                      strokeWidth={2}
+                      fill="url(#priceGrad)"
+                      isAnimationActive
+                      animationDuration={900}
+                      animationEasing="ease-out"
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -212,10 +223,10 @@ const AssetDetail = () => {
                     <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
                     <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`]} />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
-                    <Line type="monotone" dataKey={asset.symbol} stroke="hsl(142, 72%, 48%)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="IBOV" stroke="hsl(217, 91%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" />
-                    <Line type="monotone" dataKey="CDI" stroke="hsl(38, 92%, 50%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" />
-                    <Line type="monotone" dataKey="IPCA" stroke="hsl(280, 65%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" />
+                    <Line type="monotone" dataKey={asset.symbol} stroke="hsl(142, 72%, 48%)" strokeWidth={2} dot={false} isAnimationActive animationDuration={900} animationEasing="ease-out" />
+                    <Line type="monotone" dataKey="IBOV" stroke="hsl(217, 91%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={900} animationBegin={120} animationEasing="ease-out" />
+                    <Line type="monotone" dataKey="CDI" stroke="hsl(38, 92%, 50%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={900} animationBegin={220} animationEasing="ease-out" />
+                    <Line type="monotone" dataKey="IPCA" stroke="hsl(280, 65%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={900} animationBegin={320} animationEasing="ease-out" />
                   </LineChart>
                 </ResponsiveContainer>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
@@ -311,6 +322,15 @@ const AssetDetail = () => {
               <div>
                 <label className="text-xs text-muted-foreground">Quantidade</label>
                 <input type="number" value={orderQty} onChange={e => setOrderQty(Math.max(1, parseInt(e.target.value) || 1))} min={1} className="w-full mt-1 bg-muted/50 rounded-lg px-3 py-2.5 text-sm font-mono text-foreground border border-border/50 focus:outline-none focus:ring-1 focus:ring-primary/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Data da operação</label>
+                <input
+                  type="date"
+                  value={orderDate}
+                  onChange={(e) => setOrderDate(e.target.value)}
+                  className="w-full mt-1 bg-muted/50 rounded-lg px-3 py-2.5 text-sm text-foreground border border-border/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                />
               </div>
               <div className="bg-muted/30 rounded-lg p-3 space-y-1">
                 <div className="flex justify-between text-xs"><span className="text-muted-foreground">Preço unitário</span><span className="font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>

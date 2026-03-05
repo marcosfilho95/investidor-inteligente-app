@@ -69,11 +69,45 @@
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
+
+  a,
+  button,
+  input,
+  textarea,
+  select,
+  [role="button"] {
+    transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+    transition-duration: 260ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  button:active,
+  [role="button"]:active,
+  a:active {
+    transform: translateY(1px) scale(0.992);
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  [role="button"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.25);
+  }
 }
 
 @layer utilities {
   .glass-card {
     @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-xl;
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 320ms cubic-bezier(0.22, 1, 0.36, 1), background-color 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .glass-card:hover {
+    border-color: hsl(var(--border) / 0.9);
+    box-shadow: 0 12px 28px -18px rgb(0 0 0 / 65%);
   }
 
   .glow-green {
@@ -94,5 +128,14 @@
 
   .bg-loss\/10 {
     background-color: hsl(var(--loss) / 0.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
   }
 }

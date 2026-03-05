@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Holding, getFilteredBenchmarks } from "@/data/investments";
+import { useMemo } from "react";
 
 const benchmarks = [
   { key: "carteira", label: "Carteira", color: "hsl(142, 72%, 48%)", active: true },
@@ -16,11 +18,14 @@ interface PerformanceChartProps {
   totalValue?: number;
 }
 
+const benchmarkCache = new Map<string, ReturnType<typeof getFilteredBenchmarks>>();
+
 export function PerformanceChart({ userHoldings, totalValue }: PerformanceChartProps) {
   const [activeBenchmarks, setActiveBenchmarks] = useState(
     benchmarks.reduce((acc, b) => ({ ...acc, [b.key]: b.active }), {} as Record<string, boolean>)
   );
   const [selectedPeriod, setSelectedPeriod] = useState("1 ANO");
+  const [chartKey, setChartKey] = useState(0);
 
   const toggleBenchmark = (key: string) => {
     setActiveBenchmarks((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -28,8 +33,20 @@ export function PerformanceChart({ userHoldings, totalValue }: PerformanceChartP
 
   const baseValue = totalValue || 100000;
 
-  // Use the real MARKET_HISTORY-backed benchmark data
-  const data = getFilteredBenchmarks(selectedPeriod, baseValue);
+  // Use cached benchmark points to avoid heavy recalculation on every render.
+  const data = useMemo(() => {
+    const roundedBase = Math.round(baseValue * 100) / 100;
+    const key = `${selectedPeriod}:${roundedBase}`;
+    const cached = benchmarkCache.get(key);
+    if (cached) return cached;
+    const fresh = getFilteredBenchmarks(selectedPeriod, roundedBase);
+    benchmarkCache.set(key, fresh);
+    if (benchmarkCache.size > 24) {
+      const first = benchmarkCache.keys().next().value;
+      if (first) benchmarkCache.delete(first);
+    }
+    return fresh;
+  }, [selectedPeriod, baseValue]);
   const tickInterval = Math.max(0, Math.floor(data.length / 8));
 
   const periodLabel: Record<string, string> = {
@@ -41,6 +58,10 @@ export function PerformanceChart({ userHoldings, totalValue }: PerformanceChartP
     "1 ANO": "Últimos 12 meses",
     "5 ANOS": "Últimos 5 anos",
   };
+
+  useEffect(() => {
+    setChartKey((k) => k + 1);
+  }, [selectedPeriod]);
 
   return (
     <div className="glass-card p-5">
@@ -84,8 +105,13 @@ export function PerformanceChart({ userHoldings, totalValue }: PerformanceChartP
         ))}
       </div>
 
-      <ResponsiveContainer width="100%" height={280}>
-        <AreaChart data={data}>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <ResponsiveContainer width="100%" height={280}>
+          <AreaChart key={chartKey} data={data}>
           <defs>
             {benchmarks.map((b) => (
               <linearGradient key={b.key} id={`color-${b.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -104,13 +130,26 @@ export function PerformanceChart({ userHoldings, totalValue }: PerformanceChartP
               return [`R$ ${value.toLocaleString("pt-BR")}`, label];
             }}
           />
-          {benchmarks.map((b) =>
-            activeBenchmarks[b.key] ? (
-              <Area key={b.key} type="monotone" dataKey={b.key} stroke={b.color} strokeWidth={b.key === "carteira" ? 2.5 : 1.5} fill={`url(#color-${b.key})`} strokeDasharray={b.key === "carteira" ? undefined : "5 5"} />
-            ) : null
-          )}
-        </AreaChart>
-      </ResponsiveContainer>
+            {benchmarks.map((b, index) =>
+              activeBenchmarks[b.key] ? (
+                <Area
+                  key={b.key}
+                  type="monotone"
+                  dataKey={b.key}
+                  stroke={b.color}
+                  strokeWidth={b.key === "carteira" ? 2.5 : 1.5}
+                  fill={`url(#color-${b.key})`}
+                  strokeDasharray={b.key === "carteira" ? undefined : "5 5"}
+                  isAnimationActive
+                  animationDuration={1800}
+                  animationBegin={index * 220}
+                  animationEasing="ease-out"
+                />
+              ) : null
+            )}
+          </AreaChart>
+        </ResponsiveContainer>
+      </motion.div>
     </div>
   );
 }

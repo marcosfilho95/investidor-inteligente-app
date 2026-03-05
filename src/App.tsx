@@ -69,7 +69,7 @@ function AppContent() {
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes key={dataVersion}>
+        <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, Settings, Search, ChevronDown, ChevronRight, GraduationCap, TrendingUp, Brain, BarChart3, Shield, Bot, Lightbulb, AlertTriangle } from "lucide-react";
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { AppHeader } from "@/components/AppHeader";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
@@ -245,8 +246,15 @@ const Education = () => {
                       )}
                     </button>
 
+                    <AnimatePresence initial={false}>
                     {openTrail === trail.id && (
-                      <div className="border-t border-border/50">
+                      <motion.div
+                        className="border-t border-border/50"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                      >
                         {trail.modules.map((mod, idx) => {
                           const modKey = `${trail.id}-${idx}`;
                           return (
@@ -268,8 +276,15 @@ const Education = () => {
                                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                 )}
                               </button>
+                              <AnimatePresence initial={false}>
                               {openModule === modKey && (
-                                <div className="px-5 pb-4 pl-14 space-y-3">
+                                <motion.div
+                                  className="px-5 pb-4 pl-14 space-y-3"
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                                >
                                   <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                                     {mod.content}
                                   </p>
@@ -281,13 +296,15 @@ const Education = () => {
                                       </p>
                                     </div>
                                   )}
-                                </div>
+                                </motion.div>
                               )}
+                              </AnimatePresence>
                             </div>
                           );
                         })}
-                      </div>
+                      </motion.div>
                     )}
+                    </AnimatePresence>
                   </div>
                 </AnimatedCard>
               ))}

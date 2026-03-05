@@ -6,14 +6,16 @@ import { AiChatWidget } from "@/components/AiChatWidget";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { OnboardingTour } from "@/components/OnboardingTour";
-import { useEffect, useState } from "react";
-import { AnimatePresence } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 
 const Index = () => {
   const [userName, setUserName] = useState("Investidor");
   const [showTour, setShowTour] = useState(false);
+  const [minDelayDone, setMinDelayDone] = useState(false);
+  const [showCharts, setShowCharts] = useState(false);
   const { enrichedHoldings, totalValue, loading } = useUserHoldings();
 
   useEffect(() => {
@@ -27,6 +29,20 @@ const Index = () => {
       if (name) setUserName(name.split(" ")[0]);
     });
   }, []);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setMinDelayDone(true), 420);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (loading || !minDelayDone) {
+      setShowCharts(false);
+      return;
+    }
+    const t = window.setTimeout(() => setShowCharts(true), 140);
+    return () => window.clearTimeout(t);
+  }, [loading, minDelayDone]);
 
   const hour = new Date().toLocaleString("pt-BR", {
     timeZone: "America/Sao_Paulo",
@@ -46,14 +62,19 @@ const Index = () => {
     greeting = "Boa noite";
   }
 
-  const totalInvested = enrichedHoldings.reduce((s, h) => s + h.avgPrice * h.shares, 0);
-  const totalGain = totalValue - totalInvested;
-  const totalGainPercent = totalInvested > 0 ? Math.round((totalGain / totalInvested) * 10000) / 100 : 0;
-  const dailyChange = enrichedHoldings.reduce((s, h) => s + h.change * h.shares, 0);
-  const dailyChangePercent = totalValue > 0 ? Math.round((dailyChange / totalValue) * 10000) / 100 : 0;
+  const metrics = useMemo(() => {
+    const totalInvested = enrichedHoldings.reduce((s, h) => s + h.avgPrice * h.shares, 0);
+    const totalGain = totalValue - totalInvested;
+    const totalGainPercent = totalInvested > 0 ? Math.round((totalGain / totalInvested) * 10000) / 100 : 0;
+    const dailyChange = enrichedHoldings.reduce((s, h) => s + h.change * h.shares, 0);
+    const previousValue = totalValue - dailyChange;
+    const dailyChangePercent = previousValue > 0 ? Math.round((dailyChange / previousValue) * 10000) / 100 : 0;
+    return { totalInvested, totalGain, totalGainPercent, dailyChange, dailyChangePercent };
+  }, [enrichedHoldings, totalValue]);
+  const dashboardReady = !loading && minDelayDone;
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
-  const aiDashboardWelcome = `${greeting}, ${userName}! Sou o Hodl, seu assistente de investimentos.
+  const aiDashboardWelcome = useMemo(() => `${greeting}, ${userName}! Sou o Hodl, seu assistente de investimentos.
 
 Meu foco aqui no Dashboard é:
 - explicar indicadores em linguagem simples (P/L, P/VP, DY, ROE, margem e dívida),
@@ -72,7 +93,7 @@ Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estraté
 Você pode começar com:
 1) "Analise minha carteira como se eu fosse iniciante"
 2) "Quais ativos parecem caros pelos fundamentos?"
-3) "Como reduzir risco sem perder tanto potencial?"`;
+3) "Como reduzir risco sem perder tanto potencial?"`, [greeting, userName, loading, isEmpty, enrichedHoldings.length]);
 
   const handleTourComplete = () => {
     localStorage.setItem("onboarding_completed", "true");
@@ -101,7 +122,7 @@ Você pode começar com:
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {loading ? (
+            {!dashboardReady ? (
               [0, 1, 2, 3].map((i) => (
                 <AnimatedCard key={`skeleton-${i}`} delay={i * 0.08}>
                   <div className="glass-card p-4 space-y-3 animate-pulse">
@@ -112,54 +133,61 @@ Você pode começar com:
                 </AnimatedCard>
               ))
             ) : (
-              [
+              <motion.div className="contents" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: "easeOut" }}>
+                {[
               {
                 title: "Valor Total",
                 value: `R$ ${totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-                change: dailyChangePercent,
+                change: metrics.dailyChangePercent,
                 changeLabel: "hoje",
                 icon: "dollar" as const,
-                positive: dailyChangePercent >= 0,
+                positive: metrics.dailyChangePercent >= 0,
               },
               {
                 title: "Ganho Diário",
-                value: `R$ ${dailyChange.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-                change: dailyChangePercent,
+                value: `R$ ${metrics.dailyChange.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                change: metrics.dailyChangePercent,
                 icon: "activity" as const,
-                positive: dailyChangePercent >= 0,
+                positive: metrics.dailyChangePercent >= 0,
               },
               {
                 title: "Ganho Total",
-                value: `R$ ${totalGain.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-                change: totalGainPercent,
+                value: `R$ ${metrics.totalGain.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                change: metrics.totalGainPercent,
                 icon: "chart" as const,
-                positive: totalGainPercent >= 0,
+                positive: metrics.totalGainPercent >= 0,
               },
               {
                 title: "Rentabilidade",
-                value: `${totalGainPercent}%`,
-                change: totalGainPercent,
+                value: `${metrics.totalGainPercent}%`,
+                change: metrics.totalGainPercent,
                 changeLabel: "desde o início",
                 icon: "percent" as const,
-                positive: totalGainPercent >= 0,
+                positive: metrics.totalGainPercent >= 0,
               },
               ].map((card, i) => (
                 <AnimatedCard key={card.title} delay={i * 0.08}>
                   <StatCard {...card} />
                 </AnimatedCard>
-              ))
+              ))}
+              </motion.div>
             )}
           </div>
 
-          {!loading && !isEmpty && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {dashboardReady && !isEmpty && showCharts && (
+            <motion.div
+              className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
               <AnimatedCard delay={0.3} className="lg:col-span-2">
                 <PerformanceChart userHoldings={enrichedHoldings} totalValue={totalValue} />
               </AnimatedCard>
               <AnimatedCard delay={0.4}>
                 <AllocationChart holdings={enrichedHoldings} />
               </AnimatedCard>
-            </div>
+            </motion.div>
           )}
 
           {isEmpty && (
@@ -180,8 +208,8 @@ Você pode começar com:
             </AnimatedCard>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {!loading && !isEmpty && (
+          <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: dashboardReady ? 1 : 0, y: dashboardReady ? 0 : 10 }} transition={{ duration: 0.35, ease: "easeOut" }}>
+            {dashboardReady && !isEmpty && (
               <AnimatedCard delay={0.5} className="lg:col-span-2">
                 <HoldingsTable holdings={enrichedHoldings} />
               </AnimatedCard>
@@ -193,7 +221,7 @@ Você pode começar com:
                 welcomeMessage={aiDashboardWelcome}
               />
             </AnimatedCard>
-          </div>
+          </motion.div>
         </main>
       </PageTransition>
     </div>
