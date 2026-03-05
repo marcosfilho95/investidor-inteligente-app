@@ -36,7 +36,7 @@ export function AllocationChart({ holdings: userHoldings }: AllocationChartProps
 
   useEffect(() => {
     setChartKey((k) => k + 1);
-  }, [data.length]);
+  }, [JSON.stringify(data)]);
 
   if (data.length === 0) {
     return (
@@ -62,7 +62,7 @@ export function AllocationChart({ holdings: userHoldings }: AllocationChartProps
         className="flex items-center gap-4"
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
       >
         <ResponsiveContainer width="100%" height={200}>
           <PieChart key={chartKey}>
@@ -76,7 +76,7 @@ export function AllocationChart({ holdings: userHoldings }: AllocationChartProps
               dataKey="value"
               strokeWidth={0}
               isAnimationActive
-              animationDuration={1700}
+              animationDuration={2200}
               animationEasing="ease-out"
             >
               {data.map((entry, index) => (

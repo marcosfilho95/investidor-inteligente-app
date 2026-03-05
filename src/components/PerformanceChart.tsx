@@ -66,7 +66,7 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
 
   useEffect(() => {
     setChartKey((k) => k + 1);
-  }, [selectedPeriod]);
+  }, [selectedPeriod, firstBuyDate, baseValue]);
 
   return (
     <div className="glass-card p-5">
@@ -113,7 +113,7 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
       >
         <ResponsiveContainer width="100%" height={280}>
           <AreaChart key={chartKey} data={data}>
@@ -146,8 +146,8 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
                   fill={`url(#color-${b.key})`}
                   strokeDasharray={b.key === "carteira" ? undefined : "5 5"}
                   isAnimationActive
-                  animationDuration={1800}
-                  animationBegin={index * 220}
+                  animationDuration={2350}
+                  animationBegin={index * 280}
                   animationEasing="ease-out"
                 />
               ) : null

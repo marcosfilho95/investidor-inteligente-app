@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import { loadRealPriceData } from "@/data/csvLoader";
 import { loadMacroData } from "@/data/macroLoader";
 import { setMacroMarketData, setRealMarketData } from "@/data/investments";
@@ -30,6 +31,7 @@ function ScrollToTop() {
 
 function AppContent() {
   const [dataVersion, setDataVersion] = useState(0);
+  const location = useLocation();
 
   useEffect(() => {
     const refreshAllData = async (forceRefresh = false) => {
@@ -78,9 +80,9 @@ function AppContent() {
     <>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <ScrollToTop />
-        <Routes>
+      <ScrollToTop />
+      <AnimatePresence mode="wait" initial={false}>
+        <Routes location={location} key={location.pathname}>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
@@ -90,7 +92,7 @@ function AppContent() {
           <Route path="/aprender" element={<Education />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
+      </AnimatePresence>
     </>
   );
 }
@@ -98,7 +100,9 @@ function AppContent() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AppContent />
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

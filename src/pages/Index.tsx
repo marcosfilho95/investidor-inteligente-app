@@ -40,7 +40,7 @@ const Index = () => {
       setShowCharts(false);
       return;
     }
-    const t = window.setTimeout(() => setShowCharts(true), 140);
+    const t = window.setTimeout(() => setShowCharts(true), 360);
     return () => window.clearTimeout(t);
   }, [loading, minDelayDone]);
 
@@ -128,19 +128,36 @@ Você pode começar com:
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {!dashboardReady ? (
-              [0, 1, 2, 3].map((i) => (
-                <AnimatedCard key={`skeleton-${i}`} delay={i * 0.08}>
-                  <div className="glass-card p-4 space-y-3 animate-pulse">
-                    <div className="h-3 w-24 rounded bg-muted/50" />
-                    <div className="h-8 w-36 rounded bg-muted/50" />
-                    <div className="h-3 w-16 rounded bg-muted/50" />
-                  </div>
-                </AnimatedCard>
-              ))
-            ) : (
-              <motion.div className="contents" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: "easeOut" }}>
-                {[
+            <AnimatePresence mode="wait">
+              {!dashboardReady ? (
+                <motion.div
+                  key="dash-skeleton"
+                  className="contents"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {[0, 1, 2, 3].map((i) => (
+                    <AnimatedCard key={`skeleton-${i}`} delay={i * 0.1}>
+                      <div className="glass-card p-4 space-y-3 animate-pulse">
+                        <div className="h-3 w-24 rounded bg-muted/50" />
+                        <div className="h-8 w-36 rounded bg-muted/50" />
+                        <div className="h-3 w-16 rounded bg-muted/50" />
+                      </div>
+                    </AnimatedCard>
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="dash-cards"
+                  className="contents"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {[
               {
                 title: "Valor Total",
                 value: `R$ ${totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
@@ -176,16 +193,17 @@ Você pode começar com:
                   <StatCard {...card} />
                 </AnimatedCard>
               ))}
-              </motion.div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {dashboardReady && !isEmpty && showCharts && (
             <motion.div
               className="grid grid-cols-1 lg:grid-cols-3 gap-4"
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             >
               <AnimatedCard delay={0.3} className="lg:col-span-2">
                 <PerformanceChart userHoldings={enrichedHoldings} totalValue={totalValue} firstBuyDate={firstBuyDate} />
