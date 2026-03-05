@@ -8,7 +8,7 @@ import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/cloudClient";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 
 const Index = () => {

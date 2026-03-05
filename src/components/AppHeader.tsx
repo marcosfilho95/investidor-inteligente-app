@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, Settings, LogOut, User, HelpCircle, Database } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/cloudClient";
 import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { fetchDataStatus, type DataStatus } from "@/data/dataStatus";
