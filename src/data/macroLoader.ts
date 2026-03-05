@@ -9,14 +9,16 @@ type MacroRow = {
   ipca: number;
 };
 
-const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || import.meta.env.SUPABASE_PROJECT_ID;
+const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || import.meta.env.SUPABASE_PROJECT_ID || "";
 const SUPABASE_URL =
   import.meta.env.VITE_SUPABASE_URL ||
   import.meta.env.SUPABASE_URL ||
   (typeof SUPABASE_PROJECT_ID === "string" && SUPABASE_PROJECT_ID.length > 0
     ? `https://${SUPABASE_PROJECT_ID}.supabase.co`
     : "");
-const STORAGE_MACRO_PATH = `${SUPABASE_URL}/storage/v1/object/public/market-data/macro/macro_latest.csv`;
+const STORAGE_MACRO_PATH = SUPABASE_URL
+  ? `${SUPABASE_URL}/storage/v1/object/public/market-data/macro/macro_latest.csv`
+  : "";
 const LOCAL_IPCA_PATH = "/data/ipca_monthly_2021_2026.csv";
 const LOCAL_CDI_PATH = "/data/cdi_annual_2017_2026.csv";
 
