@@ -15,10 +15,20 @@ let _loadingPromise: Promise<Record<string, OHLCVDay[]>> | null = null;
 let _loaded = false;
 let _source: "storage" | "local" | null = null;
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL;
+const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || import.meta.env.SUPABASE_PROJECT_ID || "";
+const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL ||
+  import.meta.env.SUPABASE_URL ||
+  (PROJECT_ID ? `https://${PROJECT_ID}.supabase.co` : "");
+
 // Public bucket path (no auth needed in frontend)
-const STORAGE_PRICES_PATH = `${SUPABASE_URL}/storage/v1/object/public/market-data/prices/prices_latest.csv`;
+const STORAGE_BASE = SUPABASE_URL ? `${SUPABASE_URL}/storage/v1/object/public/market-data` : "";
+const STORAGE_PRICES_PATH = STORAGE_BASE ? `${STORAGE_BASE}/prices/prices_latest.csv` : "";
 const LOCAL_PRICES_PATH = "/data/prices_daily_24assets_plus_ibov_5y.csv";
+
+if (!SUPABASE_URL) {
+  console.warn("[csvLoader] No Supabase URL found, will use local CSV only.");
+}
 
 function getLatestDateFromData(data: Record<string, OHLCVDay[]>): string | null {
   let latest: string | null = null;
@@ -69,7 +79,7 @@ function parsePricesCSV(text: string): Record<string, OHLCVDay[]> {
  * Try to fetch from Supabase Storage with optional cache-busting.
  */
 async function fetchFromStorage(): Promise<Record<string, OHLCVDay[]> | null> {
-  if (!SUPABASE_URL) return null;
+  if (!SUPABASE_URL || !STORAGE_BASE) return null;
   try {
     const status = await fetchDataStatus(true);
     const versionDate = status.last_version_date;
@@ -82,7 +92,7 @@ async function fetchFromStorage(): Promise<Record<string, OHLCVDay[]> | null> {
     const candidateUrls: string[] = [];
     if (filePath) {
       candidateUrls.push(
-        `${SUPABASE_URL}/storage/v1/object/public/market-data/${filePath}?r=${runFingerprint}&v=${encodeURIComponent(
+        `${STORAGE_BASE}/${filePath}?r=${runFingerprint}&v=${encodeURIComponent(
           versionDate ?? ""
         )}`
       );
