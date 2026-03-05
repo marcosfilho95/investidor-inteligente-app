@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { TrendingUp, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronRight, DollarSign, ShoppingCart, TrendingUp } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import {
   PieChart as RechartsPie,
@@ -41,6 +41,7 @@ const chartColors = [
 
 const Portfolio = () => {
   const [viewMode, setViewMode] = useState<"ativos" | "setor">("ativos");
+  const [isTradeHistoryOpen, setIsTradeHistoryOpen] = useState(false);
   const { enrichedHoldings, totalValue, loading, userTrades } = useUserHoldings();
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
@@ -385,6 +386,7 @@ const Portfolio = () => {
                           </th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Saldo</th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">% Carteira</th>
+                          <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Ações</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -431,6 +433,24 @@ const Portfolio = () => {
                                 R$ {h.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                               </td>
                               <td className="text-right px-5 py-3 text-sm font-mono">{h.allocation}%</td>
+                              <td className="text-right px-5 py-3">
+                                <div className="flex items-center justify-end gap-2">
+                                  <Link
+                                    to={`/ativos/${h.symbol}?trade=buy`}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/15 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
+                                  >
+                                    <ShoppingCart className="h-3 w-3" />
+                                    Comprar
+                                  </Link>
+                                  <Link
+                                    to={`/ativos/${h.symbol}?trade=sell`}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-destructive/15 text-destructive text-xs font-medium hover:bg-destructive/20 transition-colors"
+                                  >
+                                    <DollarSign className="h-3 w-3" />
+                                    Vender
+                                  </Link>
+                                </div>
+                              </td>
                             </tr>
                           );
                         })}
@@ -442,51 +462,57 @@ const Portfolio = () => {
 
               <AnimatedCard delay={0.55}>
                 <div className="glass-card overflow-hidden">
-                  <div className="p-5 border-b border-border/50">
+                  <button
+                    onClick={() => setIsTradeHistoryOpen((v) => !v)}
+                    className="w-full p-5 border-b border-border/50 flex items-center justify-between text-left hover:bg-accent/40 transition-colors"
+                  >
                     <h3 className="text-base font-semibold">Histórico de Transações</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Compras e vendas registradas na plataforma
-                    </p>
-                  </div>
-                  {userTrades.length === 0 ? (
-                    <div className="p-5">
-                      <p className="text-sm text-muted-foreground">Sem transações registradas ainda.</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{userTrades.length} registros</span>
+                      {isTradeHistoryOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-border/50">
-                            <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Data</th>
-                            <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Tipo</th>
-                            <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Ativo</th>
-                            <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Quant.</th>
-                            <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Preço</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {[...userTrades]
-                            .sort((a, b) => b.traded_at.localeCompare(a.traded_at))
-                            .slice(0, 50)
-                            .map((t) => (
-                              <tr key={t.id} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
-                                <td className="px-5 py-3 text-sm">{new Date(t.traded_at).toLocaleDateString("pt-BR")}</td>
-                                <td className="px-4 py-3">
-                                  <span className={`text-xs font-medium ${t.side === "buy" ? "text-gain" : "text-loss"}`}>
-                                    {t.side === "buy" ? "Compra" : "Venda"}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-sm font-medium">{t.symbol}</td>
-                                <td className="text-right px-4 py-3 text-sm font-mono">{t.shares}</td>
-                                <td className="text-right px-5 py-3 text-sm font-mono">
-                                  R$ {t.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                  </button>
+                  {isTradeHistoryOpen ? (
+                    userTrades.length === 0 ? (
+                      <div className="p-5">
+                        <p className="text-sm text-muted-foreground">Sem transações registradas ainda.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-border/50">
+                              <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Data</th>
+                              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Tipo</th>
+                              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Ativo</th>
+                              <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Quant.</th>
+                              <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Preço</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[...userTrades]
+                              .sort((a, b) => b.traded_at.localeCompare(a.traded_at))
+                              .slice(0, 50)
+                              .map((t) => (
+                                <tr key={t.id} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
+                                  <td className="px-5 py-3 text-sm">{new Date(t.traded_at).toLocaleDateString("pt-BR")}</td>
+                                  <td className="px-4 py-3">
+                                    <span className={`text-xs font-medium ${t.side === "buy" ? "text-gain" : "text-loss"}`}>
+                                      {t.side === "buy" ? "Compra" : "Venda"}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm font-medium">{t.symbol}</td>
+                                  <td className="text-right px-4 py-3 text-sm font-mono">{t.shares}</td>
+                                  <td className="text-right px-5 py-3 text-sm font-mono">
+                                    R$ {t.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
+                  ) : null}
                 </div>
               </AnimatedCard>
             </>

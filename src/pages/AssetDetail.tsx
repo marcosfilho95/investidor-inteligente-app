@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
@@ -7,7 +7,7 @@ import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 
 const periods = ["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
@@ -15,6 +15,7 @@ const periodMap: Record<string, string> = { "1 DIA": "1D", "7 DIAS": "7D", "30 D
 
 const AssetDetail = () => {
   const { symbol } = useParams<{ symbol: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const asset = holdings.find((h) => h.symbol === symbol);
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [orderType, setOrderType] = useState<"buy" | "sell">("buy");
@@ -66,6 +67,19 @@ const AssetDetail = () => {
       if (success) setShowBuyModal(false);
     }
   };
+
+  useEffect(() => {
+    const trade = searchParams.get("trade");
+    if (trade !== "buy" && trade !== "sell") return;
+    setOrderType(trade);
+    setOrderQty(1);
+    setOrderDate(new Date().toISOString().slice(0, 10));
+    setShowBuyModal(true);
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("trade");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   return (
     <div className="min-h-screen bg-background">
