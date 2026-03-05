@@ -81,7 +81,7 @@ function AppContent() {
       <Toaster />
       <Sonner />
       <ScrollToTop />
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence mode="sync" initial={false}>
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />

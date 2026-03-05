@@ -802,6 +802,31 @@ export function getInvestmentComparison(symbol: string, period: string): Record<
   
   const priceHistory = getFilteredPriceHistory(symbol, p);
   if (priceHistory.length === 0) return [];
+
+  if (p === "1D") {
+    const rand = seededRandom(hashStr(`cmp1D:${symbol}`));
+    const start = 1000;
+    let ibov = start;
+    let cdi = start;
+    let ipca = start;
+    const asset = holdings.find((h) => h.symbol === symbol);
+    const dayTrend = ((asset?.changePercent ?? 0) / 100) * 0.9;
+
+    return priceHistory.map((d, i) => {
+      const t = i / Math.max(1, priceHistory.length - 1);
+      const assetVal = start * (1 + dayTrend * t);
+      ibov = ibov + (rand() - 0.5) * 2.4;
+      cdi = cdi + 0.003;
+      ipca = ipca + 0.0015;
+      return {
+        month: d.month,
+        [symbol]: Math.round(assetVal * 100) / 100,
+        IBOV: Math.round(ibov * 100) / 100,
+        CDI: Math.round(cdi * 100) / 100,
+        IPCA: Math.round(ipca * 100) / 100,
+      };
+    });
+  }
   
   const benchmarkData = getBenchmarkHistory();
   const now = getLatestMarketDate();

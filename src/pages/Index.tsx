@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 
 const Index = () => {
-  const [userName, setUserName] = useState("Investidor");
+  const [userName, setUserName] = useState(() => localStorage.getItem("ii_user_name") || "Investidor");
   const [showTour, setShowTour] = useState(false);
   const [minDelayDone, setMinDelayDone] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
@@ -26,12 +26,16 @@ const Index = () => {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       const name = data.user?.user_metadata?.name;
-      if (name) setUserName(name.split(" ")[0]);
+      if (name) {
+        const first = name.split(" ")[0];
+        setUserName(first);
+        localStorage.setItem("ii_user_name", first);
+      }
     });
   }, []);
 
   useEffect(() => {
-    const t = window.setTimeout(() => setMinDelayDone(true), 420);
+    const t = window.setTimeout(() => setMinDelayDone(true), 180);
     return () => window.clearTimeout(t);
   }, []);
 
@@ -40,7 +44,7 @@ const Index = () => {
       setShowCharts(false);
       return;
     }
-    const t = window.setTimeout(() => setShowCharts(true), 360);
+    const t = window.setTimeout(() => setShowCharts(true), 90);
     return () => window.clearTimeout(t);
   }, [loading, minDelayDone]);
 
@@ -128,36 +132,19 @@ Você pode começar com:
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <AnimatePresence mode="wait">
-              {!dashboardReady ? (
-                <motion.div
-                  key="dash-skeleton"
-                  className="contents"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  {[0, 1, 2, 3].map((i) => (
-                    <AnimatedCard key={`skeleton-${i}`} delay={i * 0.1}>
-                      <div className="glass-card p-4 space-y-3 animate-pulse">
-                        <div className="h-3 w-24 rounded bg-muted/50" />
-                        <div className="h-8 w-36 rounded bg-muted/50" />
-                        <div className="h-3 w-16 rounded bg-muted/50" />
-                      </div>
-                    </AnimatedCard>
-                  ))}
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="dash-cards"
-                  className="contents"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  {[
+            {!dashboardReady ? (
+              [0, 1, 2, 3].map((i) => (
+                <AnimatedCard key={`skeleton-${i}`} delay={i * 0.06}>
+                  <div className="glass-card p-4 space-y-3 animate-pulse">
+                    <div className="h-3 w-24 rounded bg-muted/50" />
+                    <div className="h-8 w-36 rounded bg-muted/50" />
+                    <div className="h-3 w-16 rounded bg-muted/50" />
+                  </div>
+                </AnimatedCard>
+              ))
+            ) : (
+              <motion.div className="contents" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}>
+                {[
               {
                 title: "Valor Total",
                 value: `R$ ${totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
@@ -193,9 +180,8 @@ Você pode começar com:
                   <StatCard {...card} />
                 </AnimatedCard>
               ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
+              </motion.div>
+            )}
           </div>
 
           {dashboardReady && !isEmpty && showCharts && (
