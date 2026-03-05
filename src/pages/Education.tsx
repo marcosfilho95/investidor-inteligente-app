@@ -1,5 +1,4 @@
-import { Link } from "react-router-dom";
-import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, Settings, Search, ChevronRight, GraduationCap, TrendingUp, Brain, BarChart3, Shield, Bot, Lightbulb, AlertTriangle } from "lucide-react";
+import { ChevronRight, GraduationCap, TrendingUp, Brain, BarChart3, Shield, Bot, Lightbulb } from "lucide-react";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AppHeader } from "@/components/AppHeader";
@@ -223,7 +222,7 @@ const Education = () => {
             <div className="lg:col-span-2 space-y-4">
               {trails.map((trail, trailIdx) => (
                 <AnimatedCard key={trail.id} delay={trailIdx * 0.06}>
-                  <motion.div layout className="glass-card overflow-hidden">
+                  <motion.div className="glass-card overflow-hidden">
                     <motion.button
                       onClick={() => setOpenTrail(openTrail === trail.id ? null : trail.id)}
                       className="w-full p-5 flex items-center gap-4 hover:bg-accent/30 transition-colors"
@@ -244,8 +243,8 @@ const Education = () => {
                       <span className="text-xs text-muted-foreground mr-2">{trail.modules.length} módulos</span>
                       <motion.div
                         animate={{ rotate: openTrail === trail.id ? 90 : 0 }}
-                        transition={{ type: "spring", stiffness: 260, damping: 24 }}
-                        className="shrink-0"
+                        transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+                        className="shrink-0 transform-gpu"
                       >
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </motion.div>
@@ -255,10 +254,11 @@ const Education = () => {
                     {openTrail === trail.id && (
                       <motion.div
                         className="border-t border-border/50"
-                        initial={{ height: 0, opacity: 0, filter: "blur(2px)" }}
-                        animate={{ height: "auto", opacity: 1, filter: "blur(0px)" }}
-                        exit={{ height: 0, opacity: 0, filter: "blur(1px)" }}
-                        transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
+                        style={{ willChange: "height, opacity" }}
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
                       >
                         {trail.modules.map((mod, idx) => {
                           const modKey = `${trail.id}-${idx}`;
@@ -266,9 +266,9 @@ const Education = () => {
                             <motion.div
                               key={idx}
                               className="border-b border-border/30 last:border-b-0"
-                              initial={{ opacity: 0, y: 6 }}
+                              initial={{ opacity: 0, y: 4 }}
                               animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: idx * 0.035, duration: 0.24, ease: "easeOut" }}
+                              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                             >
                               <motion.button
                                 onClick={() => setOpenModule(openModule === modKey ? null : modKey)}
@@ -284,8 +284,8 @@ const Education = () => {
                                 <span className="text-sm text-left flex-1">{mod.title}</span>
                                 <motion.div
                                   animate={{ rotate: openModule === modKey ? 90 : 0 }}
-                                  transition={{ type: "spring", stiffness: 260, damping: 24 }}
-                                  className="shrink-0"
+                                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                                  className="shrink-0 transform-gpu"
                                 >
                                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                                 </motion.div>
@@ -294,10 +294,11 @@ const Education = () => {
                               {openModule === modKey && (
                                 <motion.div
                                   className="px-5 pb-4 pl-14 space-y-3"
-                                  initial={{ height: 0, opacity: 0, y: -4 }}
-                                  animate={{ height: "auto", opacity: 1, y: 0 }}
-                                  exit={{ height: 0, opacity: 0, y: -2 }}
-                                  transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+                                  style={{ willChange: "height, opacity" }}
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
                                 >
                                   <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                                     {mod.content}
