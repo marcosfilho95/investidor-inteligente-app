@@ -20,6 +20,7 @@ const AssetDetail = () => {
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [orderType, setOrderType] = useState<"buy" | "sell">("buy");
   const [selectedPeriod, setSelectedPeriod] = useState("1 ANO");
+  const [chartAnimKey, setChartAnimKey] = useState(0);
   const [orderQty, setOrderQty] = useState(1);
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
   const { addHolding, sellHolding, userHoldings } = useUserHoldings();
@@ -80,6 +81,10 @@ const AssetDetail = () => {
     next.delete("trade");
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    setChartAnimKey((k) => k + 1);
+  }, [selectedPeriod, asset.symbol]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -202,7 +207,7 @@ const AssetDetail = () => {
               <div className="glass-card p-5">
                 <h3 className="text-base font-semibold mb-4">Preço histórico</h3>
                 <ResponsiveContainer width="100%" height={280}>
-                  <AreaChart data={priceHistory}>
+                  <AreaChart key={`price-${asset.symbol}-${chartAnimKey}`} data={priceHistory}>
                     <defs><linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="hsl(142, 72%, 48%)" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="hsl(142, 72%, 48%)" stopOpacity={0} />
@@ -218,7 +223,7 @@ const AssetDetail = () => {
                       strokeWidth={2}
                       fill="url(#priceGrad)"
                       isAnimationActive
-                      animationDuration={900}
+                      animationDuration={1800}
                       animationEasing="ease-out"
                     />
                   </AreaChart>
@@ -231,16 +236,16 @@ const AssetDetail = () => {
                 <h3 className="text-base font-semibold mb-1">Se você tivesse investido R$ 1.000</h3>
                 <p className="text-xs text-muted-foreground mb-4">{asset.symbol} vs IBOV vs CDI vs IPCA</p>
                 <ResponsiveContainer width="100%" height={240}>
-                  <LineChart data={investmentComparison}>
+                  <LineChart key={`compare-${asset.symbol}-${chartAnimKey}`} data={investmentComparison}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
                     <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} interval={Math.max(0, Math.floor(investmentComparison.length / 8))} />
                     <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
                     <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`]} />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
-                    <Line type="monotone" dataKey={asset.symbol} stroke="hsl(142, 72%, 48%)" strokeWidth={2} dot={false} isAnimationActive animationDuration={900} animationEasing="ease-out" />
-                    <Line type="monotone" dataKey="IBOV" stroke="hsl(217, 91%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={900} animationBegin={120} animationEasing="ease-out" />
-                    <Line type="monotone" dataKey="CDI" stroke="hsl(38, 92%, 50%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={900} animationBegin={220} animationEasing="ease-out" />
-                    <Line type="monotone" dataKey="IPCA" stroke="hsl(280, 65%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={900} animationBegin={320} animationEasing="ease-out" />
+                    <Line type="monotone" dataKey={asset.symbol} stroke="hsl(142, 72%, 48%)" strokeWidth={2} dot={false} isAnimationActive animationDuration={2000} animationEasing="ease-out" />
+                    <Line type="monotone" dataKey="IBOV" stroke="hsl(217, 91%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={2000} animationBegin={180} animationEasing="ease-out" />
+                    <Line type="monotone" dataKey="CDI" stroke="hsl(38, 92%, 50%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={2000} animationBegin={340} animationEasing="ease-out" />
+                    <Line type="monotone" dataKey="IPCA" stroke="hsl(280, 65%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={2000} animationBegin={500} animationEasing="ease-out" />
                   </LineChart>
                 </ResponsiveContainer>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
