@@ -274,7 +274,20 @@ export function useUserHoldings() {
     return true;
   };
 
-  const firstBuyDateBySymbol = userTrades.reduce<Record<string, string>>((acc, trade) => {
+  const effectiveTrades: UserTrade[] = userTrades.length > 0
+    ? userTrades
+    : userHoldings
+        .filter((h) => h.shares > 0)
+        .map((h, idx) => ({
+          id: `fallback-${h.symbol}-${idx}`,
+          symbol: h.symbol,
+          side: "buy" as const,
+          shares: h.shares,
+          price: Number(h.avg_price),
+          traded_at: h.created_at ?? new Date().toISOString(),
+        }));
+
+  const firstBuyDateBySymbol = effectiveTrades.reduce<Record<string, string>>((acc, trade) => {
     if (trade.side !== "buy") return acc;
     if (!acc[trade.symbol] || trade.traded_at < acc[trade.symbol]) {
       acc[trade.symbol] = trade.traded_at;
@@ -282,7 +295,7 @@ export function useUserHoldings() {
     return acc;
   }, {});
 
-  const lastTradeDateBySymbol = userTrades.reduce<Record<string, string>>((acc, trade) => {
+  const lastTradeDateBySymbol = effectiveTrades.reduce<Record<string, string>>((acc, trade) => {
     if (!acc[trade.symbol] || trade.traded_at > acc[trade.symbol]) {
       acc[trade.symbol] = trade.traded_at;
     }
@@ -312,7 +325,7 @@ export function useUserHoldings() {
 
   return {
     userHoldings,
-    userTrades,
+    userTrades: effectiveTrades,
     enrichedHoldings,
     totalValue,
     loading,
