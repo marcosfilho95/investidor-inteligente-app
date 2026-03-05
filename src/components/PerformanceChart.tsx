@@ -16,11 +16,12 @@ const periods = ["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANO
 interface PerformanceChartProps {
   userHoldings?: (Holding & { avgPrice?: number })[];
   totalValue?: number;
+  firstBuyDate?: string | null;
 }
 
 const benchmarkCache = new Map<string, ReturnType<typeof getFilteredBenchmarks>>();
 
-export function PerformanceChart({ userHoldings, totalValue }: PerformanceChartProps) {
+export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: PerformanceChartProps) {
   const [activeBenchmarks, setActiveBenchmarks] = useState(
     benchmarks.reduce((acc, b) => ({ ...acc, [b.key]: b.active }), {} as Record<string, boolean>)
   );
@@ -36,17 +37,17 @@ export function PerformanceChart({ userHoldings, totalValue }: PerformanceChartP
   // Use cached benchmark points to avoid heavy recalculation on every render.
   const data = useMemo(() => {
     const roundedBase = Math.round(baseValue * 100) / 100;
-    const key = `${selectedPeriod}:${roundedBase}`;
+    const key = `${selectedPeriod}:${roundedBase}:${firstBuyDate ?? ""}`;
     const cached = benchmarkCache.get(key);
     if (cached) return cached;
-    const fresh = getFilteredBenchmarks(selectedPeriod, roundedBase);
+    const fresh = getFilteredBenchmarks(selectedPeriod, roundedBase, firstBuyDate ?? undefined);
     benchmarkCache.set(key, fresh);
     if (benchmarkCache.size > 24) {
       const first = benchmarkCache.keys().next().value;
       if (first) benchmarkCache.delete(first);
     }
     return fresh;
-  }, [selectedPeriod, baseValue]);
+  }, [selectedPeriod, baseValue, firstBuyDate]);
   const tickInterval = Math.max(0, Math.floor(data.length / 8));
 
   const periodLabel: Record<string, string> = {
@@ -58,6 +59,10 @@ export function PerformanceChart({ userHoldings, totalValue }: PerformanceChartP
     "1 ANO": "Últimos 12 meses",
     "5 ANOS": "Últimos 5 anos",
   };
+  const effectivePeriodLabel =
+    firstBuyDate && selectedPeriod !== "1 DIA"
+      ? `Desde ${new Date(`${firstBuyDate}T12:00:00`).toLocaleDateString("pt-BR")}`
+      : (periodLabel[selectedPeriod] || selectedPeriod);
 
   useEffect(() => {
     setChartKey((k) => k + 1);
@@ -68,7 +73,7 @@ export function PerformanceChart({ userHoldings, totalValue }: PerformanceChartP
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-base font-semibold">Performance vs Benchmarks</h3>
-          <p className="text-sm text-muted-foreground">{periodLabel[selectedPeriod] || selectedPeriod}</p>
+          <p className="text-sm text-muted-foreground">{effectivePeriodLabel}</p>
         </div>
       </div>
 

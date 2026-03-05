@@ -16,7 +16,7 @@ const Index = () => {
   const [showTour, setShowTour] = useState(false);
   const [minDelayDone, setMinDelayDone] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
-  const { enrichedHoldings, totalValue, loading } = useUserHoldings();
+  const { enrichedHoldings, totalValue, loading, userTrades } = useUserHoldings();
 
   useEffect(() => {
     const seen = localStorage.getItem("onboarding_completed");
@@ -74,6 +74,12 @@ const Index = () => {
   const dashboardReady = !loading && minDelayDone;
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
+  const firstBuyDate = useMemo(() => {
+    const buys = userTrades.filter((t) => t.side === "buy");
+    if (buys.length === 0) return null;
+    buys.sort((a, b) => a.traded_at.localeCompare(b.traded_at));
+    return buys[0].traded_at.slice(0, 10);
+  }, [userTrades]);
   const aiDashboardWelcome = useMemo(() => `${greeting}, ${userName}! Sou o Hodl, seu assistente de investimentos.
 
 Meu foco aqui no Dashboard é:
@@ -182,7 +188,7 @@ Você pode começar com:
               transition={{ duration: 0.4, ease: "easeOut" }}
             >
               <AnimatedCard delay={0.3} className="lg:col-span-2">
-                <PerformanceChart userHoldings={enrichedHoldings} totalValue={totalValue} />
+                <PerformanceChart userHoldings={enrichedHoldings} totalValue={totalValue} firstBuyDate={firstBuyDate} />
               </AnimatedCard>
               <AnimatedCard delay={0.4}>
                 <AllocationChart holdings={enrichedHoldings} />

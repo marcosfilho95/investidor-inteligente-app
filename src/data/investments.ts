@@ -654,7 +654,11 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
 }
 
 // Get benchmark data filtered by period for PerformanceChart
-export function getFilteredBenchmarks(period: string, baseValue: number): { month: string; carteira: number; ibovespa: number; cdi: number; ipca: number }[] {
+export function getFilteredBenchmarks(
+  period: string,
+  baseValue: number,
+  minStartDate?: string
+): { month: string; carteira: number; ibovespa: number; cdi: number; ipca: number }[] {
   const benchmarks = getBenchmarkHistory();
   const now = getLatestMarketDate();
   let startDate: Date;
@@ -688,7 +692,8 @@ export function getFilteredBenchmarks(period: string, baseValue: number): { mont
     default: startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1);
   }
   
-  const startStr = startDate.toISOString().slice(0, 10);
+  const startStrFromPeriod = startDate.toISOString().slice(0, 10);
+  const startStr = minStartDate && minStartDate > startStrFromPeriod ? minStartDate : startStrFromPeriod;
   
   const ibovData = benchmarks.IBOV.filter(d => d.date >= startStr);
   const cdiData = benchmarks.CDI.filter(d => d.date >= startStr);
