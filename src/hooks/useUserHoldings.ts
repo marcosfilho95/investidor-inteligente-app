@@ -99,28 +99,7 @@ export function useUserHoldings() {
     const memCache = memoryCacheByUser[userId];
     const localCache = getLocalCache(userId);
     const bestCache = memCache ?? localCache ?? null;
-
-    if (!forceRefresh && bestCache) {
-      setUserHoldings(bestCache.holdings);
-      setLoading(false);
-      if (isFresh(bestCache)) return;
-    } else if (!bestCache) {
-      setLoading(true);
-    }
-
-    if (!forceRefresh && inFlightByUser[userId]) {
-      const data = await inFlightByUser[userId];
-      setUserHoldings(data ?? []);
-      setLoading(false);
-      return;
-    }
-
-    const request = (async (): Promise<UserHolding[]> => {
-      const { data, error } = await supabase
-        .from("user_holdings")
-        .select("symbol, shares, avg_price, created_at")
-        .eq("user_id", userId);
-
+    const loadTrades = async () => {
       const { data: tradesData } = await supabase
         .from("user_trades")
         .select("id, symbol, side, shares, price, traded_at")
@@ -141,6 +120,33 @@ export function useUserHoldings() {
       } else {
         setUserTrades([]);
       }
+    };
+
+    if (!forceRefresh && bestCache) {
+      setUserHoldings(bestCache.holdings);
+      setLoading(false);
+      if (isFresh(bestCache)) {
+        await loadTrades();
+        return;
+      }
+    } else if (!bestCache) {
+      setLoading(true);
+    }
+
+    if (!forceRefresh && inFlightByUser[userId]) {
+      const data = await inFlightByUser[userId];
+      setUserHoldings(data ?? []);
+      setLoading(false);
+      return;
+    }
+
+    const request = (async (): Promise<UserHolding[]> => {
+      const { data, error } = await supabase
+        .from("user_holdings")
+        .select("symbol, shares, avg_price, created_at")
+        .eq("user_id", userId);
+
+      await loadTrades();
 
       if (error || !data) return bestCache?.holdings ?? [];
 
