@@ -161,22 +161,39 @@ async function fetchFromLocal(): Promise<Record<string, OHLCVDay[]>> {
   return data;
 }
 
+function mergeMissingTickersFromLocal(
+  primary: Record<string, OHLCVDay[]>,
+  fallback: Record<string, OHLCVDay[]>
+): Record<string, OHLCVDay[]> {
+  const merged: Record<string, OHLCVDay[]> = { ...primary };
+  for (const [ticker, rows] of Object.entries(fallback)) {
+    if (!merged[ticker] || merged[ticker].length === 0) {
+      merged[ticker] = rows;
+    }
+  }
+  return merged;
+}
+
 /**
  * Load real price data with smart source selection.
  * Safe to call multiple times â€” deduplicates the fetch.
  */
-export async function loadRealPriceData(): Promise<Record<string, OHLCVDay[]>> {
-  if (_realPricesCache) return _realPricesCache;
-  if (_loadingPromise) return _loadingPromise;
+export async function loadRealPriceData(forceRefresh = false): Promise<Record<string, OHLCVDay[]>> {
+  if (!forceRefresh && _realPricesCache) return _realPricesCache;
+  if (!forceRefresh && _loadingPromise) return _loadingPromise;
+  if (forceRefresh) _loadingPromise = null;
 
   _loadingPromise = (async () => {
     try {
       // Try Storage first
       const storageData = await fetchFromStorage();
       if (storageData) {
-        _realPricesCache = storageData;
+        // Avoid flat synthetic fallback for missing tickers by completing from local CSV.
+        const localFallback = await fetchFromLocal().catch(() => null);
+        const mergedData = localFallback ? mergeMissingTickersFromLocal(storageData, localFallback) : storageData;
+        _realPricesCache = mergedData;
         _loaded = true;
-        return storageData;
+        return mergedData;
       }
 
       // Fallback to local

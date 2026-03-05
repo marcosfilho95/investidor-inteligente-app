@@ -9,12 +9,15 @@ Single entrypoint for n8n/GitHub job:
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
+LOCAL_PRICES_FALLBACK = ROOT_DIR / "public" / "data" / "prices_daily_24assets_plus_ibov_5y.csv"
+OUTPUT_PRICES_LATEST = ROOT_DIR / "output" / "prices_latest.csv"
 
 
 def utc_ts() -> str:
@@ -51,6 +54,14 @@ def run_step(name: str, command: list[str]) -> None:
         raise RuntimeError(f"Step failed: {name} (exit_code={proc.returncode})")
 
 
+def sync_local_fallback_prices() -> None:
+    if not OUTPUT_PRICES_LATEST.exists():
+        raise RuntimeError(f"Missing generated prices file: {OUTPUT_PRICES_LATEST}")
+    LOCAL_PRICES_FALLBACK.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(OUTPUT_PRICES_LATEST, LOCAL_PRICES_FALLBACK)
+    log(f"Synced local fallback prices file={LOCAL_PRICES_FALLBACK}")
+
+
 def main() -> int:
     load_env_files()
     log(f"Project dir={ROOT_DIR}")
@@ -60,6 +71,7 @@ def main() -> int:
     run_step("openbb_refresh", [sys.executable, "scripts/openbb_refresh.py"])
     run_step("macro_refresh", [sys.executable, "scripts/macro_refresh.py"])
     run_step("validate_dataset", [sys.executable, "scripts/validate_dataset.py", "output/prices_latest.csv"])
+    sync_local_fallback_prices()
     run_step("upload_to_supabase", [sys.executable, "scripts/upload_to_supabase.py"])
 
     log("Pipeline finished successfully.")

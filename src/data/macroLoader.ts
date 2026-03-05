@@ -126,9 +126,10 @@ async function fetchMacroFromLocal(): Promise<MacroMarketData> {
   return buildMacroData(rows);
 }
 
-export async function loadMacroData(): Promise<MacroMarketData> {
-  if (_cache) return _cache;
-  if (_loadingPromise) return _loadingPromise;
+export async function loadMacroData(forceRefresh = false): Promise<MacroMarketData> {
+  if (!forceRefresh && _cache) return _cache;
+  if (!forceRefresh && _loadingPromise) return _loadingPromise;
+  if (forceRefresh) _loadingPromise = null;
 
   _loadingPromise = (async () => {
     const storageData = await fetchMacroFromStorage();

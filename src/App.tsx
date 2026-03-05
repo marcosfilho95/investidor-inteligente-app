@@ -22,21 +22,46 @@ function AppContent() {
   const [dataVersion, setDataVersion] = useState(0);
 
   useEffect(() => {
-    // Preload real CSV price data and inject into market history cache
-    Promise.all([loadRealPriceData(), loadMacroData()])
-      .then(([priceData, macroData]) => {
+    const refreshAllData = async (forceRefresh = false) => {
+      try {
+        // Preload CSV + macro data and inject into market history cache.
+        const [priceData, macroData] = await Promise.all([
+          loadRealPriceData(forceRefresh),
+          loadMacroData(forceRefresh),
+        ]);
         if (Object.keys(priceData).length > 0) {
           setRealMarketData(priceData);
         }
         if (macroData) {
           setMacroMarketData(macroData);
         }
-        // Force re-render/remount so UI recomputes values with latest loaded prices/macros
+        // Force re-render/remount so UI recomputes values with latest loaded prices/macros.
         setDataVersion((v) => v + 1);
-      })
-      .catch((e) => {
+      } catch (e) {
         console.warn("[App] preload failed:", e);
-      });
+      }
+    };
+
+    void refreshAllData(false);
+
+    const intervalId = window.setInterval(() => {
+      void refreshAllData(true);
+    }, 5 * 60 * 1000);
+
+    const onVisibilityOrFocus = () => {
+      if (document.visibilityState === "visible") {
+        void refreshAllData(true);
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityOrFocus);
+    window.addEventListener("focus", onVisibilityOrFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityOrFocus);
+      window.removeEventListener("focus", onVisibilityOrFocus);
+    };
   }, []);
 
   return (
