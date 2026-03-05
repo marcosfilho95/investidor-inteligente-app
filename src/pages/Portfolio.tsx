@@ -377,9 +377,6 @@ const Portfolio = () => {
                             Preço Médio
                           </th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
-                            Data Compra
-                          </th>
-                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
                             Preço Atual
                           </th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Variação (dia)</th>
@@ -411,9 +408,6 @@ const Portfolio = () => {
                               <td className="text-right px-4 py-3 text-sm font-mono">
                                 R$ {h.avgPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                               </td>
-                              <td className="text-right px-4 py-3 text-xs">
-                                {h.firstBuyDate ? new Date(h.firstBuyDate).toLocaleDateString("pt-BR") : "-"}
-                              </td>
                               <td className="text-right px-4 py-3 text-sm font-mono">
                                 R$ {h.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                               </td>
@@ -443,6 +437,56 @@ const Portfolio = () => {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              </AnimatedCard>
+
+              <AnimatedCard delay={0.55}>
+                <div className="glass-card overflow-hidden">
+                  <div className="p-5 border-b border-border/50">
+                    <h3 className="text-base font-semibold">Histórico de Transações</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Compras e vendas registradas na plataforma
+                    </p>
+                  </div>
+                  {userTrades.length === 0 ? (
+                    <div className="p-5">
+                      <p className="text-sm text-muted-foreground">Sem transações registradas ainda.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-border/50">
+                            <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Data</th>
+                            <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Tipo</th>
+                            <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Ativo</th>
+                            <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Quant.</th>
+                            <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Preço</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...userTrades]
+                            .sort((a, b) => b.traded_at.localeCompare(a.traded_at))
+                            .slice(0, 50)
+                            .map((t) => (
+                              <tr key={t.id} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
+                                <td className="px-5 py-3 text-sm">{new Date(t.traded_at).toLocaleDateString("pt-BR")}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`text-xs font-medium ${t.side === "buy" ? "text-gain" : "text-loss"}`}>
+                                    {t.side === "buy" ? "Compra" : "Venda"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-sm font-medium">{t.symbol}</td>
+                                <td className="text-right px-4 py-3 text-sm font-mono">{t.shares}</td>
+                                <td className="text-right px-5 py-3 text-sm font-mono">
+                                  R$ {t.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </AnimatedCard>
             </>
