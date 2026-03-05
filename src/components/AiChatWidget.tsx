@@ -15,7 +15,22 @@ interface AiChatWidgetProps {
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || import.meta.env.SUPABASE_PROJECT_ID;
+const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL ||
+  import.meta.env.SUPABASE_URL ||
+  (typeof SUPABASE_PROJECT_ID === "string" && SUPABASE_PROJECT_ID.length > 0
+    ? `https://${SUPABASE_PROJECT_ID}.supabase.co`
+    : "");
+const SUPABASE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_KEY ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.SUPABASE_KEY ||
+  import.meta.env.SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.SUPABASE_ANON_KEY ||
+  "";
+const CHAT_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/chat` : "";
 
 export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, userSymbols, userHoldingsData }: AiChatWidgetProps) {
   const initialWelcome = welcomeMessage || "Olá! Sou o Hodl 🤖, seu assistente inteligente. Como posso te ajudar hoje?";
@@ -82,6 +97,12 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
     };
 
     try {
+      if (!CHAT_URL || !SUPABASE_PUBLISHABLE_KEY) {
+        updateAssistant("⚠️ Chat indisponível: configure VITE_SUPABASE_URL (ou PROJECT_ID) e VITE_SUPABASE_PUBLISHABLE_KEY.");
+        setIsLoading(false);
+        return;
+      }
+
       // Build body with RAG context
       const body: Record<string, any> = {
         messages: newMessages.map(m => ({ role: m.role, content: m.content })),
@@ -100,7 +121,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify(body),
       });

@@ -20,7 +20,6 @@ const SUPABASE_URL =
   import.meta.env.VITE_SUPABASE_URL ||
   import.meta.env.SUPABASE_URL ||
   (PROJECT_ID ? `https://${PROJECT_ID}.supabase.co` : "");
-
 // Public bucket path (no auth needed in frontend)
 const STORAGE_BASE = SUPABASE_URL ? `${SUPABASE_URL}/storage/v1/object/public/market-data` : "";
 const STORAGE_PRICES_PATH = STORAGE_BASE ? `${STORAGE_BASE}/prices/prices_latest.csv` : "";
