@@ -49,7 +49,7 @@ const trails: Trail[] = [
       },
       {
         title: "Bull Market e Bear Market",
-        content: "Bull Market é um período prolongado de alta nos preços das ações — o otimismo domina, o crédito fica mais disponível e os valuations tendem a se expandir.\n\nBear Market é o oposto: quedas sustentadas (geralmente >20% a partir do topo), pessimismo generalizado, aversão a risco e revisão para baixo de expectativas.\n\nContexto histórico: os termos nasceram no mercado anglo-saxão no século XVIII. O touro (bull) ataca com chifres para cima, simbolizando altas; o urso (bear) golpeia para baixo, simbolizando quedas.\n\nNa prática, ambos fazem parte do ciclo econômico. Exemplo: após a crise de 2008 e o choque de 2020, os mercados passaram por Bear Markets fortes e, depois, por fases de recuperação e novos Bull Markets.\n\nInvestidores disciplinados não tentam prever o próximo ciclo com precisão: eles mantêm aportes, compram ativos de qualidade com margem de segurança e evitam euforia em topo e pânico em fundo.\n\nComo disse Warren Buffett: \"Tenha medo quando os outros são gananciosos e seja ganancioso quando os outros têm medo.\"",
+        content: "Bull Market é um período prolongado de alta nos preços das ações — o otimismo domina, o crédito fica mais disponível e os valuations tendem a se expandir.\n\nBear Market é o oposto: quedas sustentadas (geralmente >20% a partir do topo), pessimismo generalizado, aversão a risco e revisão para baixo de expectativas.\n\nOs termos nasceram no mercado anglo-saxão no século XVIII. O touro (bull) ataca com chifres para cima, simbolizando altas; o urso (bear) golpeia para baixo, simbolizando quedas.\n\nNa prática, ambos fazem parte do ciclo econômico. Exemplo: após a crise de 2008 e o choque de 2020, os mercados passaram por Bear Markets fortes e, depois, por fases de recuperação e novos Bull Markets.\n\nInvestidores disciplinados não tentam prever o próximo ciclo com precisão: eles mantêm aportes, compram ativos de qualidade com margem de segurança e evitam euforia em topo e pânico em fundo.\n\nComo disse Warren Buffett: \"Tenha medo quando os outros são gananciosos e seja ganancioso quando os outros têm medo.\"",
         tip: "Bear Markets são desconfortáveis mas são onde as maiores fortunas são construídas — se você tem caixa e paciência."
       },
       {
@@ -82,9 +82,9 @@ const trails: Trail[] = [
         tip: "Luís Barsi, o maior investidor individual da Bolsa brasileira, construiu sua fortuna focando em dividendos recorrentes de empresas sólidas por décadas."
       },
       {
-        title: "Valor vs Preço — a essência do Value Investing",
-        content: "Benjamin Graham, considerado o pai do Value Investing, ensinou: \"Preço é o que você paga; valor é o que você recebe.\"\n\nO preço de uma ação flutua diariamente baseado em emoções, notícias, especulação e fluxo de capital. O valor intrínseco é baseado nos fundamentos: lucro, patrimônio, crescimento, qualidade da gestão.\n\nComprar quando o preço está significativamente abaixo do valor intrínseco é o conceito central do Value Investing. Essa diferença é chamada de Margem de Segurança.\n\nPeter Lynch complementa: \"Saiba o que você possui e por que possui.\" Se você não consegue explicar a tese de investimento de uma ação, não deveria tê-la na carteira.",
-        tip: "Use o Hodl AI para analisar se os indicadores de valuation (P/L, P/VP, EV/EBITDA) de um ativo estão abaixo da média histórica do setor."
+        title: "Esta caro ou barato? - Metodo Graham na pratica",
+        content: "Uma pergunta central do investidor e: o preco atual esta caro ou barato em relacao ao valor do negocio?\n\nBenjamin Graham propos uma forma objetiva de estimar preco justo usando lucro e patrimonio por acao:\n\nPreco Graham = sqrt(22,5 x LPA x VPA)\n\nOnde:\n- LPA = Lucro por Acao\n- VPA = Valor Patrimonial por Acao\n\nComo interpretar:\n- Se Preco atual < Preco Graham: pode haver desconto (margem de seguranca)\n- Se Preco atual ~ Preco Graham: faixa neutra\n- Se Preco atual > Preco Graham: pode estar caro para o nivel atual de fundamentos\n\nExemplo rapido:\nSe LPA = 4,00 e VPA = 20,00:\nPreco Graham = sqrt(22,5 x 4 x 20) = sqrt(1800) ~= R$ 42,43\n\nSe o ativo negocia a R$ 35, pode estar com desconto. Se negocia a R$ 55, pode estar esticado.\n\nImportante: o metodo Graham e um ponto de partida, nao decisao final. Sempre combine com qualidade do negocio, divida, crescimento e governanca.",
+        tip: "Use a margem de seguranca como filtro: quanto mais incerto o negocio, maior deve ser o desconto exigido antes de comprar."
       },
     ],
   },
@@ -135,8 +135,8 @@ const trails: Trail[] = [
         tip: "Se não existe margem de segurança no preço atual, não compre — mesmo que a empresa seja excelente. Paciência para esperar o preço certo é uma virtude."
       },
       {
-        title: "O poder dos juros compostos",
-        content: "Albert Einstein supostamente chamou os juros compostos de \"a oitava maravilha do mundo\".\n\nComparando dois cenários com rentabilidade de 15% ao ano no mesmo período:\n\nCenário A (aporte único): R$10.000 investidos uma vez.\n• Em 10 anos: R$40.456\n• Em 20 anos: R$163.665\n• Em 30 anos: R$662.118\n\nCenário B (R$10.000 iniciais + R$500/mês):\n• Em 10 anos: R$170.442 (total aportado: R$70.000)\n• Em 20 anos: R$819.519 (total aportado: R$130.000)\n• Em 30 anos: R$3.445.397 (total aportado: R$190.000)\n\nEssa diferença mostra o poder dos aportes mensais somados aos juros compostos e ao reinvestimento de dividendos: o crescimento acelera conforme a base de capital aumenta.\n\nTempo no mercado > timing de mercado. Começar cedo e manter constância costuma ser mais importante do que tentar acertar o melhor momento.",
+        title: "Efeito bola de neve — 8ª maravilha do mundo",
+        content: "Albert Einstein supostamente chamou os juros compostos de \"a oitava maravilha do mundo\".\n\nComparando dois cenários com rentabilidade de 15% ao ano no mesmo período:\n\nCenário A (aporte único): R$10.000 investidos uma vez.\n• Em 10 anos: R$40.456\n• Em 20 anos: R$163.665\n• Em 30 anos: R$662.118\n\nCenário B (R$10.000 iniciais + R$500/mês):\n• Em 10 anos: R$170.442 (total aportado: R$70.000)\n• Em 20 anos: R$819.519 (total aportado: R$130.000)\n• Em 30 anos: R$3.445.397 (total aportado: R$190.000)\n\nEsse é o efeito bola de neve na prática: aportes mensais + juros compostos + reinvestimento de dividendos fazem o patrimônio acelerar com o tempo.\n\nTempo no mercado > timing de mercado. Começar cedo e manter constância costuma ser mais importante do que tentar acertar o melhor momento.",
         tip: "Faça aportes regulares (mensais) independente do momento do mercado. Essa estratégia se chama Dollar Cost Averaging e reduz o risco de timing."
       },
       {
@@ -189,12 +189,12 @@ const trails: Trail[] = [
       },
       {
         title: "O que a IA NÃO faz — Limitações importantes",
-        content: "A IA NÃO substitui a decisão humana. Ela não:\n\n• Prevê o futuro ou garante retornos\n• Elimina riscos do mercado\n• Substitui o estudo e a formação do investidor\n• Detecta fraudes contábeis com 100% de certeza\n• Considera fatores qualitativos subjetivos (cultura da empresa, qualidade da gestão)\n\nO que ela faz é organizar informação, reduzir ruído, contextualizar dados e melhorar a clareza da análise. A decisão final é sempre sua.\n\nCuidado com \"robôs\" que prometem operar automaticamente e gerar lucros garantidos. Se fosse tão simples, não existiriam fundos com perdas.",
+        content: "A IA NÃO substitui a decisão humana. Ela não:\n\n• Prevê o futuro ou garante retornos\n• Elimina riscos do mercado\n• Substitui o estudo e a formação do investidor\n• Detecta fraudes contábeis com 100% de certeza\n• Considera fatores qualitativos subjetivos (cultura da empresa, qualidade da gestão)\n\nO que ela faz é organizar informação, reduzir ruído, contextualizar dados e melhorar a clareza da análise. A decisão final é sempre sua.\n\nCuidado com \"robôs\" que prometem operar automaticamente e gerar lucros garantidos. Se fosse tão simples, todos estariamos ricos.",
         tip: "Trate a IA como um estagiário muito rápido e bem informado — confie nos dados que ela traz, mas valide as conclusões com seu próprio julgamento."
       },
       {
         title: "O Hodl como seu assistente de investimentos",
-        content: "O Hodl foi projetado especificamente para investidores que seguem a filosofia de Value Investing e Buy and Hold.\n\nEle conhece cada um dos 25 ativos do sistema em profundidade: como geram dinheiro, quais são seus moats (vantagens competitivas), drivers de resultado, riscos específicos e catalisadores.\n\nAtravés de RAG (Retrieval-Augmented Generation), o Hodl acessa dados atualizados dos indicadores e combina com a base de conhecimento fundamentalista para fornecer análises contextualizadas.\n\nAlgumas perguntas poderosas para fazer ao Hodl:\n• \"O lucro da [empresa] é recorrente ou veio de itens não recorrentes?\"\n• \"A dívida de [empresa] está em nível seguro?\"\n• \"Minha carteira está concentrada demais em algum setor?\"\n• \"Quais ativos da minha carteira pagam dividendos mais consistentes?\"",
+        content: "O Hodl foi projetado especificamente para investidores que seguem a filosofia de Value Investing e Buy and Hold.\n\nEle conhece cada um dos 25 ativos do sistema em profundidade: como geram dinheiro, quais sao seus moats (vantagens competitivas), drivers de resultado, riscos especificos e catalisadores.\n\nO Hodl acessa dados atualizados dos indicadores e combina com a base de conhecimento fundamentalista para fornecer analises contextualizadas.\n\nAlgumas perguntas poderosas para fazer ao Hodl:\n• Quais sao os principais pontos fortes e riscos da empresa [empresa]?\n• Descreva a empresa [empresa] e explique seu modelo de negocio.\n• A divida de [empresa] esta em nivel seguro?\n• Minha carteira esta concentrada demais em algum setor?\n• Quais ativos da minha carteira pagam dividendos mais consistentes?",
         tip: "O Hodl monitora concentração da carteira e alerta quando um ativo passa de 25% ou um setor ultrapassa 30%. Pergunte: \"Minha carteira está equilibrada?\""
       },
     ],
@@ -213,7 +213,7 @@ const Education = () => {
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold">Conteúdo Educativo</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Aprenda a investir com inteligência. Trilhas organizadas do básico ao avançado, baseadas em Graham, Bazin e Barsi.
+              Trilhas organizadas desde os primeiros passos até o conhecimento profundo, baseadas na filosofia de mentes brilhantes como Graham, Buffett, Lynch, Bazin e outros mestres.
             </p>
           </div>
 

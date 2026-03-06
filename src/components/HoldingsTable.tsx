@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { Holding } from "@/data/investments";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
+import { useEffect, useMemo, useState } from "react";
 
 interface HoldingsTableProps {
   holdings?: (Holding & { avgPrice?: number })[];
@@ -9,6 +10,26 @@ interface HoldingsTableProps {
 
 export function HoldingsTable({ holdings: userHoldings }: HoldingsTableProps) {
   const items = userHoldings || [];
+  const PAGE_SIZE = 6;
+  const [page, setPage] = useState(1);
+
+  const sortedItems = useMemo(
+    () => [...items].sort((a, b) => b.value - a.value),
+    [items]
+  );
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / PAGE_SIZE));
+  const pagedItems = useMemo(
+    () => sortedItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [sortedItems, page]
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [sortedItems.length]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   if (items.length === 0) {
     return (
@@ -37,7 +58,7 @@ export function HoldingsTable({ holdings: userHoldings }: HoldingsTableProps) {
             </tr>
           </thead>
           <tbody>
-            {items.map((holding) => (
+            {pagedItems.map((holding) => (
               <tr key={holding.symbol} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
                 <td className="px-5 py-3.5">
                   <Link to={`/ativos/${holding.symbol}`} className="flex items-center gap-3 hover:underline">
@@ -90,6 +111,29 @@ export function HoldingsTable({ holdings: userHoldings }: HoldingsTableProps) {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="flex items-center justify-between px-5 py-3 border-t border-border/40">
+        <span className="text-xs text-muted-foreground">
+          Página {page} de {totalPages}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="px-3 py-1.5 text-xs rounded-md border border-border/60 text-muted-foreground disabled:opacity-40"
+            disabled={page === 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Anterior
+          </button>
+          <button
+            type="button"
+            className="px-3 py-1.5 text-xs rounded-md border border-border/60 text-muted-foreground disabled:opacity-40"
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Próxima
+          </button>
+        </div>
       </div>
     </div>
   );

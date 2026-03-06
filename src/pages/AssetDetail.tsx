@@ -1,17 +1,58 @@
-import { useParams, Link, useSearchParams } from "react-router-dom";
+﻿import { useParams, Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
+import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getFilteredPriceHistory, getInvestmentComparison, indicatorTooltips, calcRecommendationScore, calcGrahamPrice } from "@/data/investments";
+import { holdings, getFilteredPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, calcGrahamPrice } from "@/data/investments";
+import { isRealDataLoaded } from "@/data/csvLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 
 const periods = ["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
 const periodMap: Record<string, string> = { "1 DIA": "1D", "7 DIAS": "7D", "30 DIAS": "30D", "6 MESES": "6M", "YTD": "YTD", "1 ANO": "1A", "5 ANOS": "5A" };
+const Y_DOMAIN_ADJUST_PERIODS = new Set(["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD"]);
+
+function computeVisualDomain(
+  values: number[],
+  opts?: {
+    rangePadRatio?: number;
+    minRelativePadRatio?: number;
+    minAbsPad?: number;
+    clampZero?: boolean;
+  }
+): [number, number] | undefined {
+  const finite = values.filter((v) => Number.isFinite(v));
+  if (!finite.length) return undefined;
+
+  const min = Math.min(...finite);
+  const max = Math.max(...finite);
+  const center = (min + max) / 2;
+  const range = max - min;
+
+  const rangePadRatio = opts?.rangePadRatio ?? 0.3;
+  const minRelativePadRatio = opts?.minRelativePadRatio ?? 0.003;
+  const minAbsPad = opts?.minAbsPad ?? 0.2;
+
+  const padFromRange = range > 0 ? range * rangePadRatio : 0;
+  const padFromRelative = Math.abs(center) * minRelativePadRatio;
+  const pad = Math.max(padFromRange, padFromRelative, minAbsPad);
+
+  let yMin = min - pad;
+  let yMax = max + pad;
+
+  if (opts?.clampZero) {
+    yMin = Math.max(0, yMin);
+  }
+
+  if (!(yMax > yMin)) {
+    yMax = yMin + Math.max(minAbsPad * 2, 0.5);
+  }
+
+  return [Number(yMin.toFixed(4)), Number(yMax.toFixed(4))];
+}
 
 const AssetDetail = () => {
   const { symbol } = useParams<{ symbol: string }>();
@@ -21,8 +62,18 @@ const AssetDetail = () => {
   const [orderType, setOrderType] = useState<"buy" | "sell">("buy");
   const [selectedPeriod, setSelectedPeriod] = useState("1 ANO");
   const [chartAnimKey, setChartAnimKey] = useState(0);
+  const [compareAnimKey, setCompareAnimKey] = useState(0);
+  const [chartsReady, setChartsReady] = useState(() => isRealDataLoaded());
   const [orderQty, setOrderQty] = useState(1);
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [investmentComparison, setInvestmentComparison] = useState<Record<string, any>[]>([]);
+  const [comparisonMeta, setComparisonMeta] = useState<{
+    lastUpdatedAt: string | null;
+    sources: { ibov: "ok" | "stale"; cdi: "ok" | "stale"; ipca: "ok" | "stale" };
+  }>({
+    lastUpdatedAt: null,
+    sources: { ibov: "ok", cdi: "ok", ipca: "ok" },
+  });
   const { addHolding, sellHolding, userHoldings } = useUserHoldings();
 
   if (!asset) {
@@ -38,14 +89,80 @@ const AssetDetail = () => {
 
   const userHolding = userHoldings.find(h => h.symbol === asset.symbol);
   const isPositive = asset.changePercent >= 0;
-  const recommendation = calcRecommendationScore(asset);
-  const grahamPrice = calcGrahamPrice(asset);
+  const recommendation = useMemo(() => calcRecommendationScore(asset), [asset]);
+  const grahamPrice = useMemo(() => calcGrahamPrice(asset), [asset]);
   const grahamUpside = grahamPrice ? ((grahamPrice / asset.price - 1) * 100).toFixed(1) : null;
 
-  const priceHistory = getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]);
+  const priceHistory = useMemo(
+    () => (chartsReady ? getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]) : []),
+    [asset.symbol, selectedPeriod, chartsReady]
+  );
 
-  // Use real benchmark comparison data
-  const investmentComparison = getInvestmentComparison(asset.symbol, periodMap[selectedPeriod]);
+  const priceHistoryYAxisDomain = useMemo(() => {
+    if (!Y_DOMAIN_ADJUST_PERIODS.has(selectedPeriod)) return undefined;
+    if (!priceHistory.length) return undefined;
+
+    return computeVisualDomain(
+      priceHistory.map((p) => Number(p.price)),
+      {
+        // Menos “folga” para destacar os movimentos curtos
+        rangePadRatio: 0.28,
+        minRelativePadRatio: 0.0015,
+        minAbsPad: 0.08,
+        clampZero: true,
+      }
+    );
+  }, [priceHistory, selectedPeriod]);
+
+  const comparisonYAxisDomain = useMemo(() => {
+    if (!Y_DOMAIN_ADJUST_PERIODS.has(selectedPeriod)) return undefined;
+    if (!investmentComparison.length) return undefined;
+
+    const values: number[] = [];
+    for (const row of investmentComparison) {
+      values.push(
+        Number(row[asset.symbol]),
+        Number(row.IBOV),
+        Number(row.CDI),
+        Number(row.IPCA)
+      );
+    }
+
+    return computeVisualDomain(values, {
+      // Mantém leitura mais “viva” sem exagerar para benchmarks
+      rangePadRatio: 0.22,
+      minRelativePadRatio: 0.002,
+      minAbsPad: 2.5,
+      clampZero: true,
+    });
+  }, [investmentComparison, selectedPeriod, asset.symbol]);
+
+  // Use real benchmark comparison data (async, with BCB macro series)
+  useEffect(() => {
+    let isMounted = true;
+    if (!chartsReady) {
+      setInvestmentComparison([]);
+      return;
+    }
+    getInvestmentComparisonData(asset.symbol, periodMap[selectedPeriod])
+      .then((result) => {
+        if (!isMounted) return;
+        setInvestmentComparison(result.points);
+        setComparisonMeta(result.meta);
+      })
+      .catch((err) => {
+        console.warn("[AssetDetail] getInvestmentComparison failed:", err);
+        if (!isMounted) return;
+        setInvestmentComparison([]);
+        setComparisonMeta({
+          lastUpdatedAt: null,
+          sources: { ibov: "stale", cdi: "stale", ipca: "stale" },
+        });
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [asset.symbol, selectedPeriod, chartsReady]);
 
   const hasComparisonData = investmentComparison.length > 0;
   const lastComparison = hasComparisonData
@@ -57,9 +174,17 @@ const AssetDetail = () => {
         IPCA: 1000,
       };
   const hasFundamentals = asset.pe !== null;
+  const hasStaleMacroData =
+    comparisonMeta.sources.ibov === "stale" ||
+    comparisonMeta.sources.cdi === "stale" ||
+    comparisonMeta.sources.ipca === "stale";
 
   const handleOrder = async () => {
-    const tradedAt = orderDate ? `${orderDate}T12:00:00` : undefined;
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    const tradedAt = orderDate ? `${orderDate}T${hh}:${mm}:${ss}` : undefined;
     if (orderType === "buy") {
       const success = await addHolding(asset.symbol, orderQty, asset.price, tradedAt);
       if (success) setShowBuyModal(false);
@@ -85,6 +210,25 @@ const AssetDetail = () => {
   useEffect(() => {
     setChartAnimKey((k) => k + 1);
   }, [selectedPeriod, asset.symbol]);
+
+  useEffect(() => {
+    setCompareAnimKey((k) => k + 1);
+  }, [selectedPeriod, asset.symbol]);
+
+  useEffect(() => {
+    if (chartsReady) return;
+    const timeoutId = window.setTimeout(() => setChartsReady(true), 1200);
+    const pollId = window.setInterval(() => {
+      if (isRealDataLoaded()) {
+        setChartsReady(true);
+        window.clearInterval(pollId);
+      }
+    }, 120);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(pollId);
+    };
+  }, [chartsReady]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -114,7 +258,9 @@ const AssetDetail = () => {
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{asset.subsetor}</span>
                 </div>
                 <p className="text-sm text-muted-foreground">{asset.name}</p>
-                {userHolding && <p className="text-[10px] text-primary mt-0.5">Você possui {userHolding.shares} ações</p>}
+                <p className="text-[10px] text-primary mt-0.5 min-h-4">
+                  {userHolding ? `Você possui ${userHolding.shares} ações` : ""}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -144,47 +290,40 @@ const AssetDetail = () => {
                   <h3 className="text-base font-semibold">Método Graham</h3>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">Value Investing</span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-4">Benjamin Graham — o pai do Value Investing — criou uma fórmula para estimar o preço justo de uma ação com base nos fundamentos reais da empresa.</p>
+                <p className="text-xs text-muted-foreground mb-4">Benjamin Graham, o pai do Value Investing, criou uma fórmula para estimar o preço justo de uma ação com base nos fundamentos reais da empresa.</p>
                 {grahamPrice ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-3 gap-3">
                       <div className="bg-muted/50 rounded-xl p-4 text-center">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preço atual</p>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preco atual</p>
                         <p className="text-lg font-mono font-bold mt-1.5">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                       </div>
                       <div className="bg-primary/10 rounded-xl p-4 text-center border border-primary/20">
-                        <p className="text-[10px] text-primary uppercase tracking-wider font-medium">Preço Graham</p>
+                        <p className="text-[10px] text-primary uppercase tracking-wider font-medium">Preco Graham</p>
                         <p className="text-lg font-mono font-bold text-primary mt-1.5">R$ {grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                       </div>
-                      <div className={`rounded-xl p-4 text-center ${Number(grahamUpside) > 10 ? "bg-gain/10 border border-gain/20" : Number(grahamUpside) >= -10 ? "bg-warning/10 border border-warning/20" : "bg-loss/10 border border-loss/20"}`}>
+                      <div className={`rounded-xl p-4 text-center ${Number(grahamUpside) > 15 ? "bg-gain/10 border border-gain/20" : Number(grahamUpside) >= -15 ? "bg-warning/10 border border-warning/20" : "bg-loss/10 border border-loss/20"}`}>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Upside</p>
-                        <p className={`text-lg font-mono font-bold mt-1.5 ${Number(grahamUpside) > 10 ? "text-gain" : Number(grahamUpside) >= -10 ? "text-warning" : "text-loss"}`}>{Number(grahamUpside) >= 0 ? "+" : ""}{grahamUpside}%</p>
+                        <p className={`text-lg font-mono font-bold mt-1.5 ${Number(grahamUpside) > 15 ? "text-gain" : Number(grahamUpside) >= -15 ? "text-warning" : "text-loss"}`}>{Number(grahamUpside) >= 0 ? "+" : ""}{grahamUpside}%</p>
                       </div>
                     </div>
-                    {Number(grahamUpside) > 10 ? (
+                    {Number(grahamUpside) > 15 ? (
                       <div className="bg-gain/5 border border-gain/15 rounded-xl px-4 py-3 flex items-center gap-2">
-                        <span className="text-gain text-sm">✓</span>
-                        <p className="text-xs text-gain font-medium">Ação com margem de segurança — preço atual abaixo do estimado por Graham</p>
+                        <p className="text-xs text-gain font-medium">Preço descontado: abaixo do valor estimado por Graham</p>
                       </div>
-                    ) : Number(grahamUpside) >= -10 ? (
+                    ) : Number(grahamUpside) >= -15 ? (
                       <div className="bg-warning/5 border border-warning/15 rounded-xl px-4 py-3 flex items-center gap-2">
-                        <span className="text-warning text-sm">⚖</span>
-                        <p className="text-xs text-warning font-medium">Preço neutro — dentro da faixa de ±10% do valor estimado por Graham</p>
+                        <p className="text-xs text-warning font-medium">Preço neutro: dentro da faixa de +/-15% do valor estimado por Graham</p>
                       </div>
                     ) : (
                       <div className="bg-loss/5 border border-loss/15 rounded-xl px-4 py-3 flex items-center gap-2">
-                        <span className="text-loss text-sm">⚠</span>
-                        <p className="text-xs text-loss font-medium">Preço atual significativamente acima do estimado — menor margem de segurança</p>
+                        <p className="text-xs text-loss font-medium">Preço esticado: acima do valor estimado por Graham</p>
                       </div>
                     )}
-                    <div className="flex items-center justify-between pt-1">
-                      <p className="text-[10px] text-muted-foreground font-mono bg-muted/50 px-2 py-1 rounded">√(22,5 × LPA × VPA)</p>
-                      <p className="text-[10px] text-muted-foreground">LPA: {asset.lpa?.toFixed(2)} · VPA: {asset.vpa?.toFixed(2)}</p>
-                    </div>
                   </div>
                 ) : (
                   <div className="bg-muted/30 rounded-xl p-6 text-center">
-                    <p className="text-sm text-muted-foreground">Dados insuficientes (LPA e VPA necessários)</p>
+                    <p className="text-sm text-muted-foreground">Dados insuficientes (LPA e VPA necessarios)</p>
                   </div>
                 )}
               </div>
@@ -205,7 +344,7 @@ const AssetDetail = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <AnimatedCard delay={0.3}>
               <div className="glass-card p-5">
-                <h3 className="text-base font-semibold mb-4">Preço histórico</h3>
+                <h3 className="text-base font-semibold mb-4">Preço Histórico</h3>
                 <ResponsiveContainer width="100%" height={280}>
                   <AreaChart key={`price-${asset.symbol}-${chartAnimKey}`} data={priceHistory}>
                     <defs><linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
@@ -214,8 +353,16 @@ const AssetDetail = () => {
                     </linearGradient></defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
                     <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={9} tickLine={false} axisLine={false} tick={({ x, y, payload }: any) => payload.value ? <text x={x} y={y + 12} textAnchor="middle" fill="hsl(215, 14%, 50%)" fontSize={9}>{payload.value}</text> : null} interval={Math.max(0, Math.floor(priceHistory.length / 10))} />
-                    <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
-                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Preço"]} />
+                    <YAxis
+                      stroke="hsl(215, 14%, 50%)"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `R$${v.toFixed(0)}`}
+                      domain={priceHistoryYAxisDomain}
+                      allowDataOverflow={false}
+                    />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Preco"]} />
                     <Area
                       type="monotone"
                       dataKey="price"
@@ -234,19 +381,105 @@ const AssetDetail = () => {
             <AnimatedCard delay={0.4}>
               <div className="glass-card p-5">
                 <h3 className="text-base font-semibold mb-1">Se você tivesse investido R$ 1.000</h3>
-                <p className="text-xs text-muted-foreground mb-4">{asset.symbol} vs IBOV vs CDI vs IPCA</p>
-                <ResponsiveContainer width="100%" height={240}>
-                  <LineChart key={`compare-${asset.symbol}-${chartAnimKey}`} data={investmentComparison}>
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <p className="text-xs text-muted-foreground">{asset.symbol} vs IBOV vs CDI vs IPCA</p>
+                </div>
+                <ResponsiveContainer width="100%" height={280}>
+                  <ComposedChart key={`compare-${asset.symbol}-${selectedPeriod}-${compareAnimKey}`} data={investmentComparison}>
+                    <defs>
+                      <linearGradient id="compareGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(142, 72%, 48%)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(142, 72%, 48%)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
-                    <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} interval={Math.max(0, Math.floor(investmentComparison.length / 8))} />
-                    <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v.toFixed(0)}`} />
-                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`]} />
+                    <XAxis
+                      dataKey="month"
+                      stroke="hsl(215, 14%, 50%)"
+                      fontSize={9}
+                      tickLine={false}
+                      axisLine={false}
+                      tick={({ x, y, payload }: any) =>
+                        payload.value ? (
+                          <text x={x} y={y + 12} textAnchor="middle" fill="hsl(215, 14%, 50%)" fontSize={9}>
+                            {payload.value}
+                          </text>
+                        ) : null
+                      }
+                      interval={Math.max(0, Math.floor(investmentComparison.length / 10))}
+                    />
+                    <YAxis
+                      stroke="hsl(215, 14%, 50%)"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `R$${v.toFixed(0)}`}
+                      domain={comparisonYAxisDomain}
+                      allowDataOverflow={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        fontFamily: "JetBrains Mono",
+                        color: "hsl(var(--foreground))",
+                      }}
+                      formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`]}
+                    />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
-                    <Line type="monotone" dataKey={asset.symbol} stroke="hsl(142, 72%, 48%)" strokeWidth={2} dot={false} isAnimationActive animationDuration={2000} animationEasing="ease-out" />
-                    <Line type="monotone" dataKey="IBOV" stroke="hsl(217, 91%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={2000} animationBegin={180} animationEasing="ease-out" />
-                    <Line type="monotone" dataKey="CDI" stroke="hsl(38, 92%, 50%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={2000} animationBegin={340} animationEasing="ease-out" />
-                    <Line type="monotone" dataKey="IPCA" stroke="hsl(280, 65%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={2000} animationBegin={500} animationEasing="ease-out" />
-                  </LineChart>
+                    <Area
+                      type="monotone"
+                      dataKey={asset.symbol}
+                      stroke="hsl(142, 72%, 48%)"
+                      strokeWidth={2}
+                      fill="url(#compareGrad)"
+                      isAnimationActive
+                      animationDuration={1800}
+                      animationEasing="ease-out"
+                      animationBegin={0}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="IBOV"
+                      name="IBOV"
+                      stroke="hsl(217, 91%, 60%)"
+                      strokeWidth={1.5}
+                      dot={false}
+                      strokeDasharray="5 5"
+                      isAnimationActive
+                      animationDuration={1800}
+                      animationEasing="ease-out"
+                      animationBegin={80}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="CDI"
+                      name="CDI"
+                      stroke="hsl(38, 92%, 50%)"
+                      strokeWidth={1.5}
+                      dot={false}
+                      strokeDasharray="5 5"
+                      isAnimationActive
+                      animationDuration={1800}
+                      animationEasing="ease-out"
+                      animationBegin={120}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="IPCA"
+                      name="IPCA"
+                      stroke="hsl(280, 65%, 60%)"
+                      strokeWidth={1.5}
+                      dot={false}
+                      strokeDasharray="5 5"
+                      isAnimationActive
+                      animationDuration={1800}
+                      animationEasing="ease-out"
+                      animationBegin={160}
+                    />
+                  </ComposedChart>
                 </ResponsiveContainer>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
                   {[
@@ -269,8 +502,8 @@ const AssetDetail = () => {
           <AiChatWidget
             page="ativo"
             ticker={asset.symbol}
-            context={`Análise de ${asset.symbol}`}
-            welcomeMessage={`📊 Analisando ${asset.symbol} (${asset.name})...\n\n${asset.description}\n\n🏷️ Setor: ${asset.sector} / ${asset.subsetor}\n📈 Score: ${recommendation.score}/100 (${recommendation.label})\n💰 P/L: ${asset.pe ?? 'N/A'} | DY: ${asset.dividend}% | ROE: ${asset.roe ?? 'N/A'}%\n${grahamPrice ? `📐 Graham: R$ ${grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${grahamUpside}% upside)` : ""}\n\nPergunte-me sobre indicadores, riscos ou estratégias para este ativo!`}
+            context={`Analise de ${asset.symbol}`}
+            welcomeMessage={`Analisando ${asset.symbol} (${asset.name})...\n\n${asset.description}\n\nSetor: ${asset.sector} / ${asset.subsetor}\nScore: ${recommendation.score}/100 (${recommendation.label})\nP/L: ${asset.pe ?? 'N/A'} | DY: ${asset.dividend}% | ROE: ${asset.roe ?? 'N/A'}%\n${grahamPrice ? `Graham: R$ ${grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${grahamUpside}% upside)` : ""}\n\nPergunte sobre indicadores, riscos ou estrategias para este ativo.`}
           />
 
           {/* Indicators */}
@@ -279,7 +512,7 @@ const AssetDetail = () => {
               <AnimatedCard delay={0.5}>
                 <div className="glass-card p-5">
                   <h3 className="text-base font-semibold mb-1">Indicadores de Valuation</h3>
-                  <p className="text-xs text-muted-foreground mb-4">Passe o mouse sobre o ❓ para entender cada indicador</p>
+                  <p className="text-xs text-muted-foreground mb-4">Passe o mouse sobre o  para entender cada indicador</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                     <IndicatorCard label="DY" value={`${asset.dividend}%`} tooltip={indicatorTooltips.dividend} />
                     <IndicatorCard label="P/L" value={asset.pe?.toFixed(1) ?? null} tooltip={indicatorTooltips.pe} />
@@ -304,7 +537,7 @@ const AssetDetail = () => {
                       <IndicatorCard label="ROIC" value={asset.roic ? `${asset.roic}%` : null} tooltip={indicatorTooltips.roic} />
                       <IndicatorCard label="Margem Bruta" value={asset.margemBruta ? `${asset.margemBruta}%` : null} tooltip={indicatorTooltips.margemBruta} />
                       <IndicatorCard label="Margem EBIT" value={asset.margemEbit ? `${asset.margemEbit}%` : null} tooltip={indicatorTooltips.margemEbit} />
-                      <IndicatorCard label="Margem Líq." value={asset.margemLiquida ? `${asset.margemLiquida}%` : null} tooltip={indicatorTooltips.margemLiquida} />
+                      <IndicatorCard label="Margem Liq." value={asset.margemLiquida ? `${asset.margemLiquida}%` : null} tooltip={indicatorTooltips.margemLiquida} />
                       <IndicatorCard label="C. Receita 5A" value={asset.cReceita5a ? `${asset.cReceita5a}%` : null} tooltip={indicatorTooltips.cReceita5a} />
                       <IndicatorCard label="C. Lucro 5A" value={asset.cLucro5a ? `${asset.cLucro5a}%` : null} tooltip={indicatorTooltips.cLucro5a} />
                       <IndicatorCard label="Giro Ativos" value={asset.giroAtivos?.toFixed(2) ?? null} tooltip={indicatorTooltips.giroAtivos} />
@@ -317,8 +550,8 @@ const AssetDetail = () => {
                     <h3 className="text-base font-semibold mb-4">Indicadores de Endividamento</h3>
                     <div className="grid grid-cols-2 gap-3">
                       <IndicatorCard label="Liq. Corrente" value={asset.liqCorrente?.toFixed(2) ?? null} tooltip={indicatorTooltips.liqCorrente} />
-                      <IndicatorCard label="Dív. Líq. / PL" value={asset.divLiqPl?.toFixed(2) ?? null} tooltip={indicatorTooltips.divLiqPl} />
-                      <IndicatorCard label="Dív. Líq. / EBITDA" value={asset.divLiqEbitda?.toFixed(2) ?? null} tooltip={indicatorTooltips.divLiqEbitda} />
+                      <IndicatorCard label="Div. Liq. / PL" value={asset.divLiqPl?.toFixed(2) ?? null} tooltip={indicatorTooltips.divLiqPl} />
+                      <IndicatorCard label="Div. Liq. / EBITDA" value={asset.divLiqEbitda?.toFixed(2) ?? null} tooltip={indicatorTooltips.divLiqEbitda} />
                       <IndicatorCard label="PL / Ativos" value={asset.plAtivos?.toFixed(2) ?? null} tooltip={indicatorTooltips.plAtivos} />
                     </div>
                   </div>
@@ -352,7 +585,7 @@ const AssetDetail = () => {
                 />
               </div>
               <div className="bg-muted/30 rounded-lg p-3 space-y-1">
-                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Preço unitário</span><span className="font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Preco unitario</span><span className="font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
                 <div className="flex justify-between text-xs font-medium"><span className="text-muted-foreground">Total estimado</span><span className="font-mono">R$ {(asset.price * orderQty).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
               </div>
             </div>
@@ -370,3 +603,4 @@ const AssetDetail = () => {
 };
 
 export default AssetDetail;
+

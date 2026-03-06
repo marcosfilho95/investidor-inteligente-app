@@ -11,6 +11,7 @@ interface AiChatWidgetProps {
   ticker?: string;
   userSymbols?: string[];
   userHoldingsData?: { symbol: string; shares: number; avgPrice: number }[];
+  className?: string;
 }
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -32,7 +33,7 @@ const SUPABASE_PUBLISHABLE_KEY =
   "";
 const CHAT_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/chat` : "";
 
-export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, userSymbols, userHoldingsData }: AiChatWidgetProps) {
+export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, userSymbols, userHoldingsData, className = "" }: AiChatWidgetProps) {
   const initialWelcome = welcomeMessage || "Olá! Sou o Hodl 🤖, seu assistente inteligente. Como posso te ajudar hoje?";
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([
@@ -186,7 +187,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
   }
 
   return (
-    <div className="glass-card overflow-hidden">
+    <div className={`glass-card overflow-hidden h-full flex flex-col ${className}`}>
       <div className="p-4 border-b border-border/50 flex items-center gap-3">
         <div className="h-9 w-9 rounded-xl bg-primary/20 flex items-center justify-center">
           <Bot className="h-5 w-5 text-primary" />
@@ -200,7 +201,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
           </p>
         </div>
       </div>
-      <div ref={scrollRef} className="p-4 space-y-3 max-h-[300px] overflow-y-auto">
+      <div ref={scrollRef} className="p-4 space-y-3 flex-1 min-h-0 overflow-y-auto flex flex-col justify-end">
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
@@ -225,7 +226,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
           </div>
         )}
       </div>
-      <div className="p-3 border-t border-border/50 flex gap-2">
+      <div className="p-3 border-t border-border/50 flex gap-2 mt-auto">
         <input
           type="text"
           value={input}

@@ -1,6 +1,15 @@
 const CACHE_NAME = "investidor-inteligente-v1";
 const APP_SHELL = ["/", "/index.html", "/favicon.ico", "/manifest.webmanifest"];
 
+function isCacheableHttpUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
@@ -23,6 +32,8 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const requestUrl = new URL(event.request.url);
+  if (!isCacheableHttpUrl(event.request.url)) return;
 
   const isHtmlRequest = event.request.mode === "navigate";
 
@@ -30,8 +41,13 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", copy));
+          if (response && response.status === 200 && isCacheableHttpUrl(response.url)) {
+            const copy = response.clone();
+            caches
+              .open(CACHE_NAME)
+              .then((cache) => cache.put("/index.html", copy))
+              .catch(() => undefined);
+          }
           return response;
         })
         .catch(() => caches.match("/index.html"))
@@ -43,9 +59,18 @@ self.addEventListener("fetch", (event) => {
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request)
         .then((response) => {
-          if (response && response.status === 200 && response.type === "basic") {
+          if (
+            response &&
+            response.status === 200 &&
+            response.type === "basic" &&
+            isCacheableHttpUrl(event.request.url) &&
+            isCacheableHttpUrl(response.url)
+          ) {
             const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            caches
+              .open(CACHE_NAME)
+              .then((cache) => cache.put(event.request, copy))
+              .catch(() => undefined);
           }
           return response;
         })

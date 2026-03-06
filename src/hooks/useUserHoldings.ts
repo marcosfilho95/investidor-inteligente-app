@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { holdings as allAssets } from "@/data/investments";
+import { holdings as allAssets, getMarketHistory } from "@/data/investments";
 import { useToast } from "@/hooks/use-toast";
 
 export interface UserHolding {
@@ -17,6 +17,7 @@ export interface UserTrade {
   shares: number;
   price: number;
   traded_at: string;
+  created_at?: string;
 }
 
 type HoldingsCacheEntry = {
@@ -27,6 +28,7 @@ type HoldingsCacheEntry = {
 
 const HOLDINGS_CACHE_TTL_MS = 60 * 1000;
 const HOLDINGS_CACHE_STORAGE_KEY = "ii_user_holdings_cache_v1";
+const LOCAL_TRADES_STORAGE_KEY = "ii_user_trades_local_v1";
 
 let memoryCacheByUser: Record<string, HoldingsCacheEntry> = {};
 let inFlightByUser: Record<string, Promise<UserHolding[]> | null> = {};
@@ -65,9 +67,70 @@ function clearAllCaches() {
   activeUserCache = null;
   try {
     localStorage.removeItem(HOLDINGS_CACHE_STORAGE_KEY);
+    localStorage.removeItem(LOCAL_TRADES_STORAGE_KEY);
   } catch {
     // ignore storage errors
   }
+}
+
+type LocalTradesMap = Record<string, UserTrade[]>;
+
+function loadLocalTrades(userId: string): UserTrade[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_TRADES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as LocalTradesMap;
+    const list = parsed?.[userId];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalTrades(userId: string, trades: UserTrade[]) {
+  try {
+    const raw = localStorage.getItem(LOCAL_TRADES_STORAGE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as LocalTradesMap) : {};
+    parsed[userId] = trades;
+    localStorage.setItem(LOCAL_TRADES_STORAGE_KEY, JSON.stringify(parsed));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function tradeFingerprint(t: UserTrade): string {
+  return [
+    t.symbol,
+    t.side,
+    t.shares,
+    Number(t.price).toFixed(4),
+    (t.traded_at || "").slice(0, 19),
+  ].join("|");
+}
+
+function buildSyntheticOpeningBuys(holdings: UserHolding[], trades: UserTrade[]): UserTrade[] {
+  const qtyBySymbol = trades.reduce<Record<string, number>>((acc, t) => {
+    const delta = t.side === "buy" ? t.shares : -t.shares;
+    acc[t.symbol] = (acc[t.symbol] || 0) + delta;
+    return acc;
+  }, {});
+
+  return holdings
+    .filter((h) => h.shares > 0)
+    .map((h) => {
+      const tradedQty = qtyBySymbol[h.symbol] || 0;
+      const missingQty = h.shares - tradedQty;
+      if (missingQty <= 0) return null;
+      return {
+        id: `synthetic-open-${h.symbol}-${h.created_at ?? "unknown"}`,
+        symbol: h.symbol,
+        side: "buy" as const,
+        shares: missingQty,
+        price: Number(h.avg_price),
+        traded_at: h.created_at ?? new Date().toISOString(),
+      };
+    })
+    .filter(Boolean) as UserTrade[];
 }
 
 export function useUserHoldings() {
@@ -100,25 +163,34 @@ export function useUserHoldings() {
     const localCache = getLocalCache(userId);
     const bestCache = memCache ?? localCache ?? null;
     const loadTrades = async () => {
-      const { data: tradesData } = await supabase
+      const { data: tradesData, error: tradesError } = await supabase
         .from("user_trades")
-        .select("id, symbol, side, shares, price, traded_at")
+        .select("id, symbol, side, shares, price, traded_at, created_at")
         .eq("user_id", userId)
         .order("traded_at", { ascending: true });
-
-      if (Array.isArray(tradesData)) {
-        setUserTrades(
-          tradesData.map((t) => ({
+      const remoteTrades: UserTrade[] = Array.isArray(tradesData)
+        ? tradesData.map((t) => ({
             id: t.id,
             symbol: t.symbol,
             side: t.side as "buy" | "sell",
             shares: t.shares,
             price: Number(t.price),
             traded_at: t.traded_at,
+            created_at: t.created_at ?? undefined,
           }))
-        );
-      } else {
-        setUserTrades([]);
+        : [];
+
+      const localTrades = loadLocalTrades(userId);
+      const mergedMap = new Map<string, UserTrade>();
+      for (const tr of [...remoteTrades, ...localTrades]) {
+        mergedMap.set(tradeFingerprint(tr), tr);
+      }
+      const mergedTrades = Array.from(mergedMap.values()).sort((a, b) => a.traded_at.localeCompare(b.traded_at));
+      setUserTrades(mergedTrades);
+      saveLocalTrades(userId, mergedTrades);
+
+      if (tradesError) {
+        console.warn("[useUserHoldings] Failed to load user_trades from Supabase, using local backup when available:", tradesError.message);
       }
     };
 
@@ -217,17 +289,35 @@ export function useUserHoldings() {
       }
     }
 
-    const tradePayload: any = {
+    const tradedAtIso = tradedAt ?? new Date().toISOString();
+    const tradePayload = {
       user_id: userId,
       symbol,
       side: "buy",
       shares,
       price,
+      traded_at: tradedAtIso,
+    } as const;
+    const localTrade: UserTrade = {
+      id: `local-buy-${Date.now()}-${symbol}`,
+      symbol,
+      side: "buy",
+      shares,
+      price,
+      traded_at: tradedAtIso,
+      created_at: new Date().toISOString(),
     };
-    if (tradedAt) tradePayload.traded_at = tradedAt;
+    const localTrades = [...loadLocalTrades(userId), localTrade];
+    saveLocalTrades(userId, localTrades);
+    setUserTrades((prev) => [...prev, localTrade].sort((a, b) => a.traded_at.localeCompare(b.traded_at)));
+
     const { error: tradeError } = await supabase.from("user_trades").insert(tradePayload);
     if (tradeError) {
-      toast({ title: "Aviso", description: "Compra registrada, mas o histórico da operação não foi salvo.", variant: "destructive" });
+      toast({
+        title: "Aviso",
+        description: "Compra registrada com sincronizacao pendente no historico.",
+        variant: "destructive",
+      });
     }
 
     toast({ title: "Compra registrada", description: `${shares}x ${symbol} a R$ ${price.toFixed(2)}` });
@@ -256,17 +346,35 @@ export function useUserHoldings() {
     }
 
     const asset = allAssets.find((a) => a.symbol === symbol);
-    const tradePayload: any = {
+    const tradedAtIso = tradedAt ?? new Date().toISOString();
+    const tradePayload = {
       user_id: userId,
       symbol,
       side: "sell",
       shares,
       price: asset?.price ?? 0,
+      traded_at: tradedAtIso,
+    } as const;
+    const localTrade: UserTrade = {
+      id: `local-sell-${Date.now()}-${symbol}`,
+      symbol,
+      side: "sell",
+      shares,
+      price: tradePayload.price,
+      traded_at: tradedAtIso,
+      created_at: new Date().toISOString(),
     };
-    if (tradedAt) tradePayload.traded_at = tradedAt;
+    const localTrades = [...loadLocalTrades(userId), localTrade];
+    saveLocalTrades(userId, localTrades);
+    setUserTrades((prev) => [...prev, localTrade].sort((a, b) => a.traded_at.localeCompare(b.traded_at)));
+
     const { error: tradeError } = await supabase.from("user_trades").insert(tradePayload);
     if (tradeError) {
-      toast({ title: "Aviso", description: "Venda registrada, mas o histórico da operação não foi salvo.", variant: "destructive" });
+      toast({
+        title: "Aviso",
+        description: "Venda registrada com sincronizacao pendente no historico.",
+        variant: "destructive",
+      });
     }
 
     toast({ title: "Venda registrada", description: `${shares}x ${symbol}` });
@@ -274,18 +382,9 @@ export function useUserHoldings() {
     return true;
   };
 
-  const effectiveTrades: UserTrade[] = userTrades.length > 0
-    ? userTrades
-    : userHoldings
-        .filter((h) => h.shares > 0)
-        .map((h, idx) => ({
-          id: `fallback-${h.symbol}-${idx}`,
-          symbol: h.symbol,
-          side: "buy" as const,
-          shares: h.shares,
-          price: Number(h.avg_price),
-          traded_at: h.created_at ?? new Date().toISOString(),
-        }));
+  const syntheticOpeningBuys = buildSyntheticOpeningBuys(userHoldings, userTrades);
+  const effectiveTrades: UserTrade[] = [...userTrades, ...syntheticOpeningBuys]
+    .sort((a, b) => a.traded_at.localeCompare(b.traded_at));
 
   const firstBuyDateBySymbol = effectiveTrades.reduce<Record<string, string>>((acc, trade) => {
     if (trade.side !== "buy") return acc;
@@ -306,17 +405,35 @@ export function useUserHoldings() {
     .map((uh) => {
       const asset = allAssets.find((a) => a.symbol === uh.symbol);
       if (!asset) return null;
-      const value = uh.shares * asset.price;
+      const marketSeries = getMarketHistory()[uh.symbol] || [];
+      const latestClose = marketSeries.length > 0 ? marketSeries[marketSeries.length - 1].close : asset.price;
+      const prevClose = marketSeries.length > 1 ? marketSeries[marketSeries.length - 2].close : latestClose;
+      const value = uh.shares * latestClose;
+      const dayChangeValue = (latestClose - prevClose) * uh.shares;
+      const totalGainValue = (latestClose - uh.avg_price) * uh.shares;
       return {
         ...asset,
+        price: latestClose,
+        change: latestClose - prevClose,
+        changePercent: prevClose > 0 ? Math.round((((latestClose / prevClose) - 1) * 100) * 100) / 100 : 0,
         shares: uh.shares,
         avgPrice: uh.avg_price,
         value,
+        prevClose,
+        dayChangeValue,
+        totalGainValue,
         firstBuyDate: firstBuyDateBySymbol[uh.symbol] ?? uh.created_at ?? null,
         lastTradeDate: lastTradeDateBySymbol[uh.symbol] ?? null,
       };
     })
-    .filter(Boolean) as (typeof allAssets[0] & { avgPrice: number; firstBuyDate: string | null; lastTradeDate: string | null })[];
+    .filter(Boolean) as (typeof allAssets[0] & {
+      avgPrice: number;
+      prevClose: number;
+      dayChangeValue: number;
+      totalGainValue: number;
+      firstBuyDate: string | null;
+      lastTradeDate: string | null;
+    })[];
 
   const totalValue = enrichedHoldings.reduce((sum, h) => sum + h.value, 0);
   enrichedHoldings.forEach((h) => {
@@ -334,3 +451,4 @@ export function useUserHoldings() {
     refetch: fetchHoldings,
   };
 }
+

@@ -1,25 +1,19 @@
-import { Link } from "react-router-dom";
-import { ArrowUpRight, ChevronDown, ChevronRight, DollarSign, ShoppingCart, TrendingUp } from "lucide-react";
+﻿import { Link } from "react-router-dom";
+import { ArrowUpRight, ChevronDown, ChevronRight, DollarSign, ShoppingCart } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import {
   PieChart as RechartsPie,
   Pie,
   Cell,
   ResponsiveContainer,
-  Tooltip,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Legend,
+  Tooltip
 } from "recharts";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
-import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
-import { getMarketHistory } from "@/data/investments";
 
 const chartColors = [
   "hsl(var(--chart-1))",
@@ -42,6 +36,8 @@ const chartColors = [
 const Portfolio = () => {
   const [viewMode, setViewMode] = useState<"ativos" | "setor">("ativos");
   const [isTradeHistoryOpen, setIsTradeHistoryOpen] = useState(false);
+  const [holdingsPage, setHoldingsPage] = useState(1);
+  const [tradePage, setTradePage] = useState(1);
   const { enrichedHoldings, totalValue, loading, userTrades } = useUserHoldings();
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
@@ -75,9 +71,9 @@ const Portfolio = () => {
 
   const metrics = useMemo(() => {
     const totalInvested = enrichedHoldings.reduce((s, h) => s + h.avgPrice * h.shares, 0);
-    const totalGain = totalValue - totalInvested;
-    const dailyChange = enrichedHoldings.reduce((s, h) => s + h.change * h.shares, 0);
-    const previousValue = totalValue - dailyChange;
+    const totalGain = enrichedHoldings.reduce((s, h) => s + (h.totalGainValue ?? (h.price - h.avgPrice) * h.shares), 0);
+    const dailyChange = enrichedHoldings.reduce((s, h) => s + (h.dayChangeValue ?? h.change * h.shares), 0);
+    const previousValue = enrichedHoldings.reduce((s, h) => s + (h.prevClose ?? h.price) * h.shares, 0);
     const variacao = previousValue > 0 ? Math.round((dailyChange / previousValue) * 10000) / 100 : 0;
     const rentabilidade = totalInvested > 0 ? Math.round((totalGain / totalInvested) * 10000) / 100 : 0;
     const proventos =
@@ -86,67 +82,91 @@ const Portfolio = () => {
         : 0;
     return { totalInvested, totalGain, dailyChange, variacao, rentabilidade, proventos };
   }, [enrichedHoldings, totalValue]);
-  const portfolioEvolution = useMemo(() => {
-    if (userTrades.length === 0) return [];
-    const history = getMarketHistory();
-    const sortedTrades = [...userTrades].sort((a, b) => a.traded_at.localeCompare(b.traded_at));
-    const start = sortedTrades[0].traded_at.slice(0, 10);
 
-    const symbolSet = new Set(sortedTrades.map((t) => t.symbol));
-    const dateSet = new Set<string>();
-    for (const symbol of symbolSet) {
-      const series = history[symbol] || [];
-      for (const row of series) {
-        if (row.date >= start) dateSet.add(row.date);
-      }
-    }
-    const dates = Array.from(dateSet).sort();
-    if (dates.length === 0) return [];
+  const sortedHoldings = useMemo(
+    () => [...enrichedHoldings].sort((a, b) => b.value - a.value),
+    [enrichedHoldings]
+  );
 
-    const qtyBySymbol: Record<string, number> = {};
-    let tradeIdx = 0;
-    let invested = 0;
-    const points: Array<{ date: string; label: string; carteira: number; investido: number; resultado: number }> = [];
+  const tradeHistoryRows = useMemo(() => {
+    const orderedAsc = [...userTrades].sort((a, b) => a.traded_at.localeCompare(b.traded_at));
+    const positions: Record<string, { qty: number; avgCost: number }> = {};
 
-    const priceAtOrBefore = (symbol: string, date: string): number | null => {
-      const series = history[symbol] || [];
-      if (series.length === 0) return null;
-      let result: number | null = null;
-      for (const row of series) {
-        if (row.date > date) break;
-        result = row.close;
-      }
-      return result;
-    };
+    const computed = orderedAsc.map((t, orderIndex) => {
+      const state = positions[t.symbol] ?? { qty: 0, avgCost: 0 };
+      let realizedPnl: number | null = null;
+      let realizedPnlPct: number | null = null;
 
-    for (const date of dates) {
-      while (tradeIdx < sortedTrades.length && sortedTrades[tradeIdx].traded_at.slice(0, 10) <= date) {
-        const t = sortedTrades[tradeIdx];
-        qtyBySymbol[t.symbol] = (qtyBySymbol[t.symbol] || 0) + (t.side === "buy" ? t.shares : -t.shares);
-        invested += t.side === "buy" ? t.price * t.shares : -t.price * t.shares;
-        tradeIdx += 1;
+      if (t.side === "buy") {
+        const newQty = state.qty + t.shares;
+        const newAvgCost = newQty > 0
+          ? ((state.avgCost * state.qty) + (t.price * t.shares)) / newQty
+          : 0;
+        positions[t.symbol] = { qty: newQty, avgCost: newAvgCost };
+      } else {
+        const sellQty = Math.min(t.shares, Math.max(0, state.qty || t.shares));
+        const costBasis = state.avgCost * sellQty;
+        const saleValue = t.price * sellQty;
+        realizedPnl = saleValue - costBasis;
+        realizedPnlPct = costBasis > 0 ? (realizedPnl / costBasis) * 100 : null;
+
+        const remainingQty = state.qty - sellQty;
+        positions[t.symbol] = {
+          qty: Math.max(0, remainingQty),
+          avgCost: remainingQty > 0 ? state.avgCost : 0,
+        };
       }
 
-      let carteira = 0;
-      for (const [symbol, qty] of Object.entries(qtyBySymbol)) {
-        if (qty <= 0) continue;
-        const px = priceAtOrBefore(symbol, date);
-        if (px != null) carteira += qty * px;
-      }
-      const d = new Date(`${date}T12:00:00`);
-      points.push({
-        date,
-        label: `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`,
-        carteira: Math.round(carteira * 100) / 100,
-        investido: Math.round(invested * 100) / 100,
-        resultado: Math.round((carteira - invested) * 100) / 100,
-      });
-    }
+      return { ...t, realizedPnl, realizedPnlPct, orderIndex };
+    });
 
-    const maxPoints = 180;
-    const step = Math.max(1, Math.floor(points.length / maxPoints));
-    return points.filter((_, idx) => idx % step === 0 || idx === points.length - 1);
+    return computed.sort((a, b) => {
+      const aTs = new Date(a.traded_at).getTime();
+      const bTs = new Date(b.traded_at).getTime();
+      if (Number.isFinite(aTs) && Number.isFinite(bTs) && aTs !== bTs) {
+        return bTs - aTs;
+      }
+
+      const aCreatedTs = a.created_at ? new Date(a.created_at).getTime() : Number.NaN;
+      const bCreatedTs = b.created_at ? new Date(b.created_at).getTime() : Number.NaN;
+      if (Number.isFinite(aCreatedTs) && Number.isFinite(bCreatedTs) && aCreatedTs !== bCreatedTs) {
+        return bCreatedTs - aCreatedTs;
+      }
+
+      // Final tie-breaker: most recently processed trade first.
+      return b.orderIndex - a.orderIndex;
+    });
   }, [userTrades]);
+
+  const HOLDINGS_PAGE_SIZE = 10;
+  const totalHoldingsPages = Math.max(1, Math.ceil(sortedHoldings.length / HOLDINGS_PAGE_SIZE));
+  const pagedHoldings = sortedHoldings.slice(
+    (holdingsPage - 1) * HOLDINGS_PAGE_SIZE,
+    holdingsPage * HOLDINGS_PAGE_SIZE
+  );
+
+  const TRADE_PAGE_SIZE = 5;
+  const totalTradePages = Math.max(1, Math.ceil(tradeHistoryRows.length / TRADE_PAGE_SIZE));
+  const pagedTradeRows = tradeHistoryRows.slice(
+    (tradePage - 1) * TRADE_PAGE_SIZE,
+    tradePage * TRADE_PAGE_SIZE
+  );
+
+  useEffect(() => {
+    setTradePage(1);
+  }, [tradeHistoryRows.length, tradeHistoryRows[0]?.id, tradeHistoryRows[0]?.traded_at]);
+
+  useEffect(() => {
+    setHoldingsPage(1);
+  }, [enrichedHoldings.length]);
+
+  useEffect(() => {
+    if (holdingsPage > totalHoldingsPages) setHoldingsPage(totalHoldingsPages);
+  }, [holdingsPage, totalHoldingsPages]);
+
+  useEffect(() => {
+    if (tradePage > totalTradePages) setTradePage(totalTradePages);
+  }, [tradePage, totalTradePages]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -159,8 +179,8 @@ const Portfolio = () => {
               {loading
                 ? "Carregando sua carteira..."
                 : isEmpty
-                ? "Sua carteira está vazia. Adicione ativos pela página de Ativos."
-                : `Visão completa do seu portfólio — ${enrichedHoldings.length} ativos`}
+                ? "Sua carteira esta vazia. Adicione ativos pela pagina de Ativos."
+                : `Visao completa do seu portfolio - ${enrichedHoldings.length} ativos`}
             </p>
           </div>
 
@@ -177,7 +197,7 @@ const Portfolio = () => {
               ))
             ) : [
               <div className="glass-card p-4" key="1">
-                <span className="text-xs text-muted-foreground">Patrimônio total</span>
+                <span className="text-xs text-muted-foreground">Patrimonio total</span>
                 <p className="text-xl font-semibold font-mono">
                   R$ {totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </p>
@@ -233,10 +253,10 @@ const Portfolio = () => {
           ) : isEmpty ? (
             <AnimatedCard delay={0.3}>
               <div className="glass-card p-12 text-center">
-                <p className="text-4xl mb-4">💼</p>
+                <p className="text-4xl mb-4">📊</p>
                 <h3 className="text-lg font-semibold mb-2">Carteira vazia</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Navegue até <strong>Ativos</strong> para comprar suas primeiras ações e montar seu portfólio.
+                  Navegue ate <strong>Ativos</strong> para comprar suas primeiras acoes e montar seu portfolio.
                 </p>
                 <a
                   href="/ativos"
@@ -248,49 +268,13 @@ const Portfolio = () => {
             </AnimatedCard>
           ) : (
             <>
-              <AnimatedCard delay={0.28}>
-                <div className="glass-card p-5">
-                  <h3 className="text-base font-semibold mb-1">Evolução da carteira</h3>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Histórico real desde suas operações (compras e vendas registradas)
-                  </p>
-                  {portfolioEvolution.length > 1 ? (
-                    <ResponsiveContainer width="100%" height={250}>
-                      <LineChart data={portfolioEvolution}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
-                        <XAxis dataKey="label" stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} interval={Math.max(0, Math.floor(portfolioEvolution.length / 8))} />
-                        <YAxis stroke="hsl(215, 14%, 50%)" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${Number(v).toFixed(0)}`} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                            fontSize: "12px",
-                          }}
-                          formatter={(value: number, name: string) => {
-                            const labels: Record<string, string> = { carteira: "Carteira", investido: "Capital líquido", resultado: "Resultado" };
-                            return [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, labels[name] || name];
-                          }}
-                        />
-                        <Legend wrapperStyle={{ fontSize: "11px" }} />
-                        <Line type="monotone" dataKey="carteira" stroke="hsl(142, 72%, 48%)" strokeWidth={2} dot={false} isAnimationActive animationDuration={900} animationEasing="ease-out" />
-                        <Line type="monotone" dataKey="investido" stroke="hsl(217, 91%, 60%)" strokeWidth={1.5} dot={false} strokeDasharray="5 5" isAnimationActive animationDuration={900} animationBegin={140} animationEasing="ease-out" />
-                        <Line type="monotone" dataKey="resultado" stroke="hsl(38, 92%, 50%)" strokeWidth={1.5} dot={false} isAnimationActive animationDuration={900} animationBegin={260} animationEasing="ease-out" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Faça ao menos duas operações para visualizar evolução.</p>
-                  )}
-                </div>
-              </AnimatedCard>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <AnimatedCard delay={0.3}>
-                  <div className="glass-card p-5">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                <AnimatedCard delay={0.3} className="h-full min-h-[460px] flex flex-col">
+                  <div className="glass-card p-5 h-full flex flex-col">
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h3 className="text-base font-semibold">Alocação</h3>
-                        <p className="text-xs text-muted-foreground">Distribuição da carteira</p>
+                        <p className="text-xs text-muted-foreground">Distribuicao da carteira</p>
                       </div>
                       <div className="flex bg-muted/50 rounded-lg p-0.5">
                         <button
@@ -307,59 +291,78 @@ const Portfolio = () => {
                         </button>
                       </div>
                     </div>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <RechartsPie>
-                        <Pie
-                          data={currentData}
-                          cx="50%"
-                          cy="50%"
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.985 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                      className="flex-1"
+                    >
+                      <ResponsiveContainer width="100%" height={200}>
+                        <RechartsPie>
+                          <Pie
+                            data={currentData}
+                            cx="50%"
+                            cy="50%"
                           innerRadius={55}
                           outerRadius={85}
                           paddingAngle={2}
                           dataKey="value"
                           strokeWidth={0}
-                          isAnimationActive
-                          animationDuration={900}
+                          isAnimationActive={true}
+                          animationBegin={0}
+                          animationDuration={1200}
                           animationEasing="ease-out"
                         >
-                          {currentData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#f9fafb",
-                            border: "1px solid #d1d5db",
-                            borderRadius: "12px",
-                            padding: "8px 12px",
-                            fontSize: "12px",
-                            fontWeight: 500,
-                            color: "#0f172a",
-                            boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
-                          }}
-                          formatter={(value: number, name: string) => [`${value}%`, name]}
-                        />
-                      </RechartsPie>
-                    </ResponsiveContainer>
-                    <div className="grid grid-cols-2 gap-1.5 mt-3 max-h-[200px] overflow-y-auto">
-                      {currentData.map((item) => (
-                        <div key={item.name} className="flex items-center gap-2">
+                            {currentData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "#f9fafb",
+                              border: "1px solid #d1d5db",
+                              borderRadius: "12px",
+                              padding: "8px 12px",
+                              fontSize: "12px",
+                              fontWeight: 500,
+                              color: "#0f172a",
+                              boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
+                            }}
+                            formatter={(value: number, name: string) => [`${value}%`, name]}
+                          />
+                        </RechartsPie>
+                      </ResponsiveContainer>
+                    </motion.div>
+                    <div className="grid grid-cols-2 gap-1.5 mt-3">
+                      {currentData.map((item, index) => (
+                        <motion.div
+                          key={item.name}
+                          className="flex items-center gap-2"
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.32, delay: 0.22 + index * 0.05 }}
+                        >
                           <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                           <span className="text-[11px] text-muted-foreground truncate">{item.name}</span>
                           <span className="text-[11px] font-mono font-medium ml-auto">{item.value}%</span>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                   </div>
                 </AnimatedCard>
 
-                <AnimatedCard delay={0.4} className="lg:col-span-2">
-                  <AiChatWidget
-                    page="carteira"
-                    userSymbols={enrichedHoldings.map(h => h.symbol)}
-                    userHoldingsData={enrichedHoldings.map(h => ({ symbol: h.symbol, shares: h.shares, avgPrice: h.avgPrice }))}
-                    welcomeMessage={`📊 Sua carteira possui ${enrichedHoldings.length} ativos distribuídos em ${Object.keys(sectorMap).length} setores. Posso ajudar a analisar se a distribuição está adequada ao seu perfil ou sugerir rebalanceamento. O que gostaria de saber?`}
-                  />
+                <AnimatedCard delay={0.4} className="h-full min-h-[460px] flex flex-col">
+                  <div className="h-full flex flex-col">
+                    <div className="flex-1">
+                      <AiChatWidget
+                        className="h-full flex flex-col"
+                        page="carteira"
+                        userSymbols={enrichedHoldings.map(h => h.symbol)}
+                        userHoldingsData={enrichedHoldings.map(h => ({ symbol: h.symbol, shares: h.shares, avgPrice: h.avgPrice }))}
+                        welcomeMessage={`Sua carteira possui ${enrichedHoldings.length} ativos distribuidos em ${Object.keys(sectorMap).length} setores. Posso ajudar a analisar se a distribuicao esta adequada ao seu perfil ou sugerir rebalanceamento. O que gostaria de saber?`}
+                      />
+                    </div>
+                  </div>
                 </AnimatedCard>
               </div>
 
@@ -375,22 +378,22 @@ const Portfolio = () => {
                           <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Ativo</th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Quant.</th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
-                            Preço Médio
+                            Preco Medio
                           </th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
-                            Preço Atual
+                            Preco Atual
                           </th>
-                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Variação (dia)</th>
+                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Variacao (dia)</th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
                             Rentabilidade
                           </th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Saldo</th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">% Carteira</th>
-                          <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Ações</th>
+                          <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Acoes</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {enrichedHoldings.map((h) => {
+                        {pagedHoldings.map((h) => {
                           const rentab = h.avgPrice > 0 ? (h.price / h.avgPrice - 1) * 100 : 0;
                           return (
                             <tr
@@ -457,6 +460,25 @@ const Portfolio = () => {
                       </tbody>
                     </table>
                   </div>
+                  <div className="flex items-center justify-between px-5 py-3 border-t border-border/40">
+                    <span className="text-xs text-muted-foreground">Página {holdingsPage} de {totalHoldingsPages}</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setHoldingsPage((p) => Math.max(1, p - 1))}
+                        disabled={holdingsPage === 1}
+                        className="px-2.5 py-1 rounded-md text-xs border border-border/60 disabled:opacity-40 hover:bg-accent/60 transition-colors"
+                      >
+                        Anterior
+                      </button>
+                      <button
+                        onClick={() => setHoldingsPage((p) => Math.min(totalHoldingsPages, p + 1))}
+                        disabled={holdingsPage === totalHoldingsPages}
+                        className="px-2.5 py-1 rounded-md text-xs border border-border/60 disabled:opacity-40 hover:bg-accent/60 transition-colors"
+                      >
+                        Próxima
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </AnimatedCard>
 
@@ -468,12 +490,12 @@ const Portfolio = () => {
                   >
                     <h3 className="text-base font-semibold">Histórico de Transações</h3>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{userTrades.length} registros</span>
+                      <span>{tradeHistoryRows.length} registros</span>
                       {isTradeHistoryOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </div>
                   </button>
                   {isTradeHistoryOpen ? (
-                    userTrades.length === 0 ? (
+                    tradeHistoryRows.length === 0 ? (
                       <div className="p-5">
                         <p className="text-sm text-muted-foreground">Sem transações registradas ainda.</p>
                       </div>
@@ -487,13 +509,11 @@ const Portfolio = () => {
                               <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Ativo</th>
                               <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Quant.</th>
                               <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Preço</th>
+                              <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Lucro/Prejuízo venda</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {[...userTrades]
-                              .sort((a, b) => b.traded_at.localeCompare(a.traded_at))
-                              .slice(0, 50)
-                              .map((t) => (
+                            {pagedTradeRows.map((t) => (
                                 <tr key={t.id} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
                                   <td className="px-5 py-3 text-sm">{new Date(t.traded_at).toLocaleDateString("pt-BR")}</td>
                                   <td className="px-4 py-3">
@@ -506,10 +526,41 @@ const Portfolio = () => {
                                   <td className="text-right px-5 py-3 text-sm font-mono">
                                     R$ {t.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                                   </td>
+                                  <td className="text-right px-5 py-3 text-sm font-mono">
+                                    {t.side === "sell" && typeof t.realizedPnl === "number" ? (
+                                      <span className={t.realizedPnl >= 0 ? "text-gain" : "text-loss"}>
+                                        {t.realizedPnl >= 0 ? "+" : "-"}R$ {Math.abs(t.realizedPnl).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                        {typeof t.realizedPnlPct === "number"
+                                          ? ` (${t.realizedPnlPct >= 0 ? "+" : ""}${t.realizedPnlPct.toFixed(2)}%)`
+                                          : ""}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground">—</span>
+                                    )}
+                                  </td>
                                 </tr>
                               ))}
                           </tbody>
                         </table>
+                        <div className="flex items-center justify-between px-5 py-3 border-t border-border/40">
+                          <span className="text-xs text-muted-foreground">Página {tradePage} de {totalTradePages}</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setTradePage((p) => Math.max(1, p - 1))}
+                              disabled={tradePage === 1}
+                              className="px-2.5 py-1 rounded-md text-xs border border-border/60 disabled:opacity-40 hover:bg-accent/60 transition-colors"
+                            >
+                              Anterior
+                            </button>
+                            <button
+                              onClick={() => setTradePage((p) => Math.min(totalTradePages, p + 1))}
+                              disabled={tradePage === totalTradePages}
+                              className="px-2.5 py-1 rounded-md text-xs border border-border/60 disabled:opacity-40 hover:bg-accent/60 transition-colors"
+                            >
+                              Próxima
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     )
                   ) : null}
@@ -524,3 +575,6 @@ const Portfolio = () => {
 };
 
 export default Portfolio;
+
+
+

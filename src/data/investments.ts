@@ -1,4 +1,4 @@
-export const portfolioData = {
+﻿export const portfolioData = {
   totalValue: 285432.18,
   dailyChange: 3215.47,
   dailyChangePercent: 1.14,
@@ -87,6 +87,41 @@ export const holdings: Holding[] = [
   { symbol: "FLRY3", name: "Fleury S.A.", shares: 150, price: 16.80, change: 0.22, changePercent: 1.33, value: 2520, allocation: 0.88, category: "Saúde", description: "Líder em medicina diagnóstica no Brasil, com mais de 500 unidades de atendimento e forte presença digital.", marketCap: "11B", pe: 15.8, dividend: 3.5, sector: "Saúde", subsetor: "Diagnósticos", pvp: 2.25, lpa: 1.06, vpa: 7.47, psr: 1.5, pEbit: 10.8, evEbit: 12.5, evEbitda: 8.5, roe: 14.5, roic: 10.2, margemBruta: 35.2, margemEbit: 15.2, margemLiquida: 10.5, cReceita5a: 12.5, cLucro5a: 8.5, giroAtivos: 0.55, liqCorrente: 1.35, divLiqPl: 0.62, divLiqEbitda: 1.52, plAtivos: 0.38 },
 ];
 
+const indicatorSnapshots: Record<string, Partial<Holding>> = {
+  ITUB4: { dividend: 7.0, pe: 11.06, pvp: 2.31, lpa: 4.07, vpa: 19.5, psr: 1.28, pEbit: 9.88, evEbit: 9.58, evEbitda: 8.35, cReceita5a: 17.38, cLucro5a: 18.88, roe: 20, roic: 0, giroAtivos: 0.13, margemBruta: 35.89, margemEbit: 12.98, margemLiquida: 12, liqCorrente: 0.14, divLiqPl: 0, divLiqEbitda: 0, plAtivos: 0.07 },
+  BBAS3: { dividend: 5.66, pe: 8.86, pvp: 0.77, lpa: 2.93, vpa: 33.78, psr: 0.47, pEbit: 26.48, evEbit: 26.48, evEbitda: 0, cReceita5a: 26.49, cLucro5a: 4.77, roe: 10, roic: 0, giroAtivos: 0.13, margemBruta: 31.62, margemEbit: 1.76, margemLiquida: 6, liqCorrente: 13.33, divLiqPl: 0, divLiqEbitda: 0, plAtivos: 0.08 },
+  BBDC4: { dividend: 6.98, pe: 9.07, pvp: 1.21, lpa: 2.26, vpa: 16.89, psr: 0.8, pEbit: 10.32, evEbit: 9.62, evEbitda: 0, cReceita5a: 22.38, cLucro5a: 8.33, roe: 13, roic: 0, giroAtivos: 0.12, margemBruta: 28.25, margemEbit: 7.78, margemLiquida: 9, liqCorrente: 10.59, divLiqPl: 0, divLiqEbitda: 0, plAtivos: 0.08 },
+  B3SA3: { dividend: 3.27, pe: 20.86, pvp: 5.48, lpa: 0.87, vpa: 3.32, psr: 8.6, pEbit: 14.41, evEbit: 14.32, evEbitda: 9.85, cReceita5a: 3.58, cLucro5a: 2.01, roe: 25, roic: 6.12, giroAtivos: 0.23, margemBruta: 90.53, margemEbit: 59.69, margemLiquida: 45, liqCorrente: 1.91, divLiqPl: -0.03, divLiqEbitda: -0.06, plAtivos: 0.36 },
+  AXIA6: { dividend: 6.17, pe: 29.73, pvp: 1.65, lpa: 2.25, vpa: 40.65, psr: 4.72, pEbit: 49.4, evEbit: 58.4, evEbitda: -38.8, cReceita5a: 7.26, cLucro5a: 0.68, roe: 8, roic: -11.98, giroAtivos: 0.15, margemBruta: 42.92, margemEbit: 9.56, margemLiquida: 23, liqCorrente: 1.68, divLiqPl: 0.39, divLiqEbitda: -7.87, plAtivos: 0.42 },
+  ISAE4: { dividend: 7.78, pe: 7.66, pvp: 0.87, lpa: 3.72, vpa: 32.54, psr: 1.99, pEbit: 4.54, evEbit: 8.18, evEbitda: 8.69, cReceita5a: 20.55, cLucro5a: -6.15, roe: 14, roic: 9.7, giroAtivos: 0.2, margemBruta: 39.35, margemEbit: 43.9, margemLiquida: 33, liqCorrente: 3.76, divLiqPl: 0.65, divLiqEbitda: 3.56, plAtivos: 0.45 },
+  SAPR11: { dividend: 4.64, pe: 6.14, pvp: 1.03, lpa: 6.88, vpa: 40.85, psr: 1.77, pEbit: 5.46, evEbit: 6.23, evEbitda: 4.91, cReceita5a: 8.47, cLucro5a: 15.85, roe: 18, roic: 10.71, giroAtivos: 0.27, margemBruta: 56.27, margemEbit: 32.44, margemLiquida: 30, liqCorrente: 1.2, divLiqPl: 0.14, divLiqEbitda: 0.6, plAtivos: 0.47 },
+  PETR4: { dividend: 8.08, pe: 6.73, pvp: 1.23, lpa: 6.01, vpa: 32.81, psr: 1.06, pEbit: 4.01, evEbit: 6.62, evEbitda: 2.76, cReceita5a: 10.18, cLucro5a: 14.07, roe: 18, roic: 7.19, giroAtivos: 0.41, margemBruta: 48.15, margemEbit: 26.52, margemLiquida: 16, liqCorrente: 0.82, divLiqPl: 0.74, divLiqEbitda: 1, plAtivos: 0.35 },
+  VALE3: { dividend: 9.06, pe: 27.63, pvp: 2.02, lpa: 3.04, vpa: 41.62, psr: 1.79, pEbit: 11.94, evEbit: 13.87, evEbitda: 5.76, cReceita5a: 0.72, cLucro5a: -12.36, roe: 13, roic: 0.5, giroAtivos: 0.45, margemBruta: 34.98, margemEbit: 14.97, margemLiquida: 14, liqCorrente: 1.15, divLiqPl: 0.33, divLiqEbitda: 0.8, plAtivos: 0.4 },
+  GGBR4: { dividend: 3.12, pe: 28.54, pvp: 0.74, lpa: 0.7, vpa: 26.99, psr: 0.57, pEbit: 10.59, evEbit: 12.19, evEbitda: 5.91, cReceita5a: 9.78, cLucro5a: -10.13, roe: 6, roic: 3.73, giroAtivos: 0.86, margemBruta: 11.41, margemEbit: 5.35, margemLiquida: 4, liqCorrente: 2.89, divLiqPl: 0.15, divLiqEbitda: 1.01, plAtivos: 0.66 },
+  WEGE3: { dividend: 4.54, pe: 31.16, pvp: 10.71, lpa: 1.52, vpa: 4.42, psr: 4.87, pEbit: 24.84, evEbit: 24.51, evEbitda: 21.74, cReceita5a: 18.49, cLucro5a: 22.19, roe: 29, roic: 28.61, giroAtivos: 0.96, margemBruta: 33.53, margemEbit: 19.6, margemLiquida: 17, liqCorrente: 1.55, divLiqPl: -0.14, divLiqEbitda: -0.3, plAtivos: 0.44 },
+  EMBR3: { dividend: 0.31, pe: 38.68, pvp: 3.59, lpa: 2.39, vpa: 25.75, psr: 1.66, pEbit: 18.43, evEbit: 19.16, evEbitda: 0, cReceita5a: 27.61, cLucro5a: 0, roe: 11, roic: 7.38, giroAtivos: 0.62, margemBruta: 18.2, margemEbit: 9, margemLiquida: 6, liqCorrente: 1.43, divLiqPl: 0.14, divLiqEbitda: 0, plAtivos: 0.29 },
+  TUPY3: { dividend: 0, pe: -13.34, pvp: 0.55, lpa: -0.96, vpa: 23.27, psr: 0.17, pEbit: 13.65, evEbit: 32.06, evEbitda: 6.47, cReceita5a: 15.61, cLucro5a: 0, roe: -4, roic: 1.35, giroAtivos: 1.01, margemBruta: 14.71, margemEbit: 1.24, margemLiquida: -1, liqCorrente: 2.45, divLiqPl: 0.74, divLiqEbitda: 3.71, plAtivos: 0.31 },
+  LREN3: { dividend: 5.53, pe: 10.96, pvp: 1.5, lpa: 1.38, vpa: 10.07, psr: 0.98, pEbit: 9.17, evEbit: 8.41, evEbitda: 3.89, cReceita5a: 8.53, cLucro5a: 4.84, roe: 14, roic: 14.06, giroAtivos: 0.85, margemBruta: 61.41, margemEbit: 10.67, margemLiquida: 9, liqCorrente: 1.76, divLiqPl: -0.12, divLiqEbitda: -0.35, plAtivos: 0.55 },
+  MGLU3: { dividend: 3.2, pe: 20.1, pvp: 0.66, lpa: 0.47, vpa: 14.38, psr: 0.19, pEbit: 4.09, evEbit: 6.5, evEbitda: 3.27, cReceita5a: 13.85, cLucro5a: -16.79, roe: 3, roic: 6.85, giroAtivos: 1.03, margemBruta: 30.65, margemEbit: 4.72, margemLiquida: 1, liqCorrente: 1.26, divLiqPl: 0.39, divLiqEbitda: 1.21, plAtivos: 0.3 },
+  MRVE3: { dividend: 0, pe: -4.09, pvp: 1.04, lpa: -2.37, vpa: 9.35, psr: 0.53, pEbit: -32.46, evEbit: -80.23, evEbitda: 35.46, cReceita5a: 8.27, cLucro5a: 0, roe: -22, roic: -3.04, giroAtivos: 0.36, margemBruta: 28.66, margemEbit: -1.64, margemLiquida: -13, liqCorrente: 1.87, divLiqPl: 1.53, divLiqEbitda: 21.11, plAtivos: 0.18 },
+  ABEV3: { dividend: 7.14, pe: 15.86, pvp: 2.77, lpa: 0.98, vpa: 5.63, psr: 2.79, pEbit: 10.5, evEbit: 9.77, evEbitda: 6.66, cReceita5a: 8.61, cLucro5a: 6.38, roe: 18, roic: 21.37, giroAtivos: 0.61, margemBruta: 51.42, margemEbit: 26.54, margemLiquida: 18, liqCorrente: 0.96, divLiqPl: -0.19, divLiqEbitda: -0.49, plAtivos: 0.61 },
+  JBSS3: { dividend: 4.18, pe: 5.41, pvp: 1.35, lpa: 13.28, vpa: 53.06, psr: 0.13, pEbit: 2.62, evEbit: 6.35, evEbitda: 4.1, cReceita5a: 15.31, cLucro5a: 13.7, roe: 26, roic: 12.87, giroAtivos: 2.01, margemBruta: 13.74, margemEbit: 5.04, margemLiquida: 3, liqCorrente: 1.6, divLiqPl: 1.93, divLiqEbitda: 2.41, plAtivos: 0.2 },
+  VIVT3: { dividend: 2.71, pe: 22.29, pvp: 1.99, lpa: 1.91, vpa: 21.39, psr: 2.31, pEbit: 13.94, evEbit: 15.28, evEbitda: 3.7, cReceita5a: 6.68, cLucro5a: 5.27, roe: 9, roic: 8.63, giroAtivos: 0.47, margemBruta: 44.75, margemEbit: 16.54, margemLiquida: 10, liqCorrente: 1, divLiqPl: 0.19, divLiqEbitda: 0.32, plAtivos: 0.54 },
+  TIMS3: { dividend: 8.86, pe: 32.82, pvp: 3.36, lpa: 0.84, vpa: 8.17, psr: 2.46, pEbit: 10.35, evEbit: 9.21, evEbitda: 4.31, cReceita5a: 9.05, cLucro5a: 1.63, roe: 16, roic: 30.94, giroAtivos: 0.46, margemBruta: 53.93, margemEbit: 23.82, margemLiquida: 15, liqCorrente: 0.93, divLiqPl: -0.37, divLiqEbitda: -0.53, plAtivos: 0.33 },
+  TOTS3: { dividend: 1.64, pe: 24.94, pvp: 4.09, lpa: 1.49, vpa: 9.08, psr: 3.85, pEbit: 19.81, evEbit: 19.85, evEbitda: 12.29, cReceita5a: 17.33, cLucro5a: 24.77, roe: 15, roic: 12, giroAtivos: 0.61, margemBruta: 70.26, margemEbit: 19.45, margemLiquida: 14, liqCorrente: 1.96, divLiqPl: 0.01, divLiqEbitda: 0.03, plAtivos: 0.58 },
+  RDOR3: { dividend: 10.92, pe: 19.2, pvp: 4.16, lpa: 2.05, vpa: 9.44, psr: 1.62, pEbit: 9.11, evEbit: 9.68, evEbitda: 7.85, cReceita5a: 31.77, cLucro5a: 61.38, roe: 16, roic: 13.57, giroAtivos: 0.52, margemBruta: 21.85, margemEbit: 17.74, margemLiquida: 8, liqCorrente: 2.79, divLiqPl: 0.26, divLiqEbitda: 0.47, plAtivos: 0.2 },
+  HAPV3: { dividend: 0, pe: -16.14, pvp: 0.1, lpa: -0.62, vpa: 96.79, psr: 0.17, pEbit: 3.41, evEbit: 6.03, evEbitda: 4.93, cReceita5a: 38.69, cLucro5a: 0, roe: -1, roic: 2.35, giroAtivos: 0.4, margemBruta: 13.55, margemEbit: 4.95, margemLiquida: -1, liqCorrente: 1.98, divLiqPl: 0.08, divLiqEbitda: 2.14, plAtivos: 0.65 },
+  FLRY3: { dividend: 10.1, pe: 15.11, pvp: 1.68, lpa: 1.1, vpa: 9.86, psr: 1.12, pEbit: 7.51, evEbit: 9.99, evEbitda: 4.84, cReceita5a: 21.48, cLucro5a: 13.97, roe: 11, roic: 9.31, giroAtivos: 0.59, margemBruta: 26.88, margemEbit: 14.96, margemLiquida: 7, liqCorrente: 2.21, divLiqPl: 0.55, divLiqEbitda: 1.2, plAtivos: 0.4 },
+};
+
+function applyIndicatorSnapshots() {
+  for (const holding of holdings) {
+    const snapshot = indicatorSnapshots[holding.symbol];
+    if (!snapshot) continue;
+    Object.assign(holding, snapshot);
+  }
+}
+
 function refreshHoldingsDerivedFields() {
   const totalPortfolioValue = holdings.reduce((sum, h) => {
     h.value = Math.round(h.shares * h.price * 100) / 100;
@@ -100,6 +135,7 @@ function refreshHoldingsDerivedFields() {
   portfolioData.totalValue = Math.round(totalPortfolioValue * 100) / 100;
 }
 
+applyIndicatorSnapshots();
 refreshHoldingsDerivedFields();
 
 export const indicatorTooltips: Record<string, { title: string; description: string; formula: string }> = {
@@ -176,7 +212,7 @@ export interface OHLCVDay {
 function generateTradingDays(): string[] {
   const days: string[] = [];
   const start = new Date(2021, 1, 1); // Feb 1 2021
-  const end = new Date(2026, 1, 26); // Feb 26 2026
+  const end = new Date(); // keep benchmark timeline current
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const dow = d.getDay();
     if (dow === 0 || dow === 6) continue; // skip weekends
@@ -267,19 +303,20 @@ let IPCA_MONTHLY: Record<number, number[]> = {
   2026: [0.33, 0.20], // Jan + estimated Feb
 };
 
-// Real CDI annual rates (%) — source: B3/Banco Central
-let CDI_ANNUAL: Record<number, number> = {
-  2021: 4.42,
-  2022: 12.39,
-  2023: 13.04,
-  2024: 10.88,
-  2025: 14.32,
-  2026: 2.06, // Partial year accumulated (source: CSV real data)
+// Real/projected CDI monthly rates (%)
+let CDI_MONTHLY: Record<number, number[]> = {
+  2021: [0.15, 0.13, 0.20, 0.21, 0.27, 0.31, 0.36, 0.43, 0.44, 0.49, 0.59, 0.77],
+  2022: [0.73, 0.76, 0.93, 0.83, 1.03, 1.02, 1.03, 1.17, 1.07, 1.02, 1.02, 1.12],
+  2023: [1.12, 0.92, 1.17, 0.92, 1.12, 1.07, 1.07, 1.14, 1.05, 1.00, 0.92, 0.89],
+  2024: [0.97, 0.80, 0.83, 0.89, 0.83, 0.79, 0.91, 0.87, 0.84, 0.93, 0.79, 0.93],
+  2025: [1.01, 0.99, 0.96, 1.06, 1.14, 1.10, 1.28, 1.16, 1.22, 1.28, 1.05, 1.22],
+  2026: [1.16, 1.00, 0.98, 0.96, 0.94, 0.92, 0.90, 0.88, 0.86, 0.84, 0.82, 0.80],
 };
 
 export interface MacroMarketData {
-  cdiAnnual: Record<number, number>;
+  cdiMonthly: Record<number, number[]>;
   ipcaMonthly: Record<number, number[]>;
+  projectedByMonth?: Record<string, boolean>;
 }
 
 /**
@@ -287,16 +324,27 @@ export interface MacroMarketData {
  * This rebuilds benchmark cache so charts use latest macro values.
  */
 export function setMacroMarketData(data: MacroMarketData) {
-  if (data?.cdiAnnual && Object.keys(data.cdiAnnual).length > 0) {
-    CDI_ANNUAL = data.cdiAnnual;
+  if (data?.cdiMonthly && Object.keys(data.cdiMonthly).length > 0) {
+    CDI_MONTHLY = data.cdiMonthly;
   }
   if (data?.ipcaMonthly && Object.keys(data.ipcaMonthly).length > 0) {
     IPCA_MONTHLY = data.ipcaMonthly;
   }
   _benchmarkCache = null;
   console.log(
-    `[investments] Macro data injected: cdiYears=${Object.keys(CDI_ANNUAL).length} ipcaYears=${Object.keys(IPCA_MONTHLY).length}`
+    `[investments] Macro data injected: cdiYears=${Object.keys(CDI_MONTHLY).length} ipcaYears=${Object.keys(IPCA_MONTHLY).length}`
   );
+}
+
+function getBusinessDaysInMonth(year: number, monthZeroBased: number): number {
+  const start = new Date(year, monthZeroBased, 1);
+  const end = new Date(year, monthZeroBased + 1, 0);
+  let businessDays = 0;
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) businessDays += 1;
+  }
+  return Math.max(1, businessDays);
 }
 
 function generateBenchmarkSeries(key: string): { date: string; value: number }[] {
@@ -306,25 +354,28 @@ function generateBenchmarkSeries(key: string): { date: string; value: number }[]
   const totalDays = TRADING_DAYS.length;
 
   if (key === "CDI") {
-    // CDI: use real annual rates, pro-rata die per year
+    // CDI: use monthly rates and dailyize by business days in month.
     for (let i = 0; i < totalDays; i++) {
       const dateStr = TRADING_DAYS[i];
       const year = parseInt(dateStr.slice(0, 4));
-      const annualRate = (CDI_ANNUAL[year] ?? 14.15) / 100;
-      const dailyRate = Math.pow(1 + annualRate, 1 / 252) - 1;
+      const month = parseInt(dateStr.slice(5, 7)) - 1;
+      const monthlyRates = CDI_MONTHLY[year];
+      const monthlyRate = monthlyRates ? (monthlyRates[month] ?? 0.80) : 0.80;
+      const businessDays = getBusinessDaysInMonth(year, month);
+      const dailyRate = Math.pow(1 + monthlyRate / 100, 1 / businessDays) - 1;
       value *= (1 + dailyRate);
       result.push({ date: dateStr, value: Math.round(value * 100) / 100 });
     }
   } else if (key === "IPCA") {
-    // IPCA: use real monthly rates, distribute daily within each month
+    // IPCA: use monthly rates and dailyize by business days in month.
     for (let i = 0; i < totalDays; i++) {
       const dateStr = TRADING_DAYS[i];
       const year = parseInt(dateStr.slice(0, 4));
       const month = parseInt(dateStr.slice(5, 7)) - 1; // 0-indexed
       const monthlyRates = IPCA_MONTHLY[year];
       const monthlyRate = monthlyRates ? (monthlyRates[month] ?? 0.30) : 0.30;
-      // ~21 trading days per month
-      const dailyRate = Math.pow(1 + monthlyRate / 100, 1 / 21) - 1;
+      const businessDays = getBusinessDaysInMonth(year, month);
+      const dailyRate = Math.pow(1 + monthlyRate / 100, 1 / businessDays) - 1;
       value *= (1 + dailyRate);
       result.push({ date: dateStr, value: Math.round(value * 100) / 100 });
     }
@@ -409,8 +460,10 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
   // Also rebuild benchmark cache using real IBOV data if available
   const ibovTicker = data["^BVSP"] || data["IBOV"] || data["BVSP"];
   if (ibovTicker && ibovTicker.length > 0) {
-    const cleaned = cleanOHLCVOutliers(ibovTicker);
-    const ibovSeries = cleaned.map(d => ({
+    // Keep IBOV as raw market series (no smoothing), otherwise long-term return gets distorted.
+    const ibovSeries = [...ibovTicker]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(d => ({
       date: d.date,
       value: d.close,
     }));
@@ -592,28 +645,31 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
   
   switch (period) {
     case "1D": {
-      // Simulate intraday from last trading day
+      // Simulate intraday from last trading day (15-min updates)
       const lastDay = allData[allData.length - 1];
       const prevDay = allData.length > 1 ? allData[allData.length - 2] : lastDay;
       const rand = seededRandom(hashStr(symbol + "1D"));
       const points: { month: string; price: number }[] = [];
       let p = prevDay.close;
       const target = lastDay.close;
-      for (let i = 0; i < 100; i++) {
-        const totalMin = (17 * 60 + 55) - (10 * 60);
-        const min = 10 * 60 + Math.floor(i * totalMin / 99);
+      const startMin = 10 * 60;
+      const endMin = 17 * 60 + 45;
+      const stepMin = 15;
+      const totalPoints = Math.floor((endMin - startMin) / stepMin) + 1;
+      for (let i = 0; i < totalPoints; i++) {
+        const min = startMin + i * stepMin;
         const h = Math.floor(min / 60);
         const m = min % 60;
         const label = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        const drift = (target - p) / (100 - i) * 0.4;
-        p += drift + (rand() - 0.48) * lastDay.close * 0.002;
+        const drift = (target - p) / Math.max(1, (totalPoints - i)) * 0.30;
+        p += drift + (rand() - 0.5) * lastDay.close * 0.0012;
         points.push({ month: label, price: Math.round(p * 100) / 100 });
       }
       points[points.length - 1].price = target;
       return points;
     }
-    case "7D": startDate = new Date(now); startDate.setDate(now.getDate() - 10); break;
-    case "30D": startDate = new Date(now); startDate.setDate(now.getDate() - 35); break;
+    case "7D": startDate = new Date(now); startDate.setDate(now.getDate() - 7); break;
+    case "30D": startDate = new Date(now); startDate.setDate(now.getDate() - 30); break;
     case "6M": startDate = new Date(now); startDate.setMonth(now.getMonth() - 6); break;
     case "YTD": startDate = new Date(now.getFullYear(), 0, 1); break;
     case "1A": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1); break;
@@ -622,13 +678,61 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
   }
   
   const startStr = startDate.toISOString().slice(0, 10);
-  const filtered = allData.filter(d => d.date >= startStr);
+  let filtered = allData.filter(d => d.date >= startStr);
+
+  // If a ticker is stale (e.g. stopped updating months ago), short ranges can go empty.
+  // In that case, fallback to the most recent available window for that period
+  // so charts never render blank.
+  if (filtered.length === 0) {
+    const fallbackCountByPeriod: Record<string, number> = {
+      "7D": 8,      // ~8 trading closes
+      "30D": 30,    // ~1 month of closes
+      "6M": 126,    // ~6 months of trading days
+      "YTD": 126,   // show a meaningful recent window when YTD has no rows
+      "1A": 252,    // ~1 year of trading days
+      "5A": allData.length,
+    };
+    const fallbackCount = fallbackCountByPeriod[period] ?? 120;
+    filtered = allData.slice(-Math.min(allData.length, fallbackCount));
+  }
+
+  // 7D: hourly updates using daily closes as anchors
+  if (period === "7D") {
+    if (filtered.length === 0) return [];
+    if (filtered.length === 1) {
+      const only = filtered[0];
+      return [{ month: only.date.slice(8, 10) + "/" + only.date.slice(5, 7), price: only.close }];
+    }
+
+    const rand = seededRandom(hashStr(symbol + "7D"));
+    const points: { month: string; price: number }[] = [];
+    const hours = [10, 11, 12, 13, 14, 15, 16, 17];
+
+    for (let d = 1; d < filtered.length; d++) {
+      const prev = filtered[d - 1].close;
+      const next = filtered[d].close;
+      const date = filtered[d].date; // YYYY-MM-DD
+      const day = date.slice(8, 10);
+      const month = date.slice(5, 7);
+      for (let hIdx = 0; hIdx < hours.length; hIdx++) {
+        const t = hIdx / (hours.length - 1);
+        const base = prev + (next - prev) * t;
+        const wiggle = (rand() - 0.5) * Math.max(0.005, Math.abs(next - prev) * 0.045);
+        const px = Math.round((base + wiggle) * 100) / 100;
+        const hh = hours[hIdx].toString().padStart(2, "0");
+        points.push({ month: `${day}/${month} ${hh}h`, price: px });
+      }
+      // Clamp final hour of each day to true daily close
+      points[points.length - 1].price = Math.round(next * 100) / 100;
+    }
+    return points;
+  }
   
-  // Thin out if too many points
-  const maxPoints = period === "5A" ? 300 : period === "1A" ? 150 : period === "6M" ? 120 : 60;
+  // Thin out if too many points (keep daily cadence for requested ranges)
+  const maxPoints = period === "5A" ? 300 : period === "1A" ? 150 : period === "6M" ? 180 : 120;
   const step = Math.max(1, Math.floor(filtered.length / maxPoints));
   
-  return filtered
+  const mapped = filtered
     .filter((_, i) => i % step === 0 || i === filtered.length - 1)
     .map(d => {
       // Format label based on period
@@ -651,13 +755,23 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
       
       return { month: label, price: d.close };
     });
+
+  if (period !== "30D") return mapped;
+  // Extra smoothing on 30D to reduce visual amplitude/noise.
+  const alpha = 0.28;
+  let ema = mapped[0]?.price ?? 0;
+  return mapped.map((point) => {
+    ema = alpha * point.price + (1 - alpha) * ema;
+    return { ...point, price: Math.round(ema * 100) / 100 };
+  });
 }
 
 // Get benchmark data filtered by period for PerformanceChart
 export function getFilteredBenchmarks(
   period: string,
   baseValue: number,
-  minStartDate?: string
+  minStartDate?: string,
+  userPortfolio?: Array<{ symbol: string; shares: number; avgPrice?: number; firstBuyDate?: string | null }>
 ): { month: string; carteira: number; ibovespa: number; cdi: number; ipca: number }[] {
   const benchmarks = getBenchmarkHistory();
   const now = getLatestMarketDate();
@@ -665,26 +779,54 @@ export function getFilteredBenchmarks(
   
   switch (period) {
     case "1 DIA": {
-      // Intraday simulation
+      // Intraday simulation in PnL space (starts at 0), 10-minute steps.
       const rand = seededRandom(hashStr("portfolio1D"));
       const points: any[] = [];
-      let cart = baseValue * 0.998, ibov = baseValue * 0.999, cdi = baseValue, ipca = baseValue;
-      for (let i = 0; i < 80; i++) {
-        const totalMin = (17 * 60 + 55) - (10 * 60);
-        const min = 10 * 60 + Math.floor(i * totalMin / 79);
+      const marketData = getMarketHistory();
+      const activePositions = (userPortfolio && userPortfolio.length > 0)
+        ? userPortfolio
+        : holdings.map((h) => ({ symbol: h.symbol, shares: h.shares }));
+
+      const portfolioDayPnl = activePositions.reduce((sum, p) => {
+        const series = marketData[p.symbol];
+        if (!series || series.length === 0) return sum;
+        const latest = series[series.length - 1].close;
+        const prev = series.length > 1 ? series[series.length - 2].close : latest;
+        return sum + (latest - prev) * p.shares;
+      }, 0);
+
+      let cart = 0;
+      let ibov = 0;
+      let cdi = 0;
+      let ipca = 0;
+      const startMin = 10 * 60;
+      const endMin = 17 * 60 + 50;
+      const stepMin = 10;
+      const totalPoints = Math.floor((endMin - startMin) / stepMin) + 1;
+      for (let i = 0; i < totalPoints; i++) {
+        const min = startMin + i * stepMin;
         const h = Math.floor(min / 60);
         const m = min % 60;
         const label = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        cart += (rand() - 0.47) * baseValue * 0.001;
+        const t = i / Math.max(1, totalPoints - 1);
+        const targetAtT = portfolioDayPnl * t;
+        cart += (targetAtT - cart) * 0.28 + (rand() - 0.5) * Math.max(6, Math.abs(portfolioDayPnl) * 0.02);
         ibov += (rand() - 0.48) * baseValue * 0.0012;
-        cdi += baseValue * 0.000425 / 80;
-        ipca += baseValue * 0.000185 / 80;
-        points.push({ month: label, carteira: Math.round(cart), ibovespa: Math.round(ibov), cdi: Math.round(cdi), ipca: Math.round(ipca) });
+        cdi += baseValue * 0.000425 / totalPoints;
+        ipca += baseValue * 0.000185 / totalPoints;
+        points.push({
+          month: label,
+          carteira: Number(cart.toFixed(2)),
+          ibovespa: Number(ibov.toFixed(2)),
+          cdi: Number(cdi.toFixed(2)),
+          ipca: Number(ipca.toFixed(2)),
+        });
       }
+      if (points.length > 0) points[points.length - 1].carteira = Number(portfolioDayPnl.toFixed(2));
       return points;
     }
-    case "7 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 10); break;
-    case "30 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 35); break;
+    case "7 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 7); break;
+    case "30 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 30); break;
     case "6 MESES": startDate = new Date(now); startDate.setMonth(now.getMonth() - 6); break;
     case "YTD": startDate = new Date(now.getFullYear(), 0, 1); break;
     case "1 ANO": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1); break;
@@ -693,7 +835,12 @@ export function getFilteredBenchmarks(
   }
   
   const startStrFromPeriod = startDate.toISOString().slice(0, 10);
-  const startStr = minStartDate && minStartDate > startStrFromPeriod ? minStartDate : startStrFromPeriod;
+  // Unified rule for every period (except 1 DIA handled above):
+  // effectiveStart = max(periodStart, portfolioStart)
+  let startStr = startStrFromPeriod;
+  if (minStartDate && minStartDate > startStr) {
+    startStr = minStartDate;
+  }
   
   const ibovData = benchmarks.IBOV.filter(d => d.date >= startStr);
   const cdiData = benchmarks.CDI.filter(d => d.date >= startStr);
@@ -711,6 +858,14 @@ export function getFilteredBenchmarks(
   
   // Build portfolio value from real user holdings price data
   const marketData = getMarketHistory();
+  const activePositions = (userPortfolio && userPortfolio.length > 0)
+    ? userPortfolio
+    : holdings.map((h) => ({ symbol: h.symbol, shares: h.shares }));
+  const investedTotal = activePositions.reduce((sum, p) => {
+    const avg = Number(p.avgPrice ?? 0);
+    return sum + Math.max(0, avg * p.shares);
+  }, 0);
+  const referenceBase = investedTotal > 0 ? investedTotal : baseValue;
   
   return ibovData
     .filter((_, i) => i % step === 0 || i === ibovData.length - 1)
@@ -718,30 +873,40 @@ export function getFilteredBenchmarks(
       const cdi = cdiData.find(d => d.date === ibov.date) || cdiData[Math.min(idx * step, cdiData.length - 1)];
       const ipca = ipcaData.find(d => d.date === ibov.date) || ipcaData[Math.min(idx * step, ipcaData.length - 1)];
       
-      const ibovNorm = baseValue * (ibov.value / ibovStart);
-      const cdiNorm = baseValue * ((cdi?.value || cdiStart) / cdiStart);
-      const ipcaNorm = baseValue * ((ipca?.value || ipcaStart) / ipcaStart);
+      const ibovNorm = referenceBase * (ibov.value / ibovStart);
+      const cdiNorm = referenceBase * ((cdi?.value || cdiStart) / cdiStart);
+      const ipcaNorm = referenceBase * ((ipca?.value || ipcaStart) / ipcaStart);
       
-      // Portfolio: weighted average of real asset returns based on holdings
-      // Find each asset's return at this date and weight by allocation
-      let portfolioReturn = 0;
-      let totalWeight = 0;
-      for (const h of holdings) {
-        const assetData = marketData[h.symbol];
+      // Portfolio: real mark-to-market value by date (shares * price at date),
+      // anchored by invested capital of positions already bought at that date.
+      const positionsAtDate = activePositions.filter((p) => {
+        const buyDate = p.firstBuyDate ? p.firstBuyDate.slice(0, 10) : null;
+        return !buyDate || ibov.date >= buyDate;
+      });
+      const investedAtDate = positionsAtDate.reduce((sum, p) => {
+        const avg = Number(p.avgPrice ?? 0);
+        return sum + Math.max(0, avg * p.shares);
+      }, 0);
+
+      let portfolioVal = 0;
+      for (const p of positionsAtDate) {
+        const assetData = marketData[p.symbol];
         if (!assetData || assetData.length === 0) continue;
-        const startIdx = assetData.findIndex(d => d.date >= startStr);
-        if (startIdx < 0) continue;
-        const assetStart = assetData[startIdx].close;
-        // Find the closest date
-        const match = assetData.find(d => d.date === ibov.date) || assetData.find(d => d.date >= ibov.date);
+
+        // Prefer exact date; otherwise use last close at/before date; fallback to first after date.
+        const exact = assetData.find(d => d.date === ibov.date);
+        const beforeOrEqual = exact ?? [...assetData].reverse().find(d => d.date <= ibov.date);
+        const after = beforeOrEqual ? null : assetData.find(d => d.date >= ibov.date);
+        const match = beforeOrEqual ?? after;
         if (!match) continue;
-        const assetReturn = match.close / assetStart;
-        portfolioReturn += assetReturn * h.allocation;
-        totalWeight += h.allocation;
+
+        portfolioVal += match.close * p.shares;
       }
-      const portfolioVal = totalWeight > 0
-        ? baseValue * (portfolioReturn / totalWeight)
-        : ibovNorm; // fallback
+      if (positionsAtDate.length === 0) {
+        portfolioVal = 0;
+      } else if (portfolioVal <= 0) {
+        portfolioVal = investedAtDate > 0 ? investedAtDate : referenceBase;
+      }
       
       const parts = ibov.date.split("-");
       const day = parts[2];
@@ -760,10 +925,10 @@ export function getFilteredBenchmarks(
       
       return {
         month: label,
-        carteira: Math.round(portfolioVal),
-        ibovespa: Math.round(ibovNorm),
-        cdi: Math.round(cdiNorm),
-        ipca: Math.round(ipcaNorm),
+        carteira: Number((portfolioVal - (investedAtDate > 0 ? investedAtDate : referenceBase)).toFixed(2)),
+        ibovespa: Number((ibovNorm - referenceBase).toFixed(2)),
+        cdi: Number((cdiNorm - referenceBase).toFixed(2)),
+        ipca: Number((ipcaNorm - referenceBase).toFixed(2)),
       };
     });
 }
@@ -792,84 +957,534 @@ export const assetHistoryData: any[] = [];
 /**
  * Build a "R$ 1.000 invested" comparison using real asset and benchmark data.
  */
-export function getInvestmentComparison(symbol: string, period: string): Record<string, any>[] {
-  const periodMapInternal: Record<string, string> = {
-    "1 DIA": "1D", "7 DIAS": "7D", "30 DIAS": "30D", "6 MESES": "6M",
-    "YTD": "YTD", "1 ANO": "1A", "5 ANOS": "5A",
-    "1D": "1D", "7D": "7D", "30D": "30D", "6M": "6M", "1A": "1A", "5A": "5A",
+type SeriesPoint = { date: string; value: number };
+type InvestmentComparisonPoint = { date: string; month: string; [key: string]: string | number };
+type InvestmentComparisonMeta = {
+  lastUpdatedAt: string | null;
+  sources: { ibov: "ok" | "stale"; cdi: "ok" | "stale"; ipca: "ok" | "stale" };
+};
+type InvestmentComparisonResponse = {
+  points: InvestmentComparisonPoint[];
+  meta: InvestmentComparisonMeta;
+};
+
+const BENCHMARKS_API_CACHE_KEY = "ii_benchmarks_api_cache_v1";
+const BENCHMARKS_API_CACHE_TTL_MS = 2 * 60 * 1000;
+const DEFAULT_COMPARISON_META: InvestmentComparisonMeta = {
+  lastUpdatedAt: null,
+  sources: { ibov: "ok", cdi: "ok", ipca: "ok" },
+};
+
+let _benchmarksApiMemoryCache: {
+  fetchedAt: number;
+  from: string;
+  to: string;
+  payload: { meta: InvestmentComparisonMeta; series: { ibov: SeriesPoint[]; cdi: SeriesPoint[]; ipca: SeriesPoint[] } };
+} | null = null;
+let _benchmarksApiInFlight: Promise<{
+  meta: InvestmentComparisonMeta;
+  series: { ibov: SeriesPoint[]; cdi: SeriesPoint[]; ipca: SeriesPoint[] };
+}> | null = null;
+
+function shouldUseBenchmarksApi(): boolean {
+  // Frontend must remain stable without depending on external/server runtime route.
+  // Benchmarks are generated from loaded market + macro datasets in this app.
+  return false;
+}
+
+function parsePeriodToken(period: string): "1D" | "7D" | "30D" | "6M" | "YTD" | "1A" | "5A" {
+  const periodMapInternal: Record<string, "1D" | "7D" | "30D" | "6M" | "YTD" | "1A" | "5A"> = {
+    "1 DIA": "1D",
+    "7 DIAS": "7D",
+    "30 DIAS": "30D",
+    "6 MESES": "6M",
+    "YTD": "YTD",
+    "1 ANO": "1A",
+    "5 ANOS": "5A",
+    "1D": "1D",
+    "7D": "7D",
+    "30D": "30D",
+    "6M": "6M",
+    "1A": "1A",
+    "5A": "5A",
   };
-  const p = periodMapInternal[period] || "1A";
-  
-  const priceHistory = getFilteredPriceHistory(symbol, p);
-  if (priceHistory.length === 0) return [];
+  return periodMapInternal[period] || "1A";
+}
 
-  if (p === "1D") {
-    const rand = seededRandom(hashStr(`cmp1D:${symbol}`));
-    const start = 1000;
-    let ibov = start;
-    let cdi = start;
-    let ipca = start;
-    const asset = holdings.find((h) => h.symbol === symbol);
-    const dayTrend = ((asset?.changePercent ?? 0) / 100) * 0.9;
-
-    return priceHistory.map((d, i) => {
-      const t = i / Math.max(1, priceHistory.length - 1);
-      const assetVal = start * (1 + dayTrend * t);
-      ibov = ibov + (rand() - 0.5) * 2.4;
-      cdi = cdi + 0.003;
-      ipca = ipca + 0.0015;
-      return {
-        month: d.month,
-        [symbol]: Math.round(assetVal * 100) / 100,
-        IBOV: Math.round(ibov * 100) / 100,
-        CDI: Math.round(cdi * 100) / 100,
-        IPCA: Math.round(ipca * 100) / 100,
-      };
-    });
-  }
-  
-  const benchmarkData = getBenchmarkHistory();
-  const now = getLatestMarketDate();
-  let startDate: Date;
-  
+function getPeriodStartDate(now: Date, p: "1D" | "7D" | "30D" | "6M" | "YTD" | "1A" | "5A"): Date {
+  const startDate = new Date(now);
   switch (p) {
-    case "1D": startDate = new Date(now); startDate.setDate(now.getDate() - 1); break;
-    case "7D": startDate = new Date(now); startDate.setDate(now.getDate() - 10); break;
-    case "30D": startDate = new Date(now); startDate.setDate(now.getDate() - 35); break;
-    case "6M": startDate = new Date(now); startDate.setMonth(now.getMonth() - 6); break;
-    case "YTD": startDate = new Date(now.getFullYear(), 0, 1); break;
-    case "1A": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1); break;
-    case "5A": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 5); break;
-    default: startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 1);
+    case "1D":
+      startDate.setDate(now.getDate() - 1);
+      return startDate;
+    case "7D":
+      startDate.setDate(now.getDate() - 7);
+      return startDate;
+    case "30D":
+      startDate.setDate(now.getDate() - 30);
+      return startDate;
+    case "6M":
+      startDate.setMonth(now.getMonth() - 6);
+      return startDate;
+    case "YTD":
+      return new Date(now.getFullYear(), 0, 1);
+    case "1A":
+      startDate.setFullYear(now.getFullYear() - 1);
+      return startDate;
+    case "5A":
+      startDate.setFullYear(now.getFullYear() - 5);
+      return startDate;
   }
-  
-  const startStr = startDate.toISOString().slice(0, 10);
-  
-  const ibovData = benchmarkData.IBOV.filter(d => d.date >= startStr);
-  const cdiData = benchmarkData.CDI.filter(d => d.date >= startStr);
-  const ipcaData = benchmarkData.IPCA.filter(d => d.date >= startStr);
-  
-  if (ibovData.length === 0) return [];
-  
-  const ibovStart = ibovData[0].value;
-  const cdiStart = cdiData[0]?.value || 1;
-  const ipcaStart = ipcaData[0]?.value || 1;
-  const assetStart = priceHistory[0].price;
-  
-  return priceHistory.map((d, i) => {
-    const progress = i / (priceHistory.length - 1 || 1);
-    const ibovIdx = Math.min(Math.floor(progress * (ibovData.length - 1)), ibovData.length - 1);
-    const cdiIdx = Math.min(Math.floor(progress * (cdiData.length - 1)), cdiData.length - 1);
-    const ipcaIdx = Math.min(Math.floor(progress * (ipcaData.length - 1)), ipcaData.length - 1);
-    
-    return {
-      month: d.month,
-      [symbol]: Math.round((1000 * d.price / assetStart) * 100) / 100,
-      IBOV: Math.round((1000 * ibovData[ibovIdx].value / ibovStart) * 100) / 100,
-      CDI: Math.round((1000 * cdiData[cdiIdx].value / cdiStart) * 100) / 100,
-      IPCA: Math.round((1000 * ipcaData[ipcaIdx].value / ipcaStart) * 100) / 100,
-    };
+}
+
+function formatDateLabel(dateIso: string, p: "1D" | "7D" | "30D" | "6M" | "YTD" | "1A" | "5A"): string {
+  const [yyyy, mm, dd] = dateIso.split("-");
+  const monthNames = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  if (p === "1D") return `${dd}/${mm}`;
+  if (p === "7D" || p === "30D") return `${dd}/${mm}`;
+  if (p === "6M" || p === "YTD") return `${dd}/${monthNames[Number(mm)]}`;
+  return `${monthNames[Number(mm)]}/${yyyy.slice(2)}`;
+}
+
+function normalizeSeriesByBase(series: SeriesPoint[], initialInvestment = 1000): SeriesPoint[] {
+  if (series.length === 0) return [];
+  const base = series[0].value;
+  if (!Number.isFinite(base) || base <= 0) return [];
+  return series.map((p) => ({
+    date: p.date,
+    value: Number((initialInvestment * (p.value / base)).toFixed(2)),
+  }));
+}
+
+function forwardFillOnCalendar(series: SeriesPoint[], calendar: string[]): SeriesPoint[] {
+  if (series.length === 0 || calendar.length === 0) return [];
+  const sorted = [...series].sort((a, b) => a.date.localeCompare(b.date));
+  let idx = 0;
+  let last = sorted[0].value;
+  return calendar.map((d) => {
+    while (idx < sorted.length && sorted[idx].date <= d) {
+      last = sorted[idx].value;
+      idx += 1;
+    }
+    return { date: d, value: last };
   });
+}
+
+function readBenchmarksApiCache(): {
+  fetchedAt: number;
+  from: string;
+  to: string;
+  payload: { meta: InvestmentComparisonMeta; series: { ibov: SeriesPoint[]; cdi: SeriesPoint[]; ipca: SeriesPoint[] } };
+} | null {
+  if (_benchmarksApiMemoryCache) return _benchmarksApiMemoryCache;
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(BENCHMARKS_API_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      fetchedAt: number;
+      from: string;
+      to: string;
+      payload: { meta: InvestmentComparisonMeta; series: { ibov: SeriesPoint[]; cdi: SeriesPoint[]; ipca: SeriesPoint[] } };
+    };
+    if (!parsed?.fetchedAt || !parsed?.from || !parsed?.to || !parsed?.payload) return null;
+    _benchmarksApiMemoryCache = parsed;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeBenchmarksApiCache(payload: {
+  fetchedAt: number;
+  from: string;
+  to: string;
+  payload: { meta: InvestmentComparisonMeta; series: { ibov: SeriesPoint[]; cdi: SeriesPoint[]; ipca: SeriesPoint[] } };
+}) {
+  _benchmarksApiMemoryCache = payload;
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(BENCHMARKS_API_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore cache write errors
+  }
+}
+
+function buildFlatSeriesFromDates(dates: string[], value = 1000): SeriesPoint[] {
+  return dates.map((date) => ({ date, value }));
+}
+
+function buildLocalBenchmarksFallback(
+  from: string,
+  to: string,
+  marketData: ReturnType<typeof getMarketHistory>
+): {
+  meta: InvestmentComparisonMeta;
+  series: { ibov: SeriesPoint[]; cdi: SeriesPoint[]; ipca: SeriesPoint[] };
+} {
+  const benchmarkIbov = getBenchmarkHistory().IBOV || [];
+  const marketIbovSeries =
+    marketData["^BVSP"] || marketData["IBOV"] || marketData["BVSP"] || marketData["IBOVESPA"] || [];
+  // Always prefer raw IBOV from loaded market data for consistency with CSV refreshes.
+  // getBenchmarkHistory() can be stale/synthetic in some startup paths.
+  const ibovBase = marketIbovSeries.length
+    ? marketIbovSeries.map((row) => ({ date: row.date, value: row.close }))
+    : benchmarkIbov.map((p) => ({ date: p.date, value: p.value }));
+  const ibovFiltered = ibovBase
+    .filter((row) => row.date >= from && row.date <= to && Number.isFinite(row.value))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const localBenchmarks = getBenchmarkHistory();
+  const cdiRaw = (localBenchmarks.CDI || []).filter((p) => p.date <= to);
+  const ipcaRaw = (localBenchmarks.IPCA || []).filter((p) => p.date <= to);
+  const fallbackDates = (ibovFiltered.length ? ibovFiltered : ibovBase)
+    .filter((row) => row.date <= to)
+    .map((row) => row.date)
+    .sort((a, b) => a.localeCompare(b));
+  const safeDates = fallbackDates.length ? fallbackDates : [from, to].sort((a, b) => a.localeCompare(b));
+
+  const ibov = ibovFiltered.length ? ibovFiltered : buildFlatSeriesFromDates(safeDates, 1000);
+  const cdi = cdiRaw.length ? cdiRaw : buildFlatSeriesFromDates(safeDates, 1000);
+  const ipca = ipcaRaw.length ? ipcaRaw : buildFlatSeriesFromDates(safeDates, 1000);
+
+  return {
+    meta: {
+      lastUpdatedAt: new Date().toISOString(),
+      sources: {
+        ibov: "stale",
+        cdi: "stale",
+        ipca: "stale",
+      },
+    },
+    series: {
+      ibov,
+      cdi,
+      ipca,
+    },
+  };
+}
+
+async function fetchBenchmarksFromApi(
+  from: string,
+  to: string,
+  marketData: ReturnType<typeof getMarketHistory>
+): Promise<{
+  meta: InvestmentComparisonMeta;
+  series: { ibov: SeriesPoint[]; cdi: SeriesPoint[]; ipca: SeriesPoint[] };
+}> {
+  if (!shouldUseBenchmarksApi()) {
+    return buildLocalBenchmarksFallback(from, to, marketData);
+  }
+
+  const cache = readBenchmarksApiCache();
+  const freshCache =
+    cache &&
+    cache.from === from &&
+    cache.to === to &&
+    Date.now() - cache.fetchedAt < BENCHMARKS_API_CACHE_TTL_MS;
+  if (freshCache) return cache.payload;
+  if (_benchmarksApiInFlight) return _benchmarksApiInFlight;
+
+  _benchmarksApiInFlight = (async () => {
+    const sameRangeCache = cache && cache.from === from && cache.to === to ? cache.payload : null;
+    try {
+      const url = `/api/benchmarks?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+      const resp = await fetch(url, { cache: "no-store" });
+      if (!resp.ok) {
+        throw new Error(`benchmarks API failed (${resp.status})`);
+      }
+      const text = await resp.text();
+      let raw: {
+        meta?: { lastUpdatedAt?: string; sources?: { ibov?: "ok" | "stale"; cdi?: "ok" | "stale"; ipca?: "ok" | "stale" } };
+        series?: { ibov?: SeriesPoint[]; cdi?: SeriesPoint[]; ipca?: SeriesPoint[] };
+      };
+      try {
+        raw = JSON.parse(text);
+      } catch {
+        throw new Error(`benchmarks API returned non-JSON payload: ${text.slice(0, 60)}`);
+      }
+
+      const payload = {
+        meta: {
+          lastUpdatedAt: raw.meta?.lastUpdatedAt ?? null,
+          sources: {
+            ibov: raw.meta?.sources?.ibov ?? "ok",
+            cdi: raw.meta?.sources?.cdi ?? "ok",
+            ipca: raw.meta?.sources?.ipca ?? "ok",
+          },
+        },
+        series: {
+          ibov: Array.isArray(raw.series?.ibov) ? raw.series?.ibov : [],
+          cdi: Array.isArray(raw.series?.cdi) ? raw.series?.cdi : [],
+          ipca: Array.isArray(raw.series?.ipca) ? raw.series?.ipca : [],
+        },
+      };
+
+      writeBenchmarksApiCache({ fetchedAt: Date.now(), from, to, payload });
+      return payload;
+    } catch (apiError) {
+      const fallback = buildLocalBenchmarksFallback(from, to, marketData);
+      writeBenchmarksApiCache({ fetchedAt: Date.now(), from, to, payload: fallback });
+      return fallback;
+    }
+  })();
+
+  try {
+    return await _benchmarksApiInFlight;
+  } finally {
+    _benchmarksApiInFlight = null;
+  }
+}
+
+function ensureNonEmptySeries(
+  series: SeriesPoint[],
+  fallbackDates: string[],
+  fallbackValue = 1000
+): SeriesPoint[] {
+  if (series.length > 0) return series;
+  return buildFlatSeriesFromDates(fallbackDates, fallbackValue);
+}
+
+function markMetaStale(meta: InvestmentComparisonMeta, keys: Array<keyof InvestmentComparisonMeta["sources"]>) {
+  const next = { ...meta, sources: { ...meta.sources } };
+  keys.forEach((k) => {
+    next.sources[k] = "stale";
+  });
+  return next;
+}
+
+function debugInvestmentSeries(name: string, series: SeriesPoint[]) {
+  if (series.length === 0) {
+    console.log(`[investmentComparison] ${name}: empty series`);
+    return;
+  }
+  const first = series[0];
+  const last = series[series.length - 1];
+  console.log(
+    `[investmentComparison] ${name} baseDate=${first.date} baseValue=${first.value.toFixed(4)} lastDate=${last.date} lastValue=${last.value.toFixed(4)}`
+  );
+}
+
+function getBenchmarkEndValueInRange(series: { date: string; value: number }[], from: string, to: string): number {
+  const filtered = series
+    .filter((p) => p.date >= from && p.date <= to && Number.isFinite(p.value))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  if (filtered.length < 2) return 1000;
+  const base = filtered[0].value;
+  const last = filtered[filtered.length - 1].value;
+  if (!Number.isFinite(base) || base <= 0 || !Number.isFinite(last)) return 1000;
+  return Number((1000 * (last / base)).toFixed(2));
+}
+
+function buildEmergencyComparisonPoints(
+  symbol: string,
+  p: "1D" | "7D" | "30D" | "6M" | "YTD" | "1A" | "5A",
+  from: string,
+  to: string
+): InvestmentComparisonPoint[] {
+  const pricePeriod = getFilteredPriceHistory(symbol, p);
+  if (pricePeriod.length < 2) return [];
+
+  const first = pricePeriod[0].price > 0 ? pricePeriod[0].price : 1;
+  const assetSeries = pricePeriod.map((pt) => Number((1000 * (pt.price / first)).toFixed(2)));
+
+  const benchmarks = getBenchmarkHistory();
+  const ibovEnd = getBenchmarkEndValueInRange(benchmarks.IBOV || [], from, to);
+  const cdiEnd = getBenchmarkEndValueInRange(benchmarks.CDI || [], from, to);
+  const ipcaEnd = getBenchmarkEndValueInRange(benchmarks.IPCA || [], from, to);
+  const n = pricePeriod.length;
+
+  const lerp = (target: number, i: number) => {
+    const t = n <= 1 ? 1 : i / (n - 1);
+    return Number((1000 + (target - 1000) * t).toFixed(2));
+  };
+
+  return pricePeriod.map((pt, i) => ({
+    date: `${from}T${String(i).padStart(2, "0")}:00:00`,
+    month: pt.month,
+    [symbol]: assetSeries[i],
+    IBOV: lerp(ibovEnd, i),
+    CDI: lerp(cdiEnd, i),
+    IPCA: lerp(ipcaEnd, i),
+  }));
+}
+
+/**
+ * Build a "R$ 1.000 invested" comparison using real asset and benchmark data.
+ * Uses internal API and safe local fallback (no direct BCB calls in frontend).
+ */
+export async function getInvestmentComparisonData(symbol: string, period: string): Promise<InvestmentComparisonResponse> {
+  const p = parsePeriodToken(period);
+  const now = getLatestMarketDate();
+  const startDate = getPeriodStartDate(now, p);
+  const startStr = startDate.toISOString().slice(0, 10);
+  const endStr = now.toISOString().slice(0, 10);
+  const marketData = getMarketHistory();
+
+  const buildNeverEmptyFallback = (meta: InvestmentComparisonMeta): InvestmentComparisonResponse => {
+    const emergency = buildEmergencyComparisonPoints(symbol, p, startStr, endStr);
+    if (emergency.length >= 2) {
+      return { points: emergency, meta: markMetaStale(meta, ["ibov", "cdi", "ipca"]) };
+    }
+
+    const assetPeriod = getFilteredPriceHistory(symbol, p);
+    if (assetPeriod.length >= 2) {
+      const safeStart = assetPeriod[0].price > 0 ? assetPeriod[0].price : assetPeriod[1].price || 1;
+      const points = assetPeriod.map((pt, idx) => ({
+        date: `${startStr}T${String(idx).padStart(2, "0")}:00:00`,
+        month: pt.month,
+        [symbol]: Number((1000 * (pt.price / safeStart)).toFixed(2)),
+        IBOV: 1000,
+        CDI: 1000,
+        IPCA: 1000,
+      }));
+      return { points, meta: markMetaStale(meta, ["ibov", "cdi", "ipca"]) };
+    }
+
+    return {
+      points: [
+        { date: `${startStr}T00:00:00`, month: "base", [symbol]: 1000, IBOV: 1000, CDI: 1000, IPCA: 1000 },
+        { date: `${endStr}T00:00:00`, month: "agora", [symbol]: 1000, IBOV: 1000, CDI: 1000, IPCA: 1000 },
+      ],
+      meta: markMetaStale(meta, ["ibov", "cdi", "ipca"]),
+    };
+  };
+
+  try {
+    const assetRaw = (marketData[symbol] || [])
+      .map((r) => ({ date: r.date, value: r.close }))
+      .filter((r) => !!r.date && Number.isFinite(r.value))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (assetRaw.length === 0) {
+      return buildNeverEmptyFallback(DEFAULT_COMPARISON_META);
+    }
+
+    let apiData: { meta: InvestmentComparisonMeta; series: { ibov: SeriesPoint[]; cdi: SeriesPoint[]; ipca: SeriesPoint[] } };
+    try {
+      apiData = await fetchBenchmarksFromApi(startStr, endStr, marketData);
+    } catch (err) {
+      console.warn("[investmentComparison] benchmarks API unavailable:", err);
+      apiData = buildLocalBenchmarksFallback(startStr, endStr, marketData);
+    }
+
+    const fallbackDates = assetRaw.map((p0) => p0.date);
+    const ibovRaw = ensureNonEmptySeries(
+      [...apiData.series.ibov].sort((a, b) => a.date.localeCompare(b.date)),
+      fallbackDates
+    );
+    const cdiRaw = ensureNonEmptySeries(
+      [...apiData.series.cdi].sort((a, b) => a.date.localeCompare(b.date)),
+      fallbackDates
+    );
+    const ipcaRaw = ensureNonEmptySeries(
+      [...apiData.series.ipca].sort((a, b) => a.date.localeCompare(b.date)),
+      fallbackDates
+    );
+
+    const commonStart = [assetRaw[0].date, ibovRaw[0].date, cdiRaw[0].date, ipcaRaw[0].date, startStr]
+      .sort()
+      .at(-1);
+    if (!commonStart) {
+      return buildNeverEmptyFallback(apiData.meta);
+    }
+
+    const assetPeriod = assetRaw.filter((p0) => p0.date >= commonStart);
+    const ibovPeriod = ibovRaw.filter((p0) => p0.date >= commonStart);
+    const cdiPeriod = cdiRaw.filter((p0) => p0.date >= commonStart);
+    const ipcaPeriod = ipcaRaw.filter((p0) => p0.date >= commonStart);
+    if (assetPeriod.length === 0) {
+      return buildNeverEmptyFallback(apiData.meta);
+    }
+
+    const calendar = Array.from(
+      new Set([
+        ...assetPeriod.map((x) => x.date),
+        ...ibovPeriod.map((x) => x.date),
+        ...cdiPeriod.map((x) => x.date),
+        ...ipcaPeriod.map((x) => x.date),
+      ])
+    ).sort((a, b) => a.localeCompare(b));
+    if (calendar.length === 0) {
+      return buildNeverEmptyFallback(apiData.meta);
+    }
+
+    const assetNorm = normalizeSeriesByBase(assetPeriod, 1000);
+    const ibovNorm = normalizeSeriesByBase(ensureNonEmptySeries(ibovPeriod, calendar), 1000);
+    const cdiNorm = normalizeSeriesByBase(ensureNonEmptySeries(cdiPeriod, calendar), 1000);
+    const ipcaNorm = normalizeSeriesByBase(ensureNonEmptySeries(ipcaPeriod, calendar), 1000);
+
+    const assetFilled = forwardFillOnCalendar(assetNorm, calendar);
+    const ibovFilled = forwardFillOnCalendar(ensureNonEmptySeries(ibovNorm, calendar), calendar);
+    const cdiFilled = forwardFillOnCalendar(ensureNonEmptySeries(cdiNorm, calendar), calendar);
+    const ipcaFilled = forwardFillOnCalendar(ensureNonEmptySeries(ipcaNorm, calendar), calendar);
+
+    debugInvestmentSeries(symbol, assetFilled);
+    debugInvestmentSeries("IBOV", ibovFilled);
+    debugInvestmentSeries("CDI", cdiFilled);
+    debugInvestmentSeries("IPCA", ipcaFilled);
+
+    let points: InvestmentComparisonPoint[] = calendar.map((date, i) => ({
+      date,
+      month: formatDateLabel(date, p),
+      [symbol]: Number(assetFilled[i].value.toFixed(2)),
+      IBOV: Number(ibovFilled[i].value.toFixed(2)),
+      CDI: Number(cdiFilled[i].value.toFixed(2)),
+      IPCA: Number(ipcaFilled[i].value.toFixed(2)),
+    }));
+
+    // 1D frequently has only one daily point on end-of-day datasets.
+    // Build an intraday comparison path so the chart never appears empty/flat.
+    if (p === "1D" && points.length < 12) {
+      const intradayAsset = getFilteredPriceHistory(symbol, "1D");
+      if (intradayAsset.length >= 2) {
+        const assetStart = intradayAsset[0].price;
+        const assetSafeStart = assetStart > 0 ? assetStart : intradayAsset[1].price || 1;
+        const assetIntradayNorm = intradayAsset.map((row) => Number((1000 * (row.price / assetSafeStart)).toFixed(2)));
+
+        const ibovEnd = points.at(-1)?.IBOV ?? 1000;
+        const cdiEnd = points.at(-1)?.CDI ?? 1000;
+        const ipcaEnd = points.at(-1)?.IPCA ?? 1000;
+        const n = intradayAsset.length;
+
+        const interpolate = (target: number, idx: number) => {
+          const t = n <= 1 ? 1 : idx / (n - 1);
+          return 1000 + (target - 1000) * t;
+        };
+
+        points = intradayAsset.map((row, idx) => ({
+          date: `${now.toISOString().slice(0, 10)}T${row.month}:00`,
+          month: row.month,
+          [symbol]: assetIntradayNorm[idx],
+          IBOV: Number(interpolate(ibovEnd, idx).toFixed(2)),
+          CDI: Number(interpolate(cdiEnd, idx).toFixed(2)),
+          IPCA: Number(interpolate(ipcaEnd, idx).toFixed(2)),
+        }));
+      }
+    }
+
+    const meta = markMetaStale(
+      apiData.meta,
+      [
+        ibovPeriod.length === 0 ? "ibov" : null,
+        cdiPeriod.length === 0 ? "cdi" : null,
+        ipcaPeriod.length === 0 ? "ipca" : null,
+      ].filter(Boolean) as Array<keyof InvestmentComparisonMeta["sources"]>
+    );
+
+    if (points.length < 2) {
+      return buildNeverEmptyFallback(meta);
+    }
+
+    return { points, meta };
+  } catch (err) {
+    console.warn("[investmentComparison] unexpected failure, using emergency fallback:", err);
+    return buildNeverEmptyFallback(DEFAULT_COMPARISON_META);
+  }
+}
+
+export async function getInvestmentComparison(symbol: string, period: string): Promise<InvestmentComparisonPoint[]> {
+  const result = await getInvestmentComparisonData(symbol, period);
+  return result.points;
 }
 
 export function calcRecommendationScore(asset: Holding): { score: number; label: string; color: string } {
@@ -1081,3 +1696,6 @@ Preço Graham: R$ ${graham ?? 'N/A'} | Preço Justo: R$ ${fair ?? 'N/A'}
 Performance 12 meses: ${h.symbol} ${assetReturn12m}% | IBOV ${benchReturns.IBOV ?? 'N/A'}% | CDI ${benchReturns.CDI ?? 'N/A'}% | IPCA ${benchReturns.IPCA ?? 'N/A'}%
 Descrição: ${h.description}`;
 }
+
+
+

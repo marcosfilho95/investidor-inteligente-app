@@ -1,4 +1,4 @@
-import { StatCard } from "@/components/StatCard";
+﻿import { StatCard } from "@/components/StatCard";
 import { PerformanceChart } from "@/components/PerformanceChart";
 import { AllocationChart } from "@/components/AllocationChart";
 import { HoldingsTable } from "@/components/HoldingsTable";
@@ -68,13 +68,19 @@ const Index = () => {
 
   const metrics = useMemo(() => {
     const totalInvested = enrichedHoldings.reduce((s, h) => s + h.avgPrice * h.shares, 0);
-    const totalGain = totalValue - totalInvested;
+    const totalGain = enrichedHoldings.reduce((s, h) => s + (h.totalGainValue ?? (h.price - h.avgPrice) * h.shares), 0);
     const totalGainPercent = totalInvested > 0 ? Math.round((totalGain / totalInvested) * 10000) / 100 : 0;
-    const dailyChange = enrichedHoldings.reduce((s, h) => s + h.change * h.shares, 0);
-    const previousValue = totalValue - dailyChange;
+    const dailyChange = enrichedHoldings.reduce((s, h) => s + (h.dayChangeValue ?? h.change * h.shares), 0);
+    const previousValue = enrichedHoldings.reduce((s, h) => s + (h.prevClose ?? h.price) * h.shares, 0);
     const dailyChangePercent = previousValue > 0 ? Math.round((dailyChange / previousValue) * 10000) / 100 : 0;
     return { totalInvested, totalGain, totalGainPercent, dailyChange, dailyChangePercent };
   }, [enrichedHoldings, totalValue]);
+  const formatSignedCurrency = (value: number) => {
+    const abs = Math.abs(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+    if (value > 0) return `+R$ ${abs}`;
+    if (value < 0) return `-R$ ${abs}`;
+    return `R$ ${abs}`;
+  };
   const dashboardReady = !loading && minDelayDone;
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
@@ -120,7 +126,7 @@ Você pode começar com:
         <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
           <div>
             <h1 className="text-xl font-semibold">
-              {greeting}, {userName} 👋
+              {greeting}, {userName}
             </h1>
             <p className="text-sm text-muted-foreground">
               {loading
@@ -155,14 +161,14 @@ Você pode começar com:
               },
               {
                 title: "Ganho Diário",
-                value: `R$ ${metrics.dailyChange.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                value: formatSignedCurrency(metrics.dailyChange),
                 change: metrics.dailyChangePercent,
                 icon: "activity" as const,
                 positive: metrics.dailyChangePercent >= 0,
               },
               {
                 title: "Ganho Total",
-                value: `R$ ${metrics.totalGain.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                value: formatSignedCurrency(metrics.totalGain),
                 change: metrics.totalGainPercent,
                 icon: "chart" as const,
                 positive: metrics.totalGainPercent >= 0,
@@ -186,16 +192,24 @@ Você pode começar com:
 
           {dashboardReady && !isEmpty && showCharts && (
             <motion.div
-              className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+              className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch"
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             >
-              <AnimatedCard delay={0.3} className="lg:col-span-2">
-                <PerformanceChart userHoldings={enrichedHoldings} totalValue={totalValue} firstBuyDate={firstBuyDate} />
+              <AnimatedCard delay={0.3} className="h-full min-h-[460px] flex flex-col">
+                <div className="h-full flex flex-col">
+                  <div className="flex-1">
+                    <PerformanceChart userHoldings={enrichedHoldings} totalValue={totalValue} firstBuyDate={firstBuyDate} />
+                  </div>
+                </div>
               </AnimatedCard>
-              <AnimatedCard delay={0.4}>
-                <AllocationChart holdings={enrichedHoldings} />
+              <AnimatedCard delay={0.4} className="h-full min-h-[460px] flex flex-col">
+                <div className="h-full flex flex-col">
+                  <div className="flex-1">
+                    <AllocationChart holdings={enrichedHoldings} className="h-full min-h-[460px]" />
+                  </div>
+                </div>
               </AnimatedCard>
             </motion.div>
           )}
@@ -218,18 +232,27 @@ Você pode começar com:
             </AnimatedCard>
           )}
 
-          <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: dashboardReady ? 1 : 0, y: dashboardReady ? 0 : 10 }} transition={{ duration: 0.35, ease: "easeOut" }}>
+          <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch" initial={{ opacity: 0, y: 10 }} animate={{ opacity: dashboardReady ? 1 : 0, y: dashboardReady ? 0 : 10 }} transition={{ duration: 0.35, ease: "easeOut" }}>
             {dashboardReady && !isEmpty && (
-              <AnimatedCard delay={0.5} className="lg:col-span-2">
-                <HoldingsTable holdings={enrichedHoldings} />
+              <AnimatedCard delay={0.5} className="lg:col-span-2 h-full flex flex-col">
+                <div className="h-full flex flex-col">
+                  <div className="flex-1">
+                    <HoldingsTable holdings={enrichedHoldings} />
+                  </div>
+                </div>
               </AnimatedCard>
             )}
-            <AnimatedCard delay={0.6} className={isEmpty ? "lg:col-span-3" : ""} data-tour="ai-chat">
-              <AiChatWidget
-                page="dashboard"
-                userSymbols={enrichedHoldings.map(h => h.symbol)}
-                welcomeMessage={aiDashboardWelcome}
-              />
+            <AnimatedCard delay={0.6} className={`${isEmpty ? "lg:col-span-3" : ""} h-full flex flex-col`} data-tour="ai-chat">
+              <div className="h-full flex flex-col">
+                <div className="flex-1 flex">
+                  <AiChatWidget
+                    page="dashboard"
+                    userSymbols={enrichedHoldings.map(h => h.symbol)}
+                    welcomeMessage={aiDashboardWelcome}
+                    className="h-full w-full flex flex-col"
+                  />
+                </div>
+              </div>
             </AnimatedCard>
           </motion.div>
         </main>
@@ -239,3 +262,4 @@ Você pode começar com:
 };
 
 export default Index;
+
