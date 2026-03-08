@@ -340,12 +340,6 @@ const Landing = () => {
           </motion.div>
         </section>
       </FoldSection>
-                </Link>
-              </motion.div>
-            </div>
-          </motion.div>
-        </section>
-      </FoldSection>
 
       {/* Footer */}
       <footer className="border-t border-border/50 bg-card/30 relative z-10">
