@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
-import { LayoutDashboard, BookOpen, TrendingUp, Bot, Shield, BarChart3, ArrowRight, Sparkles } from "lucide-react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { LayoutDashboard, BookOpen, TrendingUp, Bot, Shield, BarChart3, ArrowRight, Sparkles, ChevronDown } from "lucide-react";
+import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { useRef } from "react";
 
 const features = [
@@ -16,13 +16,14 @@ function FoldSection({ children, index }: { children: React.ReactNode; index: nu
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
-    offset: ["start end", "start 0.3"],
+    offset: ["start end", "start 0.15"],
   });
 
-  const rotateX = useTransform(scrollYProgress, [0, 1], [8, 0]);
-  const scale = useTransform(scrollYProgress, [0, 1], [0.92, 1]);
-  const opacity = useTransform(scrollYProgress, [0, 0.5, 1], [0.3, 0.8, 1]);
-  const y = useTransform(scrollYProgress, [0, 1], [60, 0]);
+  const rotateX = useTransform(scrollYProgress, [0, 1], [12, 0]);
+  const scale = useTransform(scrollYProgress, [0, 1], [0.88, 1]);
+  const opacity = useTransform(scrollYProgress, [0, 0.4, 1], [0, 0.6, 1]);
+  const y = useTransform(scrollYProgress, [0, 1], [80, 0]);
+  const blur = useTransform(scrollYProgress, [0, 0.6, 1], [6, 2, 0]);
 
   return (
     <motion.div
@@ -32,7 +33,8 @@ function FoldSection({ children, index }: { children: React.ReactNode; index: nu
         scale,
         opacity,
         y,
-        transformPerspective: 1200,
+        filter: useTransform(blur, (v) => `blur(${v}px)`),
+        transformPerspective: 1400,
         transformOrigin: "top center",
       }}
       className="will-change-transform"
@@ -42,22 +44,75 @@ function FoldSection({ children, index }: { children: React.ReactNode; index: nu
   );
 }
 
+function FloatingParticle({ delay, x, size }: { delay: number; x: string; size: number }) {
+  return (
+    <motion.div
+      className="absolute rounded-full bg-primary/20"
+      style={{ left: x, width: size, height: size }}
+      initial={{ y: "100vh", opacity: 0 }}
+      animate={{ y: "-10vh", opacity: [0, 0.6, 0.6, 0] }}
+      transition={{
+        duration: 12 + Math.random() * 8,
+        delay,
+        repeat: Infinity,
+        ease: "linear",
+      }}
+    />
+  );
+}
+
+function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
+
+  return (
+    <motion.span
+      ref={ref}
+      initial={{ opacity: 0 }}
+      animate={isInView ? { opacity: 1 } : {}}
+    >
+      {isInView && (
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          {value}{suffix}
+        </motion.span>
+      )}
+    </motion.span>
+  );
+}
+
 const Landing = () => {
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Background effects */}
+      {/* Animated background */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/8 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[400px] bg-primary/5 rounded-full blur-[100px]" />
-        <div className="absolute top-1/3 right-0 w-[400px] h-[400px] bg-primary/4 rounded-full blur-[100px]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[700px] bg-primary/8 rounded-full blur-[140px] animate-pulse-soft" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
+        <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-primary/4 rounded-full blur-[120px]" />
         <div className="absolute inset-0" style={{
           backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--foreground) / 0.03) 1px, transparent 0)`,
           backgroundSize: '40px 40px',
         }} />
+        {/* Floating particles */}
+        <FloatingParticle delay={0} x="10%" size={4} />
+        <FloatingParticle delay={2} x="25%" size={3} />
+        <FloatingParticle delay={4} x="50%" size={5} />
+        <FloatingParticle delay={1} x="70%" size={3} />
+        <FloatingParticle delay={3} x="85%" size={4} />
+        <FloatingParticle delay={5} x="40%" size={2} />
+        <FloatingParticle delay={6} x="60%" size={3} />
+        <FloatingParticle delay={7} x="15%" size={2} />
       </div>
 
       {/* Header */}
-      <header className="border-b border-border/50 bg-card/30 backdrop-blur-xl sticky top-0 z-50 relative">
+      <motion.header
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="border-b border-border/50 bg-card/30 backdrop-blur-xl sticky top-0 z-50 relative"
+      >
         <div className="max-w-[1200px] mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
@@ -67,142 +122,208 @@ const Landing = () => {
           </div>
           <div className="flex items-center gap-3">
             <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Entrar</Link>
-            <Link to="/login" className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">Começar grátis</Link>
+            <Link to="/login" className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/25">Começar grátis</Link>
           </div>
         </div>
-      </header>
+      </motion.header>
 
       {/* SECTION 1 — Hero */}
-      <motion.section
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
-        className="max-w-[1200px] mx-auto px-6 pt-24 pb-20 text-center relative z-10"
-      >
+      <section className="max-w-[1200px] mx-auto px-6 pt-24 pb-12 text-center relative z-10 min-h-[85vh] flex flex-col items-center justify-center">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium mb-6"
+          initial={{ opacity: 0, scale: 0.8, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium mb-8"
         >
           <Sparkles className="h-3 w-3" />
           Projeto de TCC — Plataforma Educativa
         </motion.div>
+
         <motion.h1
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight max-w-3xl mx-auto text-foreground"
+          transition={{ delay: 0.3, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] max-w-4xl mx-auto text-foreground"
         >
           Aprenda a investir com{" "}
-          <span className="text-primary">inteligência</span>
+          <span className="relative inline-block">
+            <span className="text-primary">inteligência</span>
+            <motion.span
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ delay: 1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute -bottom-2 left-0 w-full h-1 bg-primary/40 rounded-full origin-left"
+            />
+          </span>
         </motion.h1>
+
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45, duration: 0.6 }}
-          className="text-muted-foreground text-base md:text-lg mt-4 max-w-xl mx-auto leading-relaxed"
+          transition={{ delay: 0.5, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="text-muted-foreground text-lg md:text-xl mt-6 max-w-2xl mx-auto leading-relaxed"
         >
           Um ambiente amigável e educativo para investidores iniciantes. Invista, aprenda e conte com o{" "}
           <span className="text-primary font-semibold">Hodl</span>, seu assistente inteligente.
         </motion.p>
+
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.6 }}
-          className="flex items-center justify-center gap-3 mt-8"
+          transition={{ delay: 0.7, duration: 0.6 }}
+          className="flex items-center justify-center gap-4 mt-10"
         >
-          <Link to="/login" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 hover:scale-105 transition-all duration-200 shadow-lg shadow-primary/25">
+          <Link to="/login" className="group inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 transition-all duration-300 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:scale-[1.03]">
             Criar conta gratuita
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </motion.div>
 
-        {/* Divider glow */}
-        <div className="mt-20 h-px w-full max-w-2xl mx-auto bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-      </motion.section>
+        {/* Stats row */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9, duration: 0.6 }}
+          className="flex items-center justify-center gap-8 md:gap-12 mt-16"
+        >
+          {[
+            { value: 25, suffix: "+", label: "Ativos B3" },
+            { value: 100, suffix: "%", label: "Gratuito" },
+            { value: 24, suffix: "/7", label: "IA disponível" },
+          ].map((stat) => (
+            <div key={stat.label} className="text-center">
+              <div className="text-2xl md:text-3xl font-bold text-foreground font-mono">
+                <CountUp value={stat.value} suffix={stat.suffix} />
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
+            </div>
+          ))}
+        </motion.div>
 
-      {/* SECTION 2 — Features (fold effect) */}
+        {/* Scroll indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5 }}
+          className="mt-16"
+        >
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <ChevronDown className="h-5 w-5 text-muted-foreground/50" />
+          </motion.div>
+        </motion.div>
+
+        {/* Section divider */}
+        <div className="mt-8 h-px w-full max-w-xl mx-auto bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+      </section>
+
+      {/* SECTION 2 — Features */}
       <FoldSection index={1}>
-        <section className="max-w-[1200px] mx-auto px-6 py-20 relative z-10">
-          <div className="text-center mb-14">
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">Tudo que você precisa para começar</h2>
-            <p className="text-muted-foreground text-sm mt-2">Ferramentas pensadas para quem está dando os primeiros passos</p>
+        <section className="max-w-[1200px] mx-auto px-6 py-24 relative z-10">
+          <div className="text-center mb-16">
+            <motion.span
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="text-primary text-xs font-semibold uppercase tracking-widest"
+            >
+              Recursos
+            </motion.span>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mt-3">Tudo que você precisa para começar</h2>
+            <p className="text-muted-foreground text-base mt-3 max-w-lg mx-auto">Ferramentas pensadas para quem está dando os primeiros passos</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {features.map((feature, i) => (
               <motion.div
                 key={feature.title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ delay: i * 0.08, duration: 0.5, ease: "easeOut" }}
-                whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                className="glass-card p-6 hover:border-primary/30 transition-colors duration-300 group"
+                initial={{ opacity: 0, y: 40, rotateX: 10 }}
+                whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ delay: i * 0.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                whileHover={{ y: -6, scale: 1.02, transition: { duration: 0.25 } }}
+                className="glass-card p-7 hover:border-primary/40 transition-all duration-300 group relative overflow-hidden cursor-default"
               >
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors duration-300">
-                  <feature.icon className="h-5 w-5 text-primary" />
+                {/* Hover glow */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative z-10">
+                  <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/20 group-hover:shadow-lg group-hover:shadow-primary/10 transition-all duration-300">
+                    <feature.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <h3 className="text-base font-semibold mb-2 text-foreground">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
                 </div>
-                <h3 className="text-sm font-semibold mb-1.5 text-foreground">{feature.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
           </div>
 
-          {/* Divider glow */}
-          <div className="mt-20 h-px w-full max-w-2xl mx-auto bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+          <div className="mt-24 h-px w-full max-w-xl mx-auto bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
         </section>
       </FoldSection>
 
-      {/* SECTION 3 — Hodl CTA (fold effect) */}
+      {/* SECTION 3 — Hodl CTA */}
       <FoldSection index={2}>
-        <section className="max-w-[1200px] mx-auto px-6 py-20 relative z-10">
-          <div className="glass-card p-8 md:p-12 text-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3" />
-            <div className="absolute -top-20 -right-20 w-60 h-60 bg-primary/5 rounded-full blur-[80px]" />
-            <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-primary/5 rounded-full blur-[80px]" />
+        <section className="max-w-[1200px] mx-auto px-6 py-24 relative z-10">
+          <motion.div
+            whileHover={{ scale: 1.005, transition: { duration: 0.4 } }}
+            className="glass-card p-10 md:p-16 text-center relative overflow-hidden"
+          >
+            {/* Animated background layers */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-primary/4" />
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+              className="absolute -top-32 -right-32 w-80 h-80 bg-primary/5 rounded-full blur-[80px]"
+            />
+            <motion.div
+              animate={{ rotate: -360 }}
+              transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
+              className="absolute -bottom-32 -left-32 w-80 h-80 bg-primary/5 rounded-full blur-[80px]"
+            />
+
             <div className="relative z-10">
               <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                whileInView={{ scale: 1, opacity: 1 }}
+                initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
+                whileInView={{ scale: 1, opacity: 1, rotate: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className="h-16 w-16 rounded-2xl bg-primary/15 flex items-center justify-center mx-auto mb-4"
+                transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                className="h-20 w-20 rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary/10"
               >
-                <Bot className="h-8 w-8 text-primary" />
+                <Bot className="h-10 w-10 text-primary" />
               </motion.div>
               <motion.h2
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.15, duration: 0.5 }}
-                className="text-2xl md:text-3xl font-bold mb-2 text-foreground"
+                transition={{ delay: 0.2, duration: 0.6 }}
+                className="text-3xl md:text-4xl font-bold mb-3 text-foreground"
               >
                 Conheça o Hodl 🤖
               </motion.h2>
               <motion.p
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.25, duration: 0.5 }}
-                className="text-muted-foreground text-sm max-w-md mx-auto mb-6 leading-relaxed"
+                transition={{ delay: 0.3, duration: 0.6 }}
+                className="text-muted-foreground text-base max-w-lg mx-auto mb-8 leading-relaxed"
               >
                 Seu assistente inteligente que te acompanha na jornada de investimentos.
                 Pergunte qualquer coisa — de "o que é renda fixa?" até "como diversificar minha carteira?".
               </motion.p>
               <motion.div
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.35, duration: 0.5 }}
+                transition={{ delay: 0.4, duration: 0.6 }}
               >
-                <Link to="/login" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 hover:scale-105 transition-all duration-200 shadow-lg shadow-primary/25">
+                <Link to="/login" className="group inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 transition-all duration-300 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:scale-[1.03]">
                   Começar agora
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </motion.div>
             </div>
-          </div>
+          </motion.div>
         </section>
       </FoldSection>
 
