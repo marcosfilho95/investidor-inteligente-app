@@ -44,20 +44,37 @@ function FoldSection({ children, index }: { children: React.ReactNode; index: nu
   );
 }
 
-function FloatingParticle({ delay, x, size }: { delay: number; x: string; size: number }) {
+function FloatingCandle({ delay, x, bullish }: { delay: number; x: string; bullish: boolean }) {
+  const bodyH = 12 + Math.random() * 16;
+  const wickH = 4 + Math.random() * 8;
+  const color = bullish ? "hsl(var(--gain))" : "hsl(var(--loss))";
+
   return (
     <motion.div
-      className="absolute rounded-full border border-primary/30 bg-primary/5"
-      style={{ left: x, width: size, height: size, boxShadow: `0 0 ${size}px hsl(var(--primary) / 0.15)` }}
+      className="absolute flex flex-col items-center"
+      style={{ left: x }}
       initial={{ y: "100vh", opacity: 0 }}
-      animate={{ y: "-10vh", opacity: [0, 0.9, 0.9, 0] }}
+      animate={{ y: "-10vh", opacity: [0, 0.25, 0.25, 0] }}
       transition={{
-        duration: 10 + Math.random() * 6,
+        duration: 14 + Math.random() * 8,
         delay,
         repeat: Infinity,
         ease: "linear",
       }}
-    />
+    >
+      <div style={{ width: 1, height: wickH, backgroundColor: color, opacity: 0.4 }} />
+      <div
+        style={{
+          width: 6,
+          height: bodyH,
+          border: `1px solid ${color}`,
+          backgroundColor: bullish ? "transparent" : color,
+          opacity: bullish ? 0.3 : 0.15,
+          borderRadius: 1,
+        }}
+      />
+      <div style={{ width: 1, height: wickH * 0.7, backgroundColor: color, opacity: 0.4 }} />
+    </motion.div>
   );
 }
 
@@ -96,14 +113,16 @@ const Landing = () => {
           backgroundSize: '32px 32px',
         }} />
         {/* Floating particles */}
-        <FloatingParticle delay={0} x="8%" size={18} />
-        <FloatingParticle delay={2} x="22%" size={12} />
-        <FloatingParticle delay={4} x="48%" size={24} />
-        <FloatingParticle delay={1} x="68%" size={14} />
-        <FloatingParticle delay={3} x="82%" size={20} />
-        <FloatingParticle delay={5} x="38%" size={10} />
-        <FloatingParticle delay={6} x="58%" size={16} />
-        <FloatingParticle delay={7} x="14%" size={8} />
+        <FloatingCandle delay={0} x="6%" bullish />
+        <FloatingCandle delay={2} x="18%" bullish={false} />
+        <FloatingCandle delay={4} x="32%" bullish />
+        <FloatingCandle delay={1} x="45%" bullish={false} />
+        <FloatingCandle delay={3} x="58%" bullish />
+        <FloatingCandle delay={5} x="70%" bullish={false} />
+        <FloatingCandle delay={6} x="82%" bullish />
+        <FloatingCandle delay={7} x="92%" bullish={false} />
+        <FloatingCandle delay={8} x="25%" bullish />
+        <FloatingCandle delay={9} x="75%" bullish={false} />
       </div>
 
       {/* Header */}
