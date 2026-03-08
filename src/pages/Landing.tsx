@@ -47,12 +47,12 @@ function FoldSection({ children, index }: { children: React.ReactNode; index: nu
 function FloatingParticle({ delay, x, size }: { delay: number; x: string; size: number }) {
   return (
     <motion.div
-      className="absolute rounded-full bg-primary/20"
+      className="absolute rounded-full bg-primary/40"
       style={{ left: x, width: size, height: size }}
       initial={{ y: "100vh", opacity: 0 }}
-      animate={{ y: "-10vh", opacity: [0, 0.6, 0.6, 0] }}
+      animate={{ y: "-10vh", opacity: [0, 0.8, 0.8, 0] }}
       transition={{
-        duration: 12 + Math.random() * 8,
+        duration: 10 + Math.random() * 6,
         delay,
         repeat: Infinity,
         ease: "linear",
@@ -88,22 +88,22 @@ const Landing = () => {
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Animated background */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[700px] bg-primary/8 rounded-full blur-[140px] animate-pulse-soft" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
-        <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-primary/4 rounded-full blur-[120px]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-primary/15 rounded-full blur-[80px] animate-pulse-soft" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[400px] bg-primary/10 rounded-full blur-[60px]" />
+        <div className="absolute top-1/3 right-0 w-[400px] h-[400px] bg-primary/8 rounded-full blur-[60px]" />
         <div className="absolute inset-0" style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--foreground) / 0.03) 1px, transparent 0)`,
-          backgroundSize: '40px 40px',
+          backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--foreground) / 0.06) 1px, transparent 0)`,
+          backgroundSize: '32px 32px',
         }} />
         {/* Floating particles */}
-        <FloatingParticle delay={0} x="10%" size={4} />
-        <FloatingParticle delay={2} x="25%" size={3} />
-        <FloatingParticle delay={4} x="50%" size={5} />
-        <FloatingParticle delay={1} x="70%" size={3} />
-        <FloatingParticle delay={3} x="85%" size={4} />
-        <FloatingParticle delay={5} x="40%" size={2} />
-        <FloatingParticle delay={6} x="60%" size={3} />
-        <FloatingParticle delay={7} x="15%" size={2} />
+        <FloatingParticle delay={0} x="10%" size={5} />
+        <FloatingParticle delay={2} x="25%" size={4} />
+        <FloatingParticle delay={4} x="50%" size={6} />
+        <FloatingParticle delay={1} x="70%" size={4} />
+        <FloatingParticle delay={3} x="85%" size={5} />
+        <FloatingParticle delay={5} x="40%" size={3} />
+        <FloatingParticle delay={6} x="60%" size={4} />
+        <FloatingParticle delay={7} x="15%" size={3} />
       </div>
 
       {/* Header */}
