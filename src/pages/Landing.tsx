@@ -4,6 +4,7 @@ import { motion, useInView } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 import AnimatedBackground from "@/components/landing/FloatingElements";
 import FoldSection from "@/components/landing/FoldSection";
+import ChatSimulation from "@/components/landing/ChatSimulation";
 
 const features = [
   { icon: Bot, title: "Hodl — Assistente IA", description: "Tire dúvidas sobre investimentos a qualquer momento. O Hodl explica conceitos de forma simples e te ajuda a tomar decisões." },
