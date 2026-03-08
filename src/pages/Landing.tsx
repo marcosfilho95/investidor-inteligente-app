@@ -113,14 +113,16 @@ const Landing = () => {
           backgroundSize: '32px 32px',
         }} />
         {/* Floating particles */}
-        <FloatingParticle delay={0} x="8%" size={18} />
-        <FloatingParticle delay={2} x="22%" size={12} />
-        <FloatingParticle delay={4} x="48%" size={24} />
-        <FloatingParticle delay={1} x="68%" size={14} />
-        <FloatingParticle delay={3} x="82%" size={20} />
-        <FloatingParticle delay={5} x="38%" size={10} />
-        <FloatingParticle delay={6} x="58%" size={16} />
-        <FloatingParticle delay={7} x="14%" size={8} />
+        <FloatingCandle delay={0} x="6%" bullish />
+        <FloatingCandle delay={2} x="18%" bullish={false} />
+        <FloatingCandle delay={4} x="32%" bullish />
+        <FloatingCandle delay={1} x="45%" bullish={false} />
+        <FloatingCandle delay={3} x="58%" bullish />
+        <FloatingCandle delay={5} x="70%" bullish={false} />
+        <FloatingCandle delay={6} x="82%" bullish />
+        <FloatingCandle delay={7} x="92%" bullish={false} />
+        <FloatingCandle delay={8} x="25%" bullish />
+        <FloatingCandle delay={9} x="75%" bullish={false} />
       </div>
 
       {/* Header */}
