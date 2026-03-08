@@ -45,57 +45,61 @@ function FoldSection({ children, index }: { children: React.ReactNode; index: nu
 }
 
 function FloatingCandle({ delay, x, bullish }: { delay: number; x: string; bullish: boolean }) {
-  const bodyH = 12 + Math.random() * 16;
-  const wickH = 4 + Math.random() * 8;
+  const bodyH = 10 + Math.random() * 14;
+  const wickH = 3 + Math.random() * 6;
   const color = bullish ? "hsl(var(--gain))" : "hsl(var(--loss))";
-
   return (
-    <motion.div
-      className="absolute flex flex-col items-center"
-      style={{ left: x }}
+    <motion.div className="absolute flex flex-col items-center" style={{ left: x }}
       initial={{ y: "100vh", opacity: 0 }}
-      animate={{ y: "-10vh", opacity: [0, 0.25, 0.25, 0] }}
-      transition={{
-        duration: 14 + Math.random() * 8,
-        delay,
-        repeat: Infinity,
-        ease: "linear",
-      }}
-    >
-      <div style={{ width: 1, height: wickH, backgroundColor: color, opacity: 0.4 }} />
-      <div
-        style={{
-          width: 6,
-          height: bodyH,
-          border: `1px solid ${color}`,
-          backgroundColor: bullish ? "transparent" : color,
-          opacity: bullish ? 0.3 : 0.15,
-          borderRadius: 1,
-        }}
-      />
-      <div style={{ width: 1, height: wickH * 0.7, backgroundColor: color, opacity: 0.4 }} />
+      animate={{ y: "-10vh", opacity: [0, 0.22, 0.22, 0] }}
+      transition={{ duration: 14 + Math.random() * 8, delay, repeat: Infinity, ease: "linear" }}>
+      <div style={{ width: 1, height: wickH, backgroundColor: color, opacity: 0.35 }} />
+      <div style={{ width: 5, height: bodyH, border: `1px solid ${color}`, backgroundColor: bullish ? "transparent" : color, opacity: bullish ? 0.25 : 0.12, borderRadius: 1 }} />
+      <div style={{ width: 1, height: wickH * 0.7, backgroundColor: color, opacity: 0.35 }} />
     </motion.div>
+  );
+}
+
+function FloatingTicker({ delay, x, ticker }: { delay: number; x: string; ticker: string }) {
+  return (
+    <motion.span className="absolute font-mono text-[10px] text-primary/20 select-none" style={{ left: x }}
+      initial={{ y: "100vh", opacity: 0 }}
+      animate={{ y: "-10vh", opacity: [0, 0.18, 0.18, 0] }}
+      transition={{ duration: 16 + Math.random() * 10, delay, repeat: Infinity, ease: "linear" }}>
+      {ticker}
+    </motion.span>
+  );
+}
+
+function FloatingArrow({ delay, x, up }: { delay: number; x: string; up: boolean }) {
+  return (
+    <motion.span className="absolute text-[11px] select-none"
+      style={{ left: x, color: up ? "hsl(var(--gain))" : "hsl(var(--loss))" }}
+      initial={{ y: "100vh", opacity: 0 }}
+      animate={{ y: "-10vh", opacity: [0, 0.2, 0.2, 0] }}
+      transition={{ duration: 12 + Math.random() * 8, delay, repeat: Infinity, ease: "linear" }}>
+      {up ? "↑" : "↓"}
+    </motion.span>
+  );
+}
+
+function FloatingChart({ delay, x }: { delay: number; x: string }) {
+  return (
+    <motion.svg className="absolute" width="36" height="18" viewBox="0 0 36 18" style={{ left: x }}
+      initial={{ y: "100vh", opacity: 0 }}
+      animate={{ y: "-10vh", opacity: [0, 0.15, 0.15, 0] }}
+      transition={{ duration: 18 + Math.random() * 8, delay, repeat: Infinity, ease: "linear" }}>
+      <polyline points="0,14 7,11 14,15 21,7 28,9 36,3" fill="none" stroke="hsl(var(--primary))" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+    </motion.svg>
   );
 }
 
 function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
-
   return (
-    <motion.span
-      ref={ref}
-      initial={{ opacity: 0 }}
-      animate={isInView ? { opacity: 1 } : {}}
-    >
-      {isInView && (
-        <motion.span
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          {value}{suffix}
-        </motion.span>
-      )}
+    <motion.span ref={ref} initial={{ opacity: 0 }} animate={isInView ? { opacity: 1 } : {}}>
+      {isInView && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{value}{suffix}</motion.span>}
     </motion.span>
   );
 }
@@ -112,17 +116,29 @@ const Landing = () => {
           backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--foreground) / 0.06) 1px, transparent 0)`,
           backgroundSize: '32px 32px',
         }} />
-        {/* Floating particles */}
-        <FloatingCandle delay={0} x="6%" bullish />
-        <FloatingCandle delay={2} x="18%" bullish={false} />
-        <FloatingCandle delay={4} x="32%" bullish />
-        <FloatingCandle delay={1} x="45%" bullish={false} />
-        <FloatingCandle delay={3} x="58%" bullish />
-        <FloatingCandle delay={5} x="70%" bullish={false} />
-        <FloatingCandle delay={6} x="82%" bullish />
-        <FloatingCandle delay={7} x="92%" bullish={false} />
-        <FloatingCandle delay={8} x="25%" bullish />
-        <FloatingCandle delay={9} x="75%" bullish={false} />
+
+        {/* Candlesticks */}
+        <FloatingCandle delay={0} x="5%" bullish />
+        <FloatingCandle delay={4} x="30%" bullish={false} />
+        <FloatingCandle delay={7} x="55%" bullish />
+        <FloatingCandle delay={10} x="85%" bullish={false} />
+
+        {/* Tickers */}
+        <FloatingTicker delay={1} x="15%" ticker="PETR4" />
+        <FloatingTicker delay={5} x="42%" ticker="VALE3" />
+        <FloatingTicker delay={8} x="68%" ticker="ITUB4" />
+        <FloatingTicker delay={11} x="90%" ticker="WEGE3" />
+
+        {/* Arrows */}
+        <FloatingArrow delay={0.5} x="22%" up />
+        <FloatingArrow delay={3} x="48%" up={false} />
+        <FloatingArrow delay={6} x="72%" up />
+        <FloatingArrow delay={9} x="36%" up={false} />
+
+        {/* Chart lines */}
+        <FloatingChart delay={2} x="10%" />
+        <FloatingChart delay={6.5} x="52%" />
+        <FloatingChart delay={9.5} x="78%" />
       </div>
 
       {/* Header */}
