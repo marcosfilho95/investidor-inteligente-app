@@ -117,12 +117,6 @@ const Landing = () => {
           backgroundSize: '32px 32px',
         }} />
 
-        {/* Candlesticks */}
-        <FloatingCandle delay={0} x="5%" bullish />
-        <FloatingCandle delay={4} x="30%" bullish={false} />
-        <FloatingCandle delay={7} x="55%" bullish />
-        <FloatingCandle delay={10} x="85%" bullish={false} />
-
         {/* Tickers */}
         <FloatingTicker delay={1} x="15%" ticker="PETR4" />
         <FloatingTicker delay={5} x="42%" ticker="VALE3" />
