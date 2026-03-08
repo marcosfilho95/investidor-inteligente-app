@@ -105,31 +105,7 @@ const Landing = () => {
           className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] max-w-4xl mx-auto text-foreground"
         >
           Aprenda a investir com{" "}
-          <motion.span
-            className="relative inline-block"
-            initial={{ backgroundSize: "0% 100%" }}
-            animate={{ backgroundSize: "100% 100%" }}
-            transition={{ delay: 1, duration: 1.2, ease }}
-            style={{
-              backgroundImage: "linear-gradient(120deg, hsl(var(--primary) / 0.25) 0%, hsl(var(--primary) / 0.15) 100%)",
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "0 85%",
-              padding: "0 0.15em",
-              borderRadius: "0.2em",
-            }}
-          >
-            <motion.span
-              className="text-primary"
-              initial={{ opacity: 0, filter: "blur(8px)" }}
-              animate={{ opacity: 1, filter: "blur(0px)" }}
-              transition={{ delay: 0.8, duration: 0.9, ease }}
-              style={{
-                textShadow: "0 0 30px hsl(var(--primary) / 0.4), 0 0 60px hsl(var(--primary) / 0.15)",
-              }}
-            >
-              inteligência
-            </motion.span>
-          </motion.span>
+          <Typewriter text="inteligência" delay={1.2} speed={90} />
         </motion.h1>
 
         <motion.p
