@@ -105,7 +105,8 @@ const Landing = () => {
           transition={{ delay: 0.3, duration: 0.8, ease }}
           className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] max-w-4xl mx-auto text-foreground"
         >
-          Aprenda a investir com{" "}
+          Aprenda a investir com
+          <br />
           <Typewriter text="inteligência" delay={1.2} speed={90} />
         </motion.h1>
 
