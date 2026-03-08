@@ -11,7 +11,7 @@ import {
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 
@@ -36,9 +36,20 @@ const chartColors = [
 const Portfolio = () => {
   const [viewMode, setViewMode] = useState<"ativos" | "setor">("ativos");
   const [isTradeHistoryOpen, setIsTradeHistoryOpen] = useState(false);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [orderType, setOrderType] = useState<"buy" | "sell">("buy");
+  const [orderQtyInput, setOrderQtyInput] = useState("1");
+  const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedTradeAsset, setSelectedTradeAsset] = useState<{
+    symbol: string;
+    price: number;
+    availableShares: number;
+  } | null>(null);
   const [holdingsPage, setHoldingsPage] = useState(1);
   const [tradePage, setTradePage] = useState(1);
-  const { enrichedHoldings, totalValue, loading, userTrades } = useUserHoldings();
+  const [holdingsPageDir, setHoldingsPageDir] = useState(1);
+  const [tradePageDir, setTradePageDir] = useState(1);
+  const { enrichedHoldings, totalValue, loading, userTrades, addHolding, sellHolding } = useUserHoldings();
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
 
@@ -138,6 +149,41 @@ const Portfolio = () => {
     });
   }, [userTrades]);
 
+  const parsedOrderQty = Number(orderQtyInput);
+  const hasValidOrderQty = Number.isInteger(parsedOrderQty) && parsedOrderQty >= 1;
+  const sellHasEnough = selectedTradeAsset ? parsedOrderQty <= selectedTradeAsset.availableShares : false;
+  const canConfirmOrder =
+    !!selectedTradeAsset &&
+    hasValidOrderQty &&
+    (orderType === "buy" || sellHasEnough);
+  const effectiveOrderQty = hasValidOrderQty ? parsedOrderQty : 0;
+
+  const openOrderModal = (
+    type: "buy" | "sell",
+    asset: { symbol: string; price: number; availableShares: number }
+  ) => {
+    setOrderType(type);
+    setSelectedTradeAsset(asset);
+    setOrderQtyInput("1");
+    setOrderDate(new Date().toISOString().slice(0, 10));
+    setShowOrderModal(true);
+  };
+
+  const handleOrder = async () => {
+    if (!selectedTradeAsset || !canConfirmOrder) return;
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    const tradedAt = orderDate ? `${orderDate}T${hh}:${mm}:${ss}` : undefined;
+
+    const success = orderType === "buy"
+      ? await addHolding(selectedTradeAsset.symbol, parsedOrderQty, selectedTradeAsset.price, tradedAt)
+      : await sellHolding(selectedTradeAsset.symbol, parsedOrderQty, tradedAt);
+
+    if (success) setShowOrderModal(false);
+  };
+
   const HOLDINGS_PAGE_SIZE = 10;
   const totalHoldingsPages = Math.max(1, Math.ceil(sortedHoldings.length / HOLDINGS_PAGE_SIZE));
   const pagedHoldings = sortedHoldings.slice(
@@ -174,13 +220,20 @@ const Portfolio = () => {
       <PageTransition>
         <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
           <div>
-            <h1 className="text-xl font-semibold">Minha Carteira</h1>
+            <h1 className="text-xl font-semibold" data-tour="page-carteira">Minha Carteira</h1>
             <p className="text-sm text-muted-foreground">
               {loading
                 ? "Carregando sua carteira..."
                 : isEmpty
                 ? "Sua carteira esta vazia. Adicione ativos pela pagina de Ativos."
-                : `Visao completa do seu portfolio - ${enrichedHoldings.length} ativos`}
+                : (
+                  <>
+                    Visao completa do seu portfolio -{" "}
+                    <span className="portfolio-count-highlight">
+                      {enrichedHoldings.length} ativos
+                    </span>
+                  </>
+                )}
             </p>
           </div>
 
@@ -355,7 +408,7 @@ const Portfolio = () => {
                   <div className="h-full flex flex-col">
                     <div className="flex-1">
                       <AiChatWidget
-                        className="h-full flex flex-col"
+                        className="w-full"
                         page="carteira"
                         userSymbols={enrichedHoldings.map(h => h.symbol)}
                         userHoldingsData={enrichedHoldings.map(h => ({ symbol: h.symbol, shares: h.shares, avgPrice: h.avgPrice }))}
@@ -371,7 +424,7 @@ const Portfolio = () => {
                   <div className="p-5 border-b border-border/50">
                     <h3 className="text-base font-semibold">Ativos na Carteira</h3>
                   </div>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto no-scrollbar">
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-border/50">
@@ -392,7 +445,14 @@ const Portfolio = () => {
                           <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Acoes</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.tbody
+                          key={`holdings-page-${holdingsPage}`}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                        >
                         {pagedHoldings.map((h) => {
                           const rentab = h.avgPrice > 0 ? (h.price / h.avgPrice - 1) * 100 : 0;
                           return (
@@ -438,40 +498,59 @@ const Portfolio = () => {
                               <td className="text-right px-5 py-3 text-sm font-mono">{h.allocation}%</td>
                               <td className="text-right px-5 py-3">
                                 <div className="flex items-center justify-end gap-2">
-                                  <Link
-                                    to={`/ativos/${h.symbol}?trade=buy`}
+                                  <button
+                                    onClick={() =>
+                                      openOrderModal("buy", {
+                                        symbol: h.symbol,
+                                        price: h.price,
+                                        availableShares: h.shares,
+                                      })
+                                    }
                                     className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/15 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
                                   >
                                     <ShoppingCart className="h-3 w-3" />
                                     Comprar
-                                  </Link>
-                                  <Link
-                                    to={`/ativos/${h.symbol}?trade=sell`}
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      openOrderModal("sell", {
+                                        symbol: h.symbol,
+                                        price: h.price,
+                                        availableShares: h.shares,
+                                      })
+                                    }
                                     className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-destructive/15 text-destructive text-xs font-medium hover:bg-destructive/20 transition-colors"
                                   >
                                     <DollarSign className="h-3 w-3" />
                                     Vender
-                                  </Link>
+                                  </button>
                                 </div>
                               </td>
                             </tr>
                           );
                         })}
-                      </tbody>
+                        </motion.tbody>
+                      </AnimatePresence>
                     </table>
                   </div>
                   <div className="flex items-center justify-between px-5 py-3 border-t border-border/40">
                     <span className="text-xs text-muted-foreground">Página {holdingsPage} de {totalHoldingsPages}</span>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setHoldingsPage((p) => Math.max(1, p - 1))}
+                        onClick={() => {
+                          setHoldingsPageDir(-1);
+                          setHoldingsPage((p) => Math.max(1, p - 1));
+                        }}
                         disabled={holdingsPage === 1}
                         className="px-2.5 py-1 rounded-md text-xs border border-border/60 disabled:opacity-40 hover:bg-accent/60 transition-colors"
                       >
                         Anterior
                       </button>
                       <button
-                        onClick={() => setHoldingsPage((p) => Math.min(totalHoldingsPages, p + 1))}
+                        onClick={() => {
+                          setHoldingsPageDir(1);
+                          setHoldingsPage((p) => Math.min(totalHoldingsPages, p + 1));
+                        }}
                         disabled={holdingsPage === totalHoldingsPages}
                         className="px-2.5 py-1 rounded-md text-xs border border-border/60 disabled:opacity-40 hover:bg-accent/60 transition-colors"
                       >
@@ -494,13 +573,22 @@ const Portfolio = () => {
                       {isTradeHistoryOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </div>
                   </button>
-                  {isTradeHistoryOpen ? (
-                    tradeHistoryRows.length === 0 ? (
-                      <div className="p-5">
-                        <p className="text-sm text-muted-foreground">Sem transações registradas ainda.</p>
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
+                  <AnimatePresence initial={false}>
+                    {isTradeHistoryOpen ? (
+                      <motion.div
+                        key="trade-history-content"
+                        initial={{ height: 0, opacity: 0, y: -6 }}
+                        animate={{ height: "auto", opacity: 1, y: 0 }}
+                        exit={{ height: 0, opacity: 0, y: -6 }}
+                        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                        className="overflow-hidden"
+                      >
+                      {tradeHistoryRows.length === 0 ? (
+                        <div className="p-5">
+                          <p className="text-sm text-muted-foreground">Sem transações registradas ainda.</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto no-scrollbar">
                         <table className="w-full">
                           <thead>
                             <tr className="border-b border-border/50">
@@ -512,7 +600,14 @@ const Portfolio = () => {
                               <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Lucro/Prejuízo venda</th>
                             </tr>
                           </thead>
-                          <tbody>
+                          <AnimatePresence mode="wait" initial={false}>
+                            <motion.tbody
+                              key={`trade-page-${tradePage}`}
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -6 }}
+                              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                            >
                             {pagedTradeRows.map((t) => (
                                 <tr key={t.id} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
                                   <td className="px-5 py-3 text-sm">{new Date(t.traded_at).toLocaleDateString("pt-BR")}</td>
@@ -540,20 +635,27 @@ const Portfolio = () => {
                                   </td>
                                 </tr>
                               ))}
-                          </tbody>
+                            </motion.tbody>
+                          </AnimatePresence>
                         </table>
                         <div className="flex items-center justify-between px-5 py-3 border-t border-border/40">
                           <span className="text-xs text-muted-foreground">Página {tradePage} de {totalTradePages}</span>
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => setTradePage((p) => Math.max(1, p - 1))}
+                              onClick={() => {
+                                setTradePageDir(-1);
+                                setTradePage((p) => Math.max(1, p - 1));
+                              }}
                               disabled={tradePage === 1}
                               className="px-2.5 py-1 rounded-md text-xs border border-border/60 disabled:opacity-40 hover:bg-accent/60 transition-colors"
                             >
                               Anterior
                             </button>
                             <button
-                              onClick={() => setTradePage((p) => Math.min(totalTradePages, p + 1))}
+                              onClick={() => {
+                                setTradePageDir(1);
+                                setTradePage((p) => Math.min(totalTradePages, p + 1));
+                              }}
                               disabled={tradePage === totalTradePages}
                               className="px-2.5 py-1 rounded-md text-xs border border-border/60 disabled:opacity-40 hover:bg-accent/60 transition-colors"
                             >
@@ -561,15 +663,102 @@ const Portfolio = () => {
                             </button>
                           </div>
                         </div>
-                      </div>
-                    )
-                  ) : null}
+                        </div>
+                      )}
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
                 </div>
               </AnimatedCard>
             </>
           )}
         </main>
       </PageTransition>
+
+      {showOrderModal && selectedTradeAsset && (
+        <div
+          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowOrderModal(false)}
+        >
+          <div className="glass-card p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold">
+              {orderType === "buy" ? "Comprar" : "Vender"} {selectedTradeAsset.symbol}
+            </h3>
+            {orderType === "sell" && (
+              <p className="text-xs text-muted-foreground">
+                Você possui {selectedTradeAsset.availableShares} ações
+              </p>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground">Quantidade</label>
+                <input
+                  type="number"
+                  value={orderQtyInput}
+                  onChange={(e) => setOrderQtyInput(e.target.value)}
+                  onBlur={() => {
+                    if (!hasValidOrderQty) setOrderQtyInput("1");
+                  }}
+                  min={1}
+                  className="w-full mt-1 bg-muted/50 rounded-lg px-3 py-2.5 text-sm font-mono text-foreground border border-border/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground">Data da operação</label>
+                <input
+                  type="date"
+                  value={orderDate}
+                  onChange={(e) => setOrderDate(e.target.value)}
+                  className="w-full mt-1 bg-muted/50 rounded-lg px-3 py-2.5 text-sm text-foreground border border-border/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                />
+              </div>
+
+              <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Preço unitário</span>
+                  <span className="font-mono">
+                    R$ {selectedTradeAsset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs font-medium">
+                  <span className="text-muted-foreground">Total estimado</span>
+                  <span className="font-mono">
+                    R$ {(selectedTradeAsset.price * effectiveOrderQty).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {orderType === "sell" && hasValidOrderQty && !sellHasEnough && (
+                <p className="text-xs text-destructive">
+                  Quantidade insuficiente para venda.
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowOrderModal(false)}
+                className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-accent transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleOrder}
+                disabled={!canConfirmOrder}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  orderType === "buy"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                }`}
+              >
+                Confirmar {orderType === "buy" ? "compra" : "venda"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

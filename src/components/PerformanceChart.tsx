@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Holding, getFilteredBenchmarks } from "@/data/investments";
 
 const benchmarks = [
-  { key: "carteira", label: "Carteira", color: "hsl(142, 72%, 48%)", active: true },
-  { key: "ibovespa", label: "IBOVESPA", color: "hsl(217, 91%, 60%)", active: true },
-  { key: "cdi", label: "CDI", color: "hsl(38, 92%, 50%)", active: true },
-  { key: "ipca", label: "IPCA", color: "hsl(280, 65%, 60%)", active: true },
-];
+  { key: "carteira", label: "Carteira", color: "hsl(142, 72%, 48%)" },
+  { key: "ibovespa", label: "IBOVESPA", color: "hsl(217, 91%, 60%)" },
+  { key: "cdi", label: "CDI", color: "hsl(38, 92%, 50%)" },
+  { key: "ipca", label: "IPCA", color: "hsl(280, 65%, 60%)" },
+] as const;
 
 const periods = ["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
 
@@ -18,14 +18,20 @@ interface PerformanceChartProps {
   firstBuyDate?: string | null;
 }
 
+type BenchmarkKey = "carteira" | "ibovespa" | "cdi" | "ipca";
+
 const benchmarkCache = new Map<string, ReturnType<typeof getFilteredBenchmarks>>();
 
 export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: PerformanceChartProps) {
-  const [activeBenchmarks, setActiveBenchmarks] = useState(
-    benchmarks.reduce((acc, b) => ({ ...acc, [b.key]: b.active }), {} as Record<string, boolean>)
-  );
+  const [showIbovespa, setShowIbovespa] = useState(true);
+  const [showCdi, setShowCdi] = useState(true);
+  const [showIpca, setShowIpca] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState("1 ANO");
   const [chartKey, setChartKey] = useState(0);
+  const [showLeftFade, setShowLeftFade] = useState(false);
+  const [showRightFade, setShowRightFade] = useState(false);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+  const periodsScrollRef = useRef<HTMLDivElement | null>(null);
 
   const baseValue = totalValue || 100000;
 
@@ -59,7 +65,6 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
     return invested > 0 ? invested : Math.max(1, baseValue);
   }, [userPortfolio, baseValue]);
 
-  // getFilteredBenchmarks returns PnL in BRL; convert to profitability (%).
   const chartData = useMemo(
     () =>
       rawData.map((d) => ({
@@ -76,8 +81,8 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
 
   const yDomain = useMemo(() => {
     if (!chartData.length) return [-1, 1] as [number, number];
-    const enabledKeys = benchmarks.filter((b) => activeBenchmarks[b.key]).map((b) => b.key as keyof (typeof chartData)[number]);
-    const values = chartData.flatMap((row) => enabledKeys.map((k) => Number(row[k] || 0)));
+    const keys: BenchmarkKey[] = ["carteira", "ibovespa", "cdi", "ipca"];
+    const values = chartData.flatMap((row) => keys.map((k) => Number(row[k] || 0)));
     const min = Math.min(...values);
     const max = Math.max(...values);
     const pad = Math.max(0.15, (max - min) * 0.15);
@@ -85,15 +90,43 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
     const hi = Math.ceil((max + pad) * 100) / 100;
     if (lo === hi) return [lo - 1, hi + 1] as [number, number];
     return [lo, hi] as [number, number];
-  }, [chartData, activeBenchmarks]);
-
-  const toggleBenchmark = (key: string) => {
-    setActiveBenchmarks((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
+  }, [chartData]);
 
   useEffect(() => {
     setChartKey((k) => k + 1);
   }, [selectedPeriod, firstBuyDate, investedBase]);
+
+  useEffect(() => {
+    const container = periodsScrollRef.current;
+    if (!container) return;
+
+    const updateFades = () => {
+      const maxScrollLeft = container.scrollWidth - container.clientWidth;
+      const hasOverflow = maxScrollLeft > 2;
+      setShowLeftFade(container.scrollLeft > 2);
+      setShowRightFade(hasOverflow && container.scrollLeft < maxScrollLeft - 2);
+    };
+
+    updateFades();
+    container.addEventListener("scroll", updateFades, { passive: true });
+    window.addEventListener("resize", updateFades);
+
+    return () => {
+      container.removeEventListener("scroll", updateFades);
+      window.removeEventListener("resize", updateFades);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth > 768) return;
+    const hintSeen = localStorage.getItem("ii_seen_period_scroll_hint") === "1";
+    if (hintSeen) return;
+
+    setShowScrollHint(true);
+    localStorage.setItem("ii_seen_period_scroll_hint", "1");
+    const t = window.setTimeout(() => setShowScrollHint(false), 3200);
+    return () => window.clearTimeout(t);
+  }, []);
 
   return (
     <div className="glass-card p-5 h-full flex flex-col">
@@ -101,40 +134,73 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
         <h3 className="text-base font-semibold">Carteira vs Benchmarks</h3>
       </div>
 
-      <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1">
-        {periods.map((period) => (
-          <button
-            key={period}
-            onClick={() => setSelectedPeriod(period)}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
-              period === selectedPeriod
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
+      <div className="mb-4">
+        <div className="relative">
+          <div
+            ref={periodsScrollRef}
+            className="period-selector-scrollbar flex items-center gap-1 overflow-x-auto pb-1.5 snap-x snap-mandatory touch-pan-x scroll-smooth"
           >
-            {period}
-          </button>
-        ))}
+            {periods.map((period) => (
+              <button
+                key={period}
+                onClick={() => setSelectedPeriod(period)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap snap-start ${
+                  period === selectedPeriod
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+              >
+                {period}
+              </button>
+            ))}
+          </div>
+          {showLeftFade && (
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-card to-transparent md:hidden" />
+          )}
+          {showRightFade && (
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent md:hidden" />
+          )}
+        </div>
+        {showScrollHint && (
+          <p className="mt-1 text-[10px] text-muted-foreground md:hidden">Arraste para o lado para ver mais períodos</p>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4">
-        {benchmarks.map((b) => (
-          <button
-            key={b.key}
-            onClick={() => toggleBenchmark(b.key)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all border ${
-              activeBenchmarks[b.key]
-                ? "border-border/80 bg-accent/80"
-                : "border-transparent bg-muted/50 text-muted-foreground"
-            }`}
-          >
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: b.color, opacity: activeBenchmarks[b.key] ? 1 : 0.3 }}
-            />
-            {b.label}
-          </button>
-        ))}
+        <button
+          disabled
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all border border-border/80 bg-accent/80 cursor-default"
+        >
+          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: "hsl(142, 72%, 48%)", opacity: 1 }} />
+          Carteira
+        </button>
+        <button
+          onClick={() => setShowIbovespa((v) => !v)}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all border ${
+            showIbovespa ? "border-border/80 bg-accent/80" : "border-transparent bg-muted/50 text-muted-foreground"
+          }`}
+        >
+          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: "hsl(217, 91%, 60%)", opacity: showIbovespa ? 1 : 0.3 }} />
+          IBOVESPA
+        </button>
+        <button
+          onClick={() => setShowCdi((v) => !v)}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all border ${
+            showCdi ? "border-border/80 bg-accent/80" : "border-transparent bg-muted/50 text-muted-foreground"
+          }`}
+        >
+          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: "hsl(38, 92%, 50%)", opacity: showCdi ? 1 : 0.3 }} />
+          CDI
+        </button>
+        <button
+          onClick={() => setShowIpca((v) => !v)}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all border ${
+            showIpca ? "border-border/80 bg-accent/80" : "border-transparent bg-muted/50 text-muted-foreground"
+          }`}
+        >
+          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: "hsl(280, 65%, 60%)", opacity: showIpca ? 1 : 0.3 }} />
+          IPCA
+        </button>
       </div>
 
       <motion.div
@@ -185,27 +251,63 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
                 return [`${numeric >= 0 ? "+" : ""}${numeric.toFixed(2)}%`, label];
               }}
             />
-            {benchmarks.map((b, index) =>
-              activeBenchmarks[b.key] ? (
-                <Area
-                  key={b.key}
-                  type="monotone"
-                  dataKey={b.key}
-                  stroke={b.color}
-                  strokeWidth={b.key === "carteira" ? 2.5 : 1.5}
-                  fill={`url(#color-${b.key})`}
-                  strokeDasharray={b.key === "carteira" ? undefined : "5 5"}
-                  isAnimationActive
-                  animationDuration={2350}
-                  animationBegin={index * 280}
-                  animationEasing="ease-out"
-                />
-              ) : null
-            )}
+
+            <Area
+              type="monotone"
+              dataKey="carteira"
+              stroke="hsl(142, 72%, 48%)"
+              strokeWidth={2.5}
+              fill="url(#color-carteira)"
+              isAnimationActive
+              animationDuration={2000}
+              animationBegin={0}
+              animationEasing="ease-out"
+            />
+
+            <Area
+              type="monotone"
+              dataKey="ibovespa"
+              stroke="hsl(217, 91%, 60%)"
+              strokeWidth={1.5}
+              fill="url(#color-ibovespa)"
+              strokeDasharray="5 5"
+              hide={!showIbovespa}
+              isAnimationActive
+              animationDuration={2300}
+              animationBegin={160}
+              animationEasing="ease-out"
+            />
+
+            <Area
+              type="monotone"
+              dataKey="cdi"
+              stroke="hsl(38, 92%, 50%)"
+              strokeWidth={1.5}
+              fill="url(#color-cdi)"
+              strokeDasharray="5 5"
+              hide={!showCdi}
+              isAnimationActive
+              animationDuration={2600}
+              animationBegin={220}
+              animationEasing="ease-out"
+            />
+
+            <Area
+              type="monotone"
+              dataKey="ipca"
+              stroke="hsl(280, 65%, 60%)"
+              strokeWidth={1.5}
+              fill="url(#color-ipca)"
+              strokeDasharray="5 5"
+              hide={!showIpca}
+              isAnimationActive
+              animationDuration={2900}
+              animationBegin={280}
+              animationEasing="ease-out"
+            />
           </AreaChart>
         </ResponsiveContainer>
       </motion.div>
     </div>
   );
 }
-

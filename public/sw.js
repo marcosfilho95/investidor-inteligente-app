@@ -1,5 +1,5 @@
 const CACHE_NAME = "investidor-inteligente-v1";
-const APP_SHELL = ["/", "/index.html", "/favicon.ico", "/manifest.webmanifest"];
+const APP_SHELL = ["/", "/index.html", "/favicon.png", "/manifest.webmanifest"];
 
 function isCacheableHttpUrl(url) {
   try {
@@ -32,8 +32,17 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  const requestUrl = new URL(event.request.url);
   if (!isCacheableHttpUrl(event.request.url)) return;
+  const requestUrl = new URL(event.request.url);
+
+  // Never intercept Vite dev/HMR endpoints.
+  if (
+    requestUrl.pathname.startsWith("/@vite") ||
+    requestUrl.pathname.startsWith("/@react-refresh") ||
+    requestUrl.pathname.startsWith("/src/")
+  ) {
+    return;
+  }
 
   const isHtmlRequest = event.request.mode === "navigate";
 
@@ -74,7 +83,7 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => cached);
+        .catch(() => cached || Response.error());
 
       return cached || fetchPromise;
     })

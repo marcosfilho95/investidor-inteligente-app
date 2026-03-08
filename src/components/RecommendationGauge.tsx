@@ -11,7 +11,7 @@ export function RecommendationGauge({ score, label, color }: GaugeProps) {
 
   useEffect(() => {
     let frame = 0;
-    const durationMs = 1100;
+    const durationMs = 2000;
     const start = performance.now();
     const initial = animatedScore;
     const target = Math.max(0, Math.min(100, score));

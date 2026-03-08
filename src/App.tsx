@@ -8,6 +8,7 @@ import { AnimatePresence } from "framer-motion";
 import { loadRealPriceData } from "@/data/csvLoader";
 import { loadMacroData } from "@/data/macroLoader";
 import { setMacroMarketData, setRealMarketData } from "@/data/investments";
+import { OnboardingTour } from "@/components/OnboardingTour";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Index";
@@ -31,7 +32,23 @@ function ScrollToTop() {
 
 function AppContent() {
   const [dataVersion, setDataVersion] = useState(0);
+  const [showTour, setShowTour] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    const seen = localStorage.getItem("onboarding_completed");
+    const forced = sessionStorage.getItem("force_onboarding_tour") === "1";
+    if (!seen || forced) {
+      setShowTour(true);
+      if (forced) sessionStorage.removeItem("force_onboarding_tour");
+    }
+  }, []);
+
+  useEffect(() => {
+    const startTour = () => setShowTour(true);
+    window.addEventListener("ii:start-tour", startTour as EventListener);
+    return () => window.removeEventListener("ii:start-tour", startTour as EventListener);
+  }, []);
 
   useEffect(() => {
     const refreshAllData = async (forceRefresh = false) => {
@@ -78,10 +95,11 @@ function AppContent() {
 
   return (
     <>
+      <AnimatePresence>{showTour && <OnboardingTour onComplete={() => { localStorage.setItem("onboarding_completed", "true"); setShowTour(false); }} />}</AnimatePresence>
       <Toaster />
       <Sonner />
       <ScrollToTop />
-      <AnimatePresence mode="sync" initial={false}>
+      <AnimatePresence mode="sync">
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />

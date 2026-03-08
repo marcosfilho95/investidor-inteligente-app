@@ -64,7 +64,7 @@ const AssetDetail = () => {
   const [chartAnimKey, setChartAnimKey] = useState(0);
   const [compareAnimKey, setCompareAnimKey] = useState(0);
   const [chartsReady, setChartsReady] = useState(() => isRealDataLoaded());
-  const [orderQty, setOrderQty] = useState(1);
+  const [orderQtyInput, setOrderQtyInput] = useState("1");
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [investmentComparison, setInvestmentComparison] = useState<Record<string, any>[]>([]);
   const [comparisonMeta, setComparisonMeta] = useState<{
@@ -178,18 +178,22 @@ const AssetDetail = () => {
     comparisonMeta.sources.ibov === "stale" ||
     comparisonMeta.sources.cdi === "stale" ||
     comparisonMeta.sources.ipca === "stale";
+  const parsedOrderQty = Number(orderQtyInput);
+  const hasValidOrderQty = Number.isInteger(parsedOrderQty) && parsedOrderQty >= 1;
+  const effectiveOrderQty = hasValidOrderQty ? parsedOrderQty : 0;
 
   const handleOrder = async () => {
+    if (!hasValidOrderQty) return;
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
     const ss = String(now.getSeconds()).padStart(2, "0");
     const tradedAt = orderDate ? `${orderDate}T${hh}:${mm}:${ss}` : undefined;
     if (orderType === "buy") {
-      const success = await addHolding(asset.symbol, orderQty, asset.price, tradedAt);
+      const success = await addHolding(asset.symbol, parsedOrderQty, asset.price, tradedAt);
       if (success) setShowBuyModal(false);
     } else {
-      const success = await sellHolding(asset.symbol, orderQty, tradedAt);
+      const success = await sellHolding(asset.symbol, parsedOrderQty, tradedAt);
       if (success) setShowBuyModal(false);
     }
   };
@@ -198,7 +202,7 @@ const AssetDetail = () => {
     const trade = searchParams.get("trade");
     if (trade !== "buy" && trade !== "sell") return;
     setOrderType(trade);
-    setOrderQty(1);
+    setOrderQtyInput("1");
     setOrderDate(new Date().toISOString().slice(0, 10));
     setShowBuyModal(true);
 
@@ -271,8 +275,8 @@ const AssetDetail = () => {
                   <span className={`text-sm font-mono font-medium ${isPositive ? "text-gain" : "text-loss"}`}>{isPositive ? "+" : ""}{asset.changePercent}%</span>
                 </div>
               </div>
-              <button onClick={() => { setOrderType("buy"); setOrderQty(1); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"><ShoppingCart className="h-4 w-4" /> Comprar</button>
-              <button onClick={() => { setOrderType("sell"); setOrderQty(1); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors"><DollarSign className="h-4 w-4" /> Vender</button>
+              <button onClick={() => { setOrderType("buy"); setOrderQtyInput("1"); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"><ShoppingCart className="h-4 w-4" /> Comprar</button>
+              <button onClick={() => { setOrderType("sell"); setOrderQtyInput("1"); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors"><DollarSign className="h-4 w-4" /> Vender</button>
             </div>
           </div>
 
@@ -370,7 +374,7 @@ const AssetDetail = () => {
                       strokeWidth={2}
                       fill="url(#priceGrad)"
                       isAnimationActive
-                      animationDuration={1800}
+                      animationDuration={2000}
                       animationEasing="ease-out"
                     />
                   </AreaChart>
@@ -436,7 +440,7 @@ const AssetDetail = () => {
                       strokeWidth={2}
                       fill="url(#compareGrad)"
                       isAnimationActive
-                      animationDuration={1800}
+                      animationDuration={2000}
                       animationEasing="ease-out"
                       animationBegin={0}
                     />
@@ -449,7 +453,7 @@ const AssetDetail = () => {
                       dot={false}
                       strokeDasharray="5 5"
                       isAnimationActive
-                      animationDuration={1800}
+                      animationDuration={2300}
                       animationEasing="ease-out"
                       animationBegin={80}
                     />
@@ -462,7 +466,7 @@ const AssetDetail = () => {
                       dot={false}
                       strokeDasharray="5 5"
                       isAnimationActive
-                      animationDuration={1800}
+                      animationDuration={2600}
                       animationEasing="ease-out"
                       animationBegin={120}
                     />
@@ -475,7 +479,7 @@ const AssetDetail = () => {
                       dot={false}
                       strokeDasharray="5 5"
                       isAnimationActive
-                      animationDuration={1800}
+                      animationDuration={2900}
                       animationEasing="ease-out"
                       animationBegin={160}
                     />
@@ -499,12 +503,16 @@ const AssetDetail = () => {
           </div>
 
           {/* AI Widget */}
-          <AiChatWidget
-            page="ativo"
-            ticker={asset.symbol}
-            context={`Analise de ${asset.symbol}`}
-            welcomeMessage={`Analisando ${asset.symbol} (${asset.name})...\n\n${asset.description}\n\nSetor: ${asset.sector} / ${asset.subsetor}\nScore: ${recommendation.score}/100 (${recommendation.label})\nP/L: ${asset.pe ?? 'N/A'} | DY: ${asset.dividend}% | ROE: ${asset.roe ?? 'N/A'}%\n${grahamPrice ? `Graham: R$ ${grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${grahamUpside}% upside)` : ""}\n\nPergunte sobre indicadores, riscos ou estrategias para este ativo.`}
-          />
+          <div className="h-[24rem] md:h-[26rem] min-h-[22rem]">
+            <AiChatWidget
+              page="ativo"
+              ticker={asset.symbol}
+              fullHeight
+              className="h-full"
+              context={`Analise de ${asset.symbol}`}
+              welcomeMessage={`Analisando ${asset.symbol} (${asset.name})...\n\n${asset.description}\n\nSetor: ${asset.sector} / ${asset.subsetor}\nScore: ${recommendation.score}/100 (${recommendation.label})\nP/L: ${asset.pe ?? 'N/A'} | DY: ${asset.dividend}% | ROE: ${asset.roe ?? 'N/A'}%\n${grahamPrice ? `Graham: R$ ${grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${grahamUpside}% upside)` : ""}\n\nPergunte sobre indicadores, riscos ou estrategias para este ativo.`}
+            />
+          </div>
 
           {/* Indicators */}
           {hasFundamentals && (
@@ -573,7 +581,16 @@ const AssetDetail = () => {
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-muted-foreground">Quantidade</label>
-                <input type="number" value={orderQty} onChange={e => setOrderQty(Math.max(1, parseInt(e.target.value) || 1))} min={1} className="w-full mt-1 bg-muted/50 rounded-lg px-3 py-2.5 text-sm font-mono text-foreground border border-border/50 focus:outline-none focus:ring-1 focus:ring-primary/50" />
+                <input
+                  type="number"
+                  value={orderQtyInput}
+                  onChange={(e) => setOrderQtyInput(e.target.value)}
+                  onBlur={() => {
+                    if (!hasValidOrderQty) setOrderQtyInput("1");
+                  }}
+                  min={1}
+                  className="w-full mt-1 bg-muted/50 rounded-lg px-3 py-2.5 text-sm font-mono text-foreground border border-border/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Data da operação</label>
@@ -586,12 +603,16 @@ const AssetDetail = () => {
               </div>
               <div className="bg-muted/30 rounded-lg p-3 space-y-1">
                 <div className="flex justify-between text-xs"><span className="text-muted-foreground">Preco unitario</span><span className="font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
-                <div className="flex justify-between text-xs font-medium"><span className="text-muted-foreground">Total estimado</span><span className="font-mono">R$ {(asset.price * orderQty).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
+                <div className="flex justify-between text-xs font-medium"><span className="text-muted-foreground">Total estimado</span><span className="font-mono">R$ {(asset.price * effectiveOrderQty).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
               </div>
             </div>
             <div className="flex gap-3">
               <button onClick={() => setShowBuyModal(false)} className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-accent transition-colors">Cancelar</button>
-              <button onClick={handleOrder} className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${orderType === "buy" ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}`}>
+              <button
+                onClick={handleOrder}
+                disabled={!hasValidOrderQty}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${orderType === "buy" ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}`}
+              >
                 Confirmar {orderType === "buy" ? "compra" : "venda"}
               </button>
             </div>

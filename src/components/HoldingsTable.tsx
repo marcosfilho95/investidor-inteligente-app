@@ -3,6 +3,7 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 import { Holding } from "@/data/investments";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface HoldingsTableProps {
   holdings?: (Holding & { avgPrice?: number })[];
@@ -12,6 +13,7 @@ export function HoldingsTable({ holdings: userHoldings }: HoldingsTableProps) {
   const items = userHoldings || [];
   const PAGE_SIZE = 6;
   const [page, setPage] = useState(1);
+  const [pageDir, setPageDir] = useState(1);
 
   const sortedItems = useMemo(
     () => [...items].sort((a, b) => b.value - a.value),
@@ -45,7 +47,7 @@ export function HoldingsTable({ holdings: userHoldings }: HoldingsTableProps) {
         <h3 className="text-base font-semibold">Posições</h3>
         <p className="text-sm text-muted-foreground">Seus ativos em carteira</p>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto no-scrollbar">
         <table className="w-full">
           <thead>
             <tr className="border-b border-border/50">
@@ -57,7 +59,14 @@ export function HoldingsTable({ holdings: userHoldings }: HoldingsTableProps) {
               <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Alocação</th>
             </tr>
           </thead>
-          <tbody>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.tbody
+              key={`positions-page-${page}`}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
             {pagedItems.map((holding) => (
               <tr key={holding.symbol} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
                 <td className="px-5 py-3.5">
@@ -109,7 +118,8 @@ export function HoldingsTable({ holdings: userHoldings }: HoldingsTableProps) {
                 </td>
               </tr>
             ))}
-          </tbody>
+            </motion.tbody>
+          </AnimatePresence>
         </table>
       </div>
       <div className="flex items-center justify-between px-5 py-3 border-t border-border/40">
@@ -121,7 +131,10 @@ export function HoldingsTable({ holdings: userHoldings }: HoldingsTableProps) {
             type="button"
             className="px-3 py-1.5 text-xs rounded-md border border-border/60 text-muted-foreground disabled:opacity-40"
             disabled={page === 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => {
+              setPageDir(-1);
+              setPage((p) => Math.max(1, p - 1));
+            }}
           >
             Anterior
           </button>
@@ -129,7 +142,10 @@ export function HoldingsTable({ holdings: userHoldings }: HoldingsTableProps) {
             type="button"
             className="px-3 py-1.5 text-xs rounded-md border border-border/60 text-muted-foreground disabled:opacity-40"
             disabled={page === totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            onClick={() => {
+              setPageDir(1);
+              setPage((p) => Math.min(totalPages, p + 1));
+            }}
           >
             Próxima
           </button>

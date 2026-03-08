@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect, useMemo } from "react";
 import { Bot, Send, Sparkles, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { buildDatasetContext, buildAssetContext } from "@/data/investments";
@@ -12,6 +12,7 @@ interface AiChatWidgetProps {
   userSymbols?: string[];
   userHoldingsData?: { symbol: string; shares: number; avgPrice: number }[];
   className?: string;
+  fullHeight?: boolean;
 }
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -33,17 +34,46 @@ const SUPABASE_PUBLISHABLE_KEY =
   "";
 const CHAT_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/chat` : "";
 
-export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, userSymbols, userHoldingsData, className = "" }: AiChatWidgetProps) {
+export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, userSymbols, userHoldingsData, className = "", fullHeight = false }: AiChatWidgetProps) {
   const initialWelcome = welcomeMessage || "Olá! Sou o Hodl 🤖, seu assistente inteligente. Como posso te ajudar hoje?";
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: initialWelcome },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAssistantTyping, setIsAssistantTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef(true);
+  const hasMountedRef = useRef(false);
+  const previousMessagesLengthRef = useRef(messages.length);
+  const cardHeightClass = useMemo(() => {
+    if (fullHeight) {
+      if (page === "dashboard") {
+        return "h-[34rem] md:h-[36rem] max-h-[34rem] md:max-h-[36rem] min-h-0";
+      }
+      return "h-full min-h-0 max-h-none";
+    }
+    return "h-[30rem] min-h-[24rem] max-h-[72vh]";
+  }, [fullHeight, page]);
+
+  const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior });
+  };
+  const scrollToTop = () => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollTo({ top: 0, behavior: "auto" });
+  };
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    const hasNewMessage = messages.length > previousMessagesLengthRef.current;
+    previousMessagesLengthRef.current = messages.length;
+    if (!shouldAutoScrollRef.current) return;
+    scrollToBottom(hasNewMessage ? "smooth" : "auto");
   }, [messages]);
 
   // Keep initial greeting in sync with async-loaded page context
@@ -54,14 +84,19 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
       if (prev.length !== 1) return prev;
       if (prev[0]?.role !== "assistant") return prev;
       if (prev[0].content === initialWelcome) return prev;
+      shouldAutoScrollRef.current = false;
+      requestAnimationFrame(scrollToTop);
       return [{ role: "assistant", content: initialWelcome }];
     });
   }, [initialWelcome, isLoading]);
 
+  const inputLocked = isLoading || isAssistantTyping;
+
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || inputLocked) return;
     const userMsg: Msg = { role: "user", content: input };
     const newMessages = [...messages, userMsg];
+    shouldAutoScrollRef.current = true;
     setMessages(newMessages);
     setInput("");
     setIsLoading(true);
@@ -72,8 +107,13 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
     let isTyping = false;
 
     const processTypingQueue = () => {
-      if (typingQueue.length === 0) { isTyping = false; return; }
+      if (typingQueue.length === 0) {
+        isTyping = false;
+        setIsAssistantTyping(false);
+        return;
+      }
       isTyping = true;
+      setIsAssistantTyping(true);
       // Reveal 2-4 chars at a time for natural typing feel
       const charsToReveal = Math.min(typingQueue.length, Math.random() > 0.7 ? 4 : 2);
       for (let c = 0; c < charsToReveal; c++) {
@@ -99,6 +139,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
 
     try {
       if (!CHAT_URL || !SUPABASE_PUBLISHABLE_KEY) {
+        setIsAssistantTyping(true);
         updateAssistant("⚠️ Chat indisponível: configure VITE_SUPABASE_URL (ou PROJECT_ID) e VITE_SUPABASE_PUBLISHABLE_KEY.");
         setIsLoading(false);
         return;
@@ -128,6 +169,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
       });
 
       if (!resp.ok || !resp.body) {
+        setIsAssistantTyping(true);
         const err = await resp.json().catch(() => ({ error: "Erro de conexão" }));
         updateAssistant(`⚠️ ${err.error || "Erro ao conectar com a IA. Tente novamente."}`);
         setIsLoading(false);
@@ -160,6 +202,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
       }
     } catch (e) {
       console.error("AI chat error:", e);
+      setIsAssistantTyping(true);
       updateAssistant("⚠️ Erro de conexão. Verifique sua internet e tente novamente.");
     }
 
@@ -187,7 +230,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
   }
 
   return (
-    <div className={`glass-card overflow-hidden h-full flex flex-col ${className}`}>
+    <div className={`glass-card overflow-hidden w-full ${className} ${cardHeightClass} flex flex-col`}>
       <div className="p-4 border-b border-border/50 flex items-center gap-3">
         <div className="h-9 w-9 rounded-xl bg-primary/20 flex items-center justify-center">
           <Bot className="h-5 w-5 text-primary" />
@@ -201,14 +244,22 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
           </p>
         </div>
       </div>
-      <div ref={scrollRef} className="p-4 space-y-3 flex-1 min-h-0 overflow-y-auto flex flex-col justify-end">
+      <div
+        ref={scrollRef}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+          shouldAutoScrollRef.current = distanceToBottom < 80;
+        }}
+        className="p-4 space-y-3 flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col"
+      >
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
+              className={`rounded-xl px-3 py-2 text-xs leading-relaxed ${
                 msg.role === "user"
-                  ? "bg-primary text-primary-foreground whitespace-pre-wrap"
-                  : "bg-muted/80 text-foreground prose prose-xs prose-invert max-w-none [&_p]:m-0 [&_p]:mb-1.5 [&_ul]:m-0 [&_ol]:m-0 [&_li]:m-0 [&_strong]:text-foreground [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:mt-1.5 [&_h2]:mb-0.5 [&_h3]:mt-1 [&_h3]:mb-0.5"
+                  ? "max-w-[85%] bg-primary text-primary-foreground whitespace-pre-wrap"
+                  : "w-full bg-muted/80 text-foreground prose prose-xs prose-invert max-w-none [&_p]:m-0 [&_p]:mb-1.5 [&_ul]:m-0 [&_ol]:m-0 [&_li]:m-0 [&_strong]:text-foreground [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:mt-1.5 [&_h2]:mb-0.5 [&_h3]:mt-1 [&_h3]:mb-0.5"
               }`}
             >
               {msg.role === "user" ? msg.content : (
@@ -233,12 +284,12 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           placeholder="Pergunte ao Hodl..."
-          disabled={isLoading}
+          disabled={inputLocked}
           className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50"
         />
         <button
           onClick={handleSend}
-          disabled={isLoading}
+          disabled={inputLocked}
           className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
           <Send className="h-3.5 w-3.5" />
@@ -247,3 +298,4 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
     </div>
   );
 }
+

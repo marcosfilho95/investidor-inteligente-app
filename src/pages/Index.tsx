@@ -5,23 +5,16 @@ import { HoldingsTable } from "@/components/HoldingsTable";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
-import { OnboardingTour } from "@/components/OnboardingTour";
 import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 
 const Index = () => {
   const [userName, setUserName] = useState(() => localStorage.getItem("ii_user_name") || "Investidor");
-  const [showTour, setShowTour] = useState(false);
   const [minDelayDone, setMinDelayDone] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
   const { enrichedHoldings, totalValue, loading, userTrades } = useUserHoldings();
-
-  useEffect(() => {
-    const seen = localStorage.getItem("onboarding_completed");
-    if (!seen) setShowTour(true);
-  }, []);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -111,16 +104,8 @@ Você pode começar com:
 2) "Quais ativos parecem caros pelos fundamentos?"
 3) "Como reduzir risco sem perder tanto potencial?"`, [greeting, userName, loading, isEmpty, enrichedHoldings.length]);
 
-  const handleTourComplete = () => {
-    localStorage.setItem("onboarding_completed", "true");
-    setShowTour(false);
-  };
-
   return (
     <div className="min-h-screen bg-background">
-      <AnimatePresence>
-        {showTour && <OnboardingTour onComplete={handleTourComplete} />}
-      </AnimatePresence>
       <AppHeader activePage="dashboard" />
       <PageTransition>
         <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
@@ -133,7 +118,7 @@ Você pode começar com:
                 ? "Carregando dados da sua carteira..."
                 : isEmpty
                 ? "Sua carteira está vazia. Vá em Ativos para adicionar ações!"
-                : "Aqui está o resumo do seu portfólio hoje."}
+                : "Aqui está o resumo do seu portfólio."}
             </p>
           </div>
 
@@ -232,7 +217,7 @@ Você pode começar com:
             </AnimatedCard>
           )}
 
-          <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch" initial={{ opacity: 0, y: 10 }} animate={{ opacity: dashboardReady ? 1 : 0, y: dashboardReady ? 0 : 10 }} transition={{ duration: 0.35, ease: "easeOut" }}>
+          <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start" initial={{ opacity: 0, y: 10 }} animate={{ opacity: dashboardReady ? 1 : 0, y: dashboardReady ? 0 : 10 }} transition={{ duration: 0.35, ease: "easeOut" }}>
             {dashboardReady && !isEmpty && (
               <AnimatedCard delay={0.5} className="lg:col-span-2 h-full flex flex-col">
                 <div className="h-full flex flex-col">
@@ -242,14 +227,15 @@ Você pode começar com:
                 </div>
               </AnimatedCard>
             )}
-            <AnimatedCard delay={0.6} className={`${isEmpty ? "lg:col-span-3" : ""} h-full flex flex-col`} data-tour="ai-chat">
-              <div className="h-full flex flex-col">
+            <AnimatedCard delay={0.6} className={`${isEmpty ? "lg:col-span-3" : ""} self-start shrink-0 h-[34rem] md:h-[36rem] flex flex-col`} data-tour="ai-chat">
+              <div className="h-full min-h-0 flex flex-col">
                 <div className="flex-1 flex">
                   <AiChatWidget
                     page="dashboard"
+                    fullHeight
                     userSymbols={enrichedHoldings.map(h => h.symbol)}
                     welcomeMessage={aiDashboardWelcome}
-                    className="h-full w-full flex flex-col"
+                    className="w-full"
                   />
                 </div>
               </div>

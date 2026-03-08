@@ -1,12 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+﻿import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  ArrowRight,
-  ArrowLeft,
-  X,
-  Rocket,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, ArrowLeft, X, Rocket, Sparkles } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface OnboardingTourProps {
   onComplete: () => void;
@@ -17,9 +12,12 @@ interface TourStep {
   title: string;
   description: string;
   position: "bottom" | "top" | "left" | "right" | "center";
+  route?: string;
+  requiresMobileMenu?: boolean;
+  keepMobileMenuOpen?: boolean;
 }
 
-const steps: TourStep[] = [
+const desktopSteps: TourStep[] = [
   {
     selector: "__welcome__",
     title: "Bem-vindo ao Investidor Inteligente! 🚀",
@@ -33,112 +31,321 @@ const steps: TourStep[] = [
     description:
       "Aqui é sua visão geral: valor da carteira, ganhos, rentabilidade e gráficos de performance vs benchmarks (Ibovespa e CDI).",
     position: "bottom",
+    route: "/dashboard",
   },
   {
     selector: '[data-tour="nav-carteira"]',
     title: "💰 Carteira",
     description:
-      "Gerencie seus investimentos! Veja a alocação por ativo e setor, preço médio, variação e peso de cada posição.",
+      "Gerencie seus investimentos! Veja alocação por ativo e setor, preço médio, variação e peso de cada posição.",
     position: "bottom",
+    route: "/carteira",
   },
   {
     selector: '[data-tour="nav-ativos"]',
     title: "📈 Ativos",
     description:
-      "Explore 25 ações com indicadores fundamentalistas (P/L, P/VP, ROE, DY). Analise antes de comprar!",
+      "Explore ações com indicadores fundamentalistas (P/L, P/VP, ROE, DY). Analise antes de comprar.",
     position: "bottom",
+    route: "/ativos",
   },
   {
     selector: '[data-tour="nav-aprender"]',
     title: "🎓 Aprender",
     description:
-      "Seis trilhas educativas sobre mercado, análise fundamentalista, psicologia e estratégia. Aprenda no seu ritmo!",
+      "Trilhas educativas sobre mercado, análise fundamentalista, psicologia e estratégia. Aprenda no seu ritmo.",
     position: "bottom",
+    route: "/aprender",
   },
   {
     selector: '[data-tour="notifications"]',
     title: "🔔 Notificações",
     description:
-      "Fique por dentro de movimentações relevantes, dividendos creditados e novidades da plataforma.",
+      "Veja alertas relevantes, dividendos creditados e novidades da plataforma.",
     position: "bottom",
+    route: "/dashboard",
+  },
+  {
+    selector: '[data-tour="help-tutorial"]',
+    title: "❓ Ajuda e Tutorial",
+    description: "Clique aqui sempre que quiser rever o tutorial da plataforma.",
+    position: "bottom",
+    route: "/dashboard",
   },
   {
     selector: '[data-tour="user-menu"]',
     title: "👤 Seu Perfil",
-    description:
-      "Acesse seu perfil, configurações e opção de logout aqui.",
+    description: "Acesse seu perfil, configurações e opção de logout aqui.",
     position: "bottom",
+    route: "/dashboard",
   },
   {
     selector: '[data-tour="ai-chat"]',
-    title: "🤖 HODL — Seu Assistente IA",
+    title: "HODL — Seu Assistente IA",
     description:
-      "O HODL está em todas as páginas! Pergunte sobre indicadores, peça análises ou tire dúvidas. Ele conhece cada ativo em detalhes.",
+      "O HODL está em todas as páginas. Pergunte sobre indicadores, peça análises ou tire dúvidas sobre sua carteira.",
     position: "top",
+    route: "/dashboard",
   },
   {
     selector: "__finish__",
     title: "Tudo pronto! 🎉",
     description:
-      "Agora é com você! Explore o Dashboard, adicione ações pela página de Ativos e use o HODL sempre que precisar. Bons investimentos! 📈",
+      "Agora é com você! Explore o Dashboard, adicione ações pela página de Ativos e use o HODL sempre que precisar.",
     position: "center",
+    route: "/dashboard",
+  },
+];
+
+const mobileSteps: TourStep[] = [
+  {
+    selector: "__welcome__",
+    title: "Bem-vindo ao Investidor Inteligente! 🚀",
+    description: "Tour rápido no mobile. Você pode pular ou fechar quando quiser.",
+    position: "center",
+  },
+  {
+    selector: '[data-tour="mobile-menu-toggle"]',
+    title: "Menu de navegação",
+    description:
+      "Use este botão para abrir o menu e navegar pelas páginas principais do sistema.",
+    position: "bottom",
+    route: "/dashboard",
+    keepMobileMenuOpen: true,
+  },
+  {
+    selector: '[data-tour="nav-dashboard"]',
+    title: "Dashboard",
+    description: "Ao selecionar Dashboard, você vê os principais indicadores e o resumo da carteira.",
+    position: "bottom",
+    route: "/dashboard",
+    requiresMobileMenu: true,
+    keepMobileMenuOpen: true,
+  },
+  {
+    selector: '[data-tour="nav-carteira"]',
+    title: "Carteira",
+    description: "Aqui você acompanha posições, alocação e desempenho dos seus ativos.",
+    position: "bottom",
+    route: "/carteira",
+    requiresMobileMenu: true,
+    keepMobileMenuOpen: true,
+  },
+  {
+    selector: '[data-tour="nav-ativos"]',
+    title: "Ativos",
+    description: "Nesta página você analisa os ativos antes de investir.",
+    position: "bottom",
+    route: "/ativos",
+    requiresMobileMenu: true,
+    keepMobileMenuOpen: true,
+  },
+  {
+    selector: '[data-tour="nav-aprender"]',
+    title: "Aprender",
+    description: "Acesse trilhas educativas para evoluir seus conhecimentos.",
+    position: "bottom",
+    route: "/aprender",
+    requiresMobileMenu: true,
+    keepMobileMenuOpen: true,
+  },
+  {
+    selector: '[data-tour="notifications"]',
+    title: "Notificações",
+    description: "Acompanhe eventos e alertas importantes da plataforma.",
+    position: "bottom",
+    route: "/dashboard",
+  },
+  {
+    selector: '[data-tour="help-tutorial"]',
+    title: "Ajuda e Tutorial",
+    description: "Use o botão ? (igual no Dashboard) para abrir o tutorial quando quiser.",
+    position: "bottom",
+    route: "/dashboard",
+  },
+  {
+    selector: '[data-tour="user-menu"]',
+    title: "Seu Perfil",
+    description: "Perfil e configurações da conta ficam aqui.",
+    position: "bottom",
+    route: "/dashboard",
+  },
+  {
+    selector: '[data-tour="ai-chat"]',
+    title: "HODL AI",
+    description: "Aqui está o bot da plataforma para tirar dúvidas e receber análises.",
+    position: "top",
+    route: "/dashboard",
+  },
+  {
+    selector: "__finish__",
+    title: "Tudo pronto! 🎉",
+    description: "Tour concluído. Você já pode navegar normalmente pela plataforma.",
+    position: "center",
+    route: "/dashboard",
   },
 ];
 
 export function OnboardingTour({ onComplete }: OnboardingTourProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
   const [current, setCurrent] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const step = steps[current];
+
+  const steps = useMemo(() => (isMobile ? mobileSteps : desktopSteps), [isMobile]);
+  const step = steps[Math.min(current, steps.length - 1)];
   const isCenter = step.position === "center";
   const isLast = current === steps.length - 1;
   const isFirst = current === 0;
+  const spotlightPad = isMobile ? 8 : 12;
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    if (current > steps.length - 1) setCurrent(0);
+  }, [current, steps.length]);
+
+  const closeTour = useCallback(() => {
+    sessionStorage.removeItem("ii_tour_keep_mobile_menu_open");
+    window.dispatchEvent(new CustomEvent("ii:tour-close-mobile-menu"));
+    onComplete();
+  }, [onComplete]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    sessionStorage.setItem("ii_tour_keep_mobile_menu_open", "1");
+    window.dispatchEvent(new CustomEvent("ii:tour-open-mobile-menu"));
+    return () => {
+      sessionStorage.removeItem("ii_tour_keep_mobile_menu_open");
+      window.dispatchEvent(new CustomEvent("ii:tour-close-mobile-menu"));
+    };
+  }, [isMobile]);
+
+  const getStepElement = useCallback((): HTMLElement | null => {
+    if (step.selector === "__welcome__" || step.selector === "__finish__") return null;
+    const all = Array.from(document.querySelectorAll(step.selector)) as HTMLElement[];
+    if (!all.length) return null;
+
+    // Prefer the visible node (important on mobile, where desktop nav also exists hidden).
+    const visible = all.filter((el) => {
+      const style = window.getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        rect.width > 0 &&
+        rect.height > 0 &&
+        el.getClientRects().length > 0
+      );
+    });
+
+    return (visible[visible.length - 1] || all[all.length - 1] || null);
+  }, [step.selector]);
+
+  const openOrCloseMobileMenu = useCallback(() => {
+    if (!isMobile) return;
+    const isMenuLockedOpen = sessionStorage.getItem("ii_tour_keep_mobile_menu_open") === "1";
+    if (isMenuLockedOpen) {
+      window.dispatchEvent(new CustomEvent("ii:tour-open-mobile-menu"));
+      return;
+    }
+    if (step.keepMobileMenuOpen) {
+      sessionStorage.setItem("ii_tour_keep_mobile_menu_open", "1");
+      window.dispatchEvent(new CustomEvent("ii:tour-open-mobile-menu"));
+      return;
+    }
+    if (step.requiresMobileMenu) {
+      window.dispatchEvent(new CustomEvent("ii:tour-open-mobile-menu"));
+    } else {
+      window.dispatchEvent(new CustomEvent("ii:tour-close-mobile-menu"));
+    }
+  }, [isMobile, step.keepMobileMenuOpen, step.requiresMobileMenu]);
+
+  const ensureRouteForStep = useCallback(() => {
+    if (!step.route) return;
+    if (location.pathname !== step.route) {
+      navigate(step.route);
+    }
+  }, [step.route, location.pathname, navigate]);
 
   const measure = useCallback(() => {
     if (isCenter) {
       setRect(null);
       return;
     }
-    const el = document.querySelector(step.selector);
-    if (el) {
-      setRect(el.getBoundingClientRect());
-    } else {
+    const el = getStepElement();
+    if (!el) {
       setRect(null);
+      return;
     }
-  }, [step.selector, isCenter]);
+    setRect(el.getBoundingClientRect());
+  }, [isCenter, getStepElement]);
 
   useEffect(() => {
-    measure();
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, true);
-    return () => {
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
-    };
-  }, [measure]);
+    ensureRouteForStep();
+    openOrCloseMobileMenu();
+    const t = window.setTimeout(() => {
+      openOrCloseMobileMenu();
+      measure();
+      const el = getStepElement();
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    }, isMobile ? 280 : 220);
+    const t2 = window.setTimeout(() => {
+      openOrCloseMobileMenu();
+      measure();
+    }, isMobile ? 520 : 260);
 
-  const next = () => {
-    if (isLast) { onComplete(); return; }
-    setCurrent((c) => c + 1);
-  };
-  const prev = () => {
+    const onScroll = () => measure();
+    const onResize = () => measure();
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      window.clearTimeout(t);
+      window.clearTimeout(t2);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [current, isMobile, ensureRouteForStep, openOrCloseMobileMenu, measure, getStepElement]);
+
+  const next = useCallback(() => {
+    if (isLast) {
+      closeTour();
+      return;
+    }
+    setCurrent((c) => Math.min(c + 1, steps.length - 1));
+  }, [closeTour, isLast, steps.length]);
+
+  const prev = useCallback(() => {
     if (isFirst) return;
-    setCurrent((c) => c - 1);
-  };
+    setCurrent((c) => Math.max(c - 1, 0));
+  }, [isFirst]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === "Enter") next();
       if (e.key === "ArrowLeft") prev();
-      if (e.key === "Escape") onComplete();
+      if (e.key === "Escape") closeTour();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current]);
+  }, [next, prev, closeTour]);
 
-  // Calculate tooltip position
   const getTooltipStyle = (): React.CSSProperties => {
+    if (isMobile) {
+      return {
+        position: "fixed",
+        left: 12,
+        right: 12,
+        bottom: 12,
+      };
+    }
+
     if (!rect || isCenter) {
       return {
         position: "fixed",
@@ -150,78 +357,67 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
 
     const pad = 16;
     const arrowGap = 12;
+    const tooltipWidth = Math.min(360, window.innerWidth - pad * 2);
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
+    const userMenuOffset = step.selector === '[data-tour="user-menu"]' ? -56 : 0;
+    const clampedX = Math.max(
+      pad + tooltipWidth / 2,
+      Math.min(cx + userMenuOffset, window.innerWidth - pad - tooltipWidth / 2)
+    );
+    const fixedLeft = Math.max(pad, Math.min(clampedX - tooltipWidth / 2, window.innerWidth - tooltipWidth - pad));
 
     switch (step.position) {
       case "bottom":
         return {
           position: "fixed",
-          top: rect.bottom + arrowGap,
-          left: Math.max(pad, Math.min(cx, window.innerWidth - 340)),
-          transform: "translateX(-50%)",
+          top: Math.min(rect.bottom + arrowGap, window.innerHeight - 280),
+          left: fixedLeft,
         };
       case "top":
         return {
           position: "fixed",
-          bottom: window.innerHeight - rect.top + arrowGap,
-          left: Math.max(pad, Math.min(cx, window.innerWidth - 340)),
-          transform: "translateX(-50%)",
+          top: Math.max(pad, rect.top - 220),
+          left: fixedLeft,
         };
       case "right":
         return {
           position: "fixed",
-          top: cy,
-          left: rect.right + arrowGap,
+          top: Math.max(120, Math.min(cy, window.innerHeight - 120)),
+          left: Math.min(rect.right + arrowGap, window.innerWidth - tooltipWidth - pad),
           transform: "translateY(-50%)",
         };
       case "left":
         return {
           position: "fixed",
-          top: cy,
-          right: window.innerWidth - rect.left + arrowGap,
+          top: Math.max(120, Math.min(cy, window.innerHeight - 120)),
+          left: Math.max(pad, rect.left - tooltipWidth - arrowGap),
           transform: "translateY(-50%)",
         };
       default:
-        return {};
+        return {
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+        };
     }
   };
 
-  // Arrow pointing at the element
   const getArrowStyle = (): React.CSSProperties | null => {
-    if (!rect || isCenter) return null;
+    if (!rect || isCenter || isMobile) return null;
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
 
     switch (step.position) {
       case "bottom":
-        return {
-          position: "fixed",
-          top: rect.bottom + 4,
-          left: cx,
-          transform: "translateX(-50%)",
-        };
+        return { position: "fixed", top: rect.bottom + 4, left: cx, transform: "translateX(-50%)" };
       case "top":
-        return {
-          position: "fixed",
-          top: rect.top - 12,
-          left: cx,
-          transform: "translateX(-50%) rotate(180deg)",
-        };
+        return { position: "fixed", top: rect.top - 12, left: cx, transform: "translateX(-50%) rotate(180deg)" };
       case "right":
-        return {
-          position: "fixed",
-          top: cy,
-          left: rect.right + 4,
-          transform: "translateY(-50%) rotate(-90deg)",
-        };
+        return { position: "fixed", top: cy, left: rect.right + 4, transform: "translateY(-50%) rotate(-90deg)" };
       case "left":
-        return {
-          position: "fixed",
-          top: cy,
-          right: window.innerWidth - rect.left + 4,
-          transform: "translateY(-50%) rotate(90deg)",
-        };
+        return { position: "fixed", top: cy, right: window.innerWidth - rect.left + 4, transform: "translateY(-50%) rotate(90deg)" };
       default:
         return null;
     }
@@ -230,135 +426,88 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
   const arrowStyle = getArrowStyle();
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200]"
-    >
-      {/* Dark overlay with cutout */}
-      <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: "auto" }}>
-        <defs>
-          <mask id="tour-mask">
-            <rect x="0" y="0" width="100%" height="100%" fill="white" />
-            {rect && (
-              <rect
-                x={rect.left - 6}
-                y={rect.top - 6}
-                width={rect.width + 12}
-                height={rect.height + 12}
-                rx="10"
-                fill="black"
-              />
-            )}
-          </mask>
-        </defs>
-        <rect
-          x="0" y="0" width="100%" height="100%"
-          fill="rgba(0,0,0,0.75)"
-          mask="url(#tour-mask)"
-        />
-      </svg>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] pointer-events-none">
+      <div className="absolute inset-0 bg-black/45 pointer-events-none" />
 
-      {/* Highlight ring around element */}
-      {rect && (
+      {rect && !isCenter && (
         <motion.div
           layoutId="tour-ring"
           className="fixed border-2 border-primary rounded-[10px] pointer-events-none"
           style={{
-            top: rect.top - 6,
-            left: rect.left - 6,
-            width: rect.width + 12,
-            height: rect.height + 12,
+            top: rect.top - spotlightPad,
+            left: rect.left - spotlightPad,
+            width: rect.width + spotlightPad * 2,
+            height: rect.height + spotlightPad * 2,
             boxShadow: "0 0 0 4px hsl(var(--primary) / 0.2), 0 0 20px hsl(var(--primary) / 0.15)",
           }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         />
       )}
 
-      {/* Arrow */}
       {arrowStyle && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="pointer-events-none z-[201]"
-          style={arrowStyle as any}
-        >
+        <motion.div initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} className="pointer-events-none z-[201]" style={arrowStyle}>
           <svg width="16" height="8" viewBox="0 0 16 8">
             <polygon points="8,0 16,8 0,8" fill="hsl(var(--primary))" />
           </svg>
         </motion.div>
       )}
 
-      {/* Tooltip card */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={current}
-          ref={tooltipRef}
+          key={`${isMobile ? "mobile" : "desktop"}-${current}`}
           initial={{ opacity: 0, y: 10, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.95 }}
-          transition={{ duration: 0.25 }}
-          className="z-[202] w-[320px]"
+          transition={{ duration: 0.22 }}
+          className={`z-[202] ${isMobile ? "w-auto" : "w-[min(92vw,360px)] max-w-[92vw]"} pointer-events-auto`}
           style={getTooltipStyle()}
         >
-          <div className="glass-card p-5 shadow-2xl border-primary/20">
-            {/* Icon for center steps */}
+          <div className="glass-card p-4 md:p-5 shadow-2xl border-primary/20 max-h-[68vh] overflow-y-auto">
             {isCenter && (
-              <div className="flex justify-center mb-4">
+              <div className="flex justify-center mb-3">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
-                  className="h-16 w-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center"
+                  transition={{ type: "spring", stiffness: 200, delay: 0.08 }}
+                  className="h-14 w-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center"
                 >
-                  {isLast ? (
-                    <Rocket className="h-8 w-8 text-primary" />
-                  ) : (
-                    <Sparkles className="h-8 w-8 text-primary" />
-                  )}
+                  {isLast ? <Rocket className="h-7 w-7 text-primary" /> : <Sparkles className="h-7 w-7 text-primary" />}
                 </motion.div>
               </div>
             )}
 
-            {/* Counter */}
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-2 gap-2">
               <span className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
                 {current + 1} / {steps.length}
               </span>
-              {!isLast && (
+              <div className="flex items-center gap-1.5">
                 <button
-                  onClick={onComplete}
-                  className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                  onClick={closeTour}
+                  aria-label="Pular tutorial"
+                  className="px-2 py-1 rounded-md text-[10px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors inline-flex items-center gap-1"
                 >
-                  Pular <X className="h-3 w-3" />
+                  Pular tutorial
+                  <X className="h-3 w-3" />
                 </button>
-              )}
+              </div>
             </div>
 
             <h3 className="text-base font-bold mb-1.5">{step.title}</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-              {step.description}
-            </p>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4">{step.description}</p>
 
-            {/* Progress + Nav */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex gap-1">
                 {steps.map((_, i) => (
                   <div
                     key={i}
                     className={`h-1 rounded-full transition-all duration-300 ${
-                      i === current
-                        ? "w-5 bg-primary"
-                        : i < current
-                          ? "w-1.5 bg-primary/40"
-                          : "w-1.5 bg-muted-foreground/20"
+                      i === current ? "w-5 bg-primary" : i < current ? "w-1.5 bg-primary/40" : "w-1.5 bg-muted-foreground/20"
                     }`}
                   />
                 ))}
               </div>
 
-              <div className="flex gap-1.5">
+              <div className="flex items-center gap-1.5">
                 {!isFirst && (
                   <button
                     onClick={prev}
@@ -371,7 +520,7 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
                   onClick={next}
                   className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
-                  {isLast ? "Começar!" : "Próximo"}
+                  {isLast ? "Começar" : "Próximo"}
                   {!isLast && <ArrowRight className="h-3.5 w-3.5" />}
                 </button>
               </div>
