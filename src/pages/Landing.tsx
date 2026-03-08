@@ -96,14 +96,14 @@ const Landing = () => {
           backgroundSize: '32px 32px',
         }} />
         {/* Floating particles */}
-        <FloatingParticle delay={0} x="10%" size={5} />
-        <FloatingParticle delay={2} x="25%" size={4} />
-        <FloatingParticle delay={4} x="50%" size={6} />
-        <FloatingParticle delay={1} x="70%" size={4} />
-        <FloatingParticle delay={3} x="85%" size={5} />
-        <FloatingParticle delay={5} x="40%" size={3} />
-        <FloatingParticle delay={6} x="60%" size={4} />
-        <FloatingParticle delay={7} x="15%" size={3} />
+        <FloatingParticle delay={0} x="8%" size={18} />
+        <FloatingParticle delay={2} x="22%" size={12} />
+        <FloatingParticle delay={4} x="48%" size={24} />
+        <FloatingParticle delay={1} x="68%" size={14} />
+        <FloatingParticle delay={3} x="82%" size={20} />
+        <FloatingParticle delay={5} x="38%" size={10} />
+        <FloatingParticle delay={6} x="58%" size={16} />
+        <FloatingParticle delay={7} x="14%" size={8} />
       </div>
 
       {/* Header */}
