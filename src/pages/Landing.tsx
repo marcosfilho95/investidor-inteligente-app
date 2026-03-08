@@ -135,8 +135,9 @@ const Landing = () => {
 
         {/* Chart lines */}
         <FloatingChart delay={2} x="10%" />
-        <FloatingChart delay={6.5} x="52%" />
+        <FloatingChart delay={6.5} x="52%" bearish />
         <FloatingChart delay={9.5} x="78%" />
+        <FloatingChart delay={4} x="32%" bearish />
       </div>
 
       {/* Header */}
