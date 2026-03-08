@@ -224,7 +224,7 @@ const Landing = () => {
           {[
             { value: 25, suffix: "+", label: "Ativos da B3" },
             { value: 100, suffix: "%", label: "Gratuito pra sempre" },
-            { value: 24, suffix: "/7", label: "IA sem limite de mensagens" },
+            { value: 24, suffix: "/7", label: "Sem limite de mensagens", title: "IA" },
           ].map((stat, i) => (
             <div key={stat.label} className="text-center flex flex-col items-center">
               <div className="text-2xl md:text-3xl font-bold text-foreground font-mono">
