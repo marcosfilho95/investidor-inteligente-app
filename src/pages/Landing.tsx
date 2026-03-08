@@ -257,7 +257,7 @@ const Landing = () => {
 
       {/* SECTION 2 — Features */}
       <FoldSection index={1}>
-        <section className="max-w-[1200px] mx-auto px-6 py-24 relative z-10">
+        <section id="features" className="max-w-[1200px] mx-auto px-6 py-24 relative z-10">
           <div className="text-center mb-16">
             <motion.span
               initial={{ opacity: 0 }}
