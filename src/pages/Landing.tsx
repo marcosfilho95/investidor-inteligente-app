@@ -44,20 +44,37 @@ function FoldSection({ children, index }: { children: React.ReactNode; index: nu
   );
 }
 
-function FloatingParticle({ delay, x, size }: { delay: number; x: string; size: number }) {
+function FloatingCandle({ delay, x, bullish }: { delay: number; x: string; bullish: boolean }) {
+  const bodyH = 12 + Math.random() * 16;
+  const wickH = 4 + Math.random() * 8;
+  const color = bullish ? "hsl(var(--gain))" : "hsl(var(--loss))";
+
   return (
     <motion.div
-      className="absolute rounded-full border border-primary/30 bg-primary/5"
-      style={{ left: x, width: size, height: size, boxShadow: `0 0 ${size}px hsl(var(--primary) / 0.15)` }}
+      className="absolute flex flex-col items-center"
+      style={{ left: x }}
       initial={{ y: "100vh", opacity: 0 }}
-      animate={{ y: "-10vh", opacity: [0, 0.9, 0.9, 0] }}
+      animate={{ y: "-10vh", opacity: [0, 0.25, 0.25, 0] }}
       transition={{
-        duration: 10 + Math.random() * 6,
+        duration: 14 + Math.random() * 8,
         delay,
         repeat: Infinity,
         ease: "linear",
       }}
-    />
+    >
+      <div style={{ width: 1, height: wickH, backgroundColor: color, opacity: 0.4 }} />
+      <div
+        style={{
+          width: 6,
+          height: bodyH,
+          border: `1px solid ${color}`,
+          backgroundColor: bullish ? "transparent" : color,
+          opacity: bullish ? 0.3 : 0.15,
+          borderRadius: 1,
+        }}
+      />
+      <div style={{ width: 1, height: wickH * 0.7, backgroundColor: color, opacity: 0.4 }} />
+    </motion.div>
   );
 }
 
