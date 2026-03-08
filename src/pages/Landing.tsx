@@ -98,9 +98,20 @@ const Landing = () => {
           transition={{ delay: 0.7, duration: 0.6 }}
           className="flex items-center justify-center gap-4 mt-10"
         >
-          <Link to="/login" className="group inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 transition-all duration-300 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:scale-[1.03]">
-            Criar conta gratuita
-            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+          <Link to="/login" className="group relative inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 transition-all duration-300 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:scale-[1.03] overflow-hidden">
+            {/* Shine / mirror effect */}
+            <motion.span
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0.35) 55%, transparent 60%)",
+              }}
+              animate={{ x: ["-120%", "120%"] }}
+              transition={{ duration: 1.2, repeat: Infinity, repeatDelay: 10, ease: "easeInOut" }}
+            />
+            <span className="relative z-10 flex items-center gap-2">
+              Criar conta gratuita
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </span>
           </Link>
         </motion.div>
 
