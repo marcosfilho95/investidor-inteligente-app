@@ -152,11 +152,10 @@ const Login = () => {
             ))}
           </div>
 
-          <div className="mt-10 grid grid-cols-3 gap-4">
+          <div className="mt-10 grid grid-cols-2 gap-4">
             {[
-              { label: "Ativos", value: "25" },
-              { label: "Indicadores", value: "20+" },
-              { label: "Trilhas de estudo", value: "6" },
+              { label: "Indicadores fundamentalistas", value: "20+" },
+              { label: 'Trilhas de conteúdo educativo', value: "6" },
             ].map((stat, i) => (
               <motion.div
                 key={stat.label}
