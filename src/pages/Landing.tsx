@@ -47,10 +47,10 @@ function FoldSection({ children, index }: { children: React.ReactNode; index: nu
 function FloatingParticle({ delay, x, size }: { delay: number; x: string; size: number }) {
   return (
     <motion.div
-      className="absolute rounded-full bg-primary/40"
-      style={{ left: x, width: size, height: size }}
+      className="absolute rounded-full border border-primary/30 bg-primary/5"
+      style={{ left: x, width: size, height: size, boxShadow: `0 0 ${size}px hsl(var(--primary) / 0.15)` }}
       initial={{ y: "100vh", opacity: 0 }}
-      animate={{ y: "-10vh", opacity: [0, 0.8, 0.8, 0] }}
+      animate={{ y: "-10vh", opacity: [0, 0.9, 0.9, 0] }}
       transition={{
         duration: 10 + Math.random() * 6,
         delay,
@@ -96,14 +96,14 @@ const Landing = () => {
           backgroundSize: '32px 32px',
         }} />
         {/* Floating particles */}
-        <FloatingParticle delay={0} x="10%" size={5} />
-        <FloatingParticle delay={2} x="25%" size={4} />
-        <FloatingParticle delay={4} x="50%" size={6} />
-        <FloatingParticle delay={1} x="70%" size={4} />
-        <FloatingParticle delay={3} x="85%" size={5} />
-        <FloatingParticle delay={5} x="40%" size={3} />
-        <FloatingParticle delay={6} x="60%" size={4} />
-        <FloatingParticle delay={7} x="15%" size={3} />
+        <FloatingParticle delay={0} x="8%" size={18} />
+        <FloatingParticle delay={2} x="22%" size={12} />
+        <FloatingParticle delay={4} x="48%" size={24} />
+        <FloatingParticle delay={1} x="68%" size={14} />
+        <FloatingParticle delay={3} x="82%" size={20} />
+        <FloatingParticle delay={5} x="38%" size={10} />
+        <FloatingParticle delay={6} x="58%" size={16} />
+        <FloatingParticle delay={7} x="14%" size={8} />
       </div>
 
       {/* Header */}
