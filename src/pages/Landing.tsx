@@ -231,58 +231,109 @@ const Landing = () => {
         <section className="max-w-[1200px] mx-auto px-6 py-24 relative z-10">
           <motion.div
             whileHover={{ scale: 1.005, transition: { duration: 0.4 } }}
-            className="glass-card p-10 md:p-16 text-center relative overflow-hidden"
+            className="glass-card p-10 md:p-16 text-center relative overflow-hidden border-primary/10"
           >
+            {/* Animated gradient background */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-primary/4" />
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-              className="absolute -top-32 -right-32 w-80 h-80 bg-primary/5 rounded-full blur-[80px]"
+              className="absolute -top-32 -right-32 w-96 h-96 bg-primary/8 rounded-full blur-[100px]"
             />
             <motion.div
               animate={{ rotate: -360 }}
               transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
-              className="absolute -bottom-32 -left-32 w-80 h-80 bg-primary/5 rounded-full blur-[80px]"
+              className="absolute -bottom-32 -left-32 w-96 h-96 bg-primary/8 rounded-full blur-[100px]"
+            />
+            {/* Scanning line effect */}
+            <motion.div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: "linear-gradient(180deg, transparent 0%, hsl(var(--primary) / 0.04) 50%, transparent 100%)",
+                height: "30%",
+              }}
+              animate={{ y: ["0%", "350%", "0%"] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
             />
 
             <div className="relative z-10">
+              {/* Icon with pulse ring */}
               <motion.div
                 initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
                 whileInView={{ scale: 1, opacity: 1, rotate: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.7, ease }}
-                className="h-20 w-20 rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary/10"
+                className="relative h-20 w-20 mx-auto mb-8"
               >
-                <Bot className="h-10 w-10 text-primary" />
+                <motion.div
+                  className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl"
+                  animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0.1, 0.3] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                />
+                <div className="relative h-20 w-20 rounded-2xl bg-primary/15 border border-primary/25 flex items-center justify-center shadow-2xl shadow-primary/20">
+                  <Bot className="h-10 w-10 text-primary" />
+                </div>
               </motion.div>
+
               <motion.h2
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.2, duration: 0.6 }}
-                className="text-3xl md:text-4xl font-bold mb-3 text-foreground"
+                className="text-3xl md:text-4xl font-bold mb-4 text-foreground"
               >
-                Conheça o Hodl 🤖
+                Conheça o <span className="text-primary">Hodl</span>
               </motion.h2>
               <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.3, duration: 0.6 }}
-                className="text-muted-foreground text-base max-w-lg mx-auto mb-8 leading-relaxed"
+                className="text-muted-foreground text-base max-w-lg mx-auto mb-4 leading-relaxed"
               >
                 Seu assistente inteligente que te acompanha na jornada de investimentos.
                 Pergunte qualquer coisa — de "o que é renda fixa?" até "como diversificar minha carteira?".
               </motion.p>
+
+              {/* Chat preview bubbles */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: 0.4, duration: 0.6 }}
+                transition={{ delay: 0.35, duration: 0.6 }}
+                className="max-w-md mx-auto mb-8 space-y-3"
               >
-                <Link to="/login" className="group inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 transition-all duration-300 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:scale-[1.03]">
-                  Começar agora
-                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                <div className="flex justify-end">
+                  <div className="bg-primary/15 border border-primary/20 rounded-2xl rounded-br-md px-4 py-2.5 text-sm text-foreground max-w-[75%]">
+                    O que é renda fixa?
+                  </div>
+                </div>
+                <div className="flex justify-start">
+                  <div className="bg-secondary/80 border border-border/50 rounded-2xl rounded-bl-md px-4 py-2.5 text-sm text-muted-foreground max-w-[85%] text-left">
+                    Renda fixa é como emprestar dinheiro e receber juros por isso. É previsível e seguro — ideal pra começar! 💡
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.45, duration: 0.6 }}
+              >
+                <Link to="/login" className="group relative inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 transition-all duration-300 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 hover:scale-[1.03] overflow-hidden">
+                  <motion.span
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background: "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0.35) 55%, transparent 60%)",
+                    }}
+                    animate={{ x: ["-120%", "120%"] }}
+                    transition={{ duration: 1.2, repeat: Infinity, repeatDelay: 10, ease: "easeInOut" }}
+                  />
+                  <span className="relative z-10 flex items-center gap-2">
+                    Conversar com o Hodl
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </span>
                 </Link>
               </motion.div>
             </div>
