@@ -83,13 +83,17 @@ function FloatingArrow({ delay, x, up }: { delay: number; x: string; up: boolean
   );
 }
 
-function FloatingChart({ delay, x }: { delay: number; x: string }) {
+function FloatingChart({ delay, x, bearish = false }: { delay: number; x: string; bearish?: boolean }) {
+  const points = bearish
+    ? "0,3 7,9 14,5 21,12 28,10 36,16"
+    : "0,14 7,11 14,15 21,7 28,9 36,3";
+  const color = bearish ? "hsl(var(--loss))" : "hsl(var(--primary))";
   return (
     <motion.svg className="absolute" width="36" height="18" viewBox="0 0 36 18" style={{ left: x }}
       initial={{ y: "100vh", opacity: 0 }}
       animate={{ y: "-10vh", opacity: [0, 0.15, 0.15, 0] }}
       transition={{ duration: 18 + Math.random() * 8, delay, repeat: Infinity, ease: "linear" }}>
-      <polyline points="0,14 7,11 14,15 21,7 28,9 36,3" fill="none" stroke="hsl(var(--primary))" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
     </motion.svg>
   );
 }
@@ -131,8 +135,9 @@ const Landing = () => {
 
         {/* Chart lines */}
         <FloatingChart delay={2} x="10%" />
-        <FloatingChart delay={6.5} x="52%" />
+        <FloatingChart delay={6.5} x="52%" bearish />
         <FloatingChart delay={9.5} x="78%" />
+        <FloatingChart delay={4} x="32%" bearish />
       </div>
 
       {/* Header */}
