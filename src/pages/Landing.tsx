@@ -281,7 +281,7 @@ const Landing = () => {
                   onClick={goToSignup}
                   className="premium-cta group inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base shadow-xl shadow-primary/30 transition-all duration-300 ease-out hover:bg-primary/90"
                 >
-                  Conversar com HODL
+                  Conversar com Hodl
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </motion.div>
