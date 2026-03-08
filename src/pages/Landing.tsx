@@ -81,7 +81,12 @@ const Landing = () => {
             <span className="font-semibold text-sm tracking-tight text-foreground">Investidor Inteligente</span>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Entrar</Link>
+            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="GitHub">
+              <Github className="h-5 w-5" />
+            </a>
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Instagram">
+              <Instagram className="h-5 w-5" />
+            </a>
             <Link to="/login" className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/25">Começar grátis</Link>
           </div>
         </div>
