@@ -47,12 +47,12 @@ function FoldSection({ children, index }: { children: React.ReactNode; index: nu
 function FloatingParticle({ delay, x, size }: { delay: number; x: string; size: number }) {
   return (
     <motion.div
-      className="absolute rounded-full bg-primary/20"
+      className="absolute rounded-full bg-primary/40"
       style={{ left: x, width: size, height: size }}
       initial={{ y: "100vh", opacity: 0 }}
-      animate={{ y: "-10vh", opacity: [0, 0.6, 0.6, 0] }}
+      animate={{ y: "-10vh", opacity: [0, 0.8, 0.8, 0] }}
       transition={{
-        duration: 12 + Math.random() * 8,
+        duration: 10 + Math.random() * 6,
         delay,
         repeat: Infinity,
         ease: "linear",
