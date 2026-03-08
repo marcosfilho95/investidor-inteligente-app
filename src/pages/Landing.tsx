@@ -4,6 +4,7 @@ import { motion, useInView } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 import AnimatedBackground from "@/components/landing/FloatingElements";
 import FoldSection from "@/components/landing/FoldSection";
+import ChatSimulation from "@/components/landing/ChatSimulation";
 
 const features = [
   { icon: Bot, title: "Hodl — Assistente IA", description: "Tire dúvidas sobre investimentos a qualquer momento. O Hodl explica conceitos de forma simples e te ajuda a tomar decisões." },
@@ -295,25 +296,8 @@ const Landing = () => {
                 Pergunte qualquer coisa — de "o que é renda fixa?" até "como diversificar minha carteira?".
               </motion.p>
 
-              {/* Chat preview bubbles */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.35, duration: 0.6 }}
-                className="max-w-md mx-auto mb-8 space-y-3"
-              >
-                <div className="flex justify-end">
-                  <div className="bg-primary/15 border border-primary/20 rounded-2xl rounded-br-md px-4 py-2.5 text-sm text-foreground max-w-[75%]">
-                    O que é renda fixa?
-                  </div>
-                </div>
-                <div className="flex justify-start">
-                  <div className="bg-secondary/80 border border-border/50 rounded-2xl rounded-bl-md px-4 py-2.5 text-sm text-muted-foreground max-w-[85%] text-left">
-                    Renda fixa é como emprestar dinheiro e receber juros por isso. É previsível e seguro — ideal pra começar! 💡
-                  </div>
-                </div>
-              </motion.div>
+              {/* Chat simulation */}
+              <ChatSimulation />
 
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
