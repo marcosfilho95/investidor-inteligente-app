@@ -24,7 +24,7 @@ function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
   );
 }
 
-const ease = [0.16, 1, 0.3, 1];
+const ease = [0.16, 1, 0.3, 1] as const;
 
 const Landing = () => {
   return (
