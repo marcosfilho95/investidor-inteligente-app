@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { LayoutDashboard, BookOpen, TrendingUp, Bot, Shield, BarChart3, ArrowRight, Sparkles, ChevronDown } from "lucide-react";
 import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import AnimatedBackground from "@/components/landing/FloatingElements";
 import FoldSection from "@/components/landing/FoldSection";
 
