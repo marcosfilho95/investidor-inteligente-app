@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { LayoutDashboard, BookOpen, TrendingUp, Bot, Shield, BarChart3, ArrowRight, Sparkles, ChevronDown } from "lucide-react";
 import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import AnimatedBackground from "@/components/landing/FloatingElements";
 import FoldSection from "@/components/landing/FoldSection";
 
@@ -21,6 +21,40 @@ function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
     <motion.span ref={ref} initial={{ opacity: 0 }} animate={isInView ? { opacity: 1 } : {}}>
       {isInView && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{value}{suffix}</motion.span>}
     </motion.span>
+  );
+}
+
+function Typewriter({ text, delay = 1, speed = 80 }: { text: string; delay?: number; speed?: number }) {
+  const [displayed, setDisplayed] = useState("");
+  const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setStarted(true), delay * 1000);
+    return () => clearTimeout(timeout);
+  }, [delay]);
+
+  useEffect(() => {
+    if (!started) return;
+    if (displayed.length < text.length) {
+      const timeout = setTimeout(() => setDisplayed(text.slice(0, displayed.length + 1)), speed);
+      return () => clearTimeout(timeout);
+    }
+  }, [started, displayed, text, speed]);
+
+  return (
+    <span
+      className="text-primary"
+      style={{ textShadow: "0 0 30px hsl(var(--primary) / 0.4), 0 0 60px hsl(var(--primary) / 0.15)" }}
+    >
+      {displayed}
+      {started && displayed.length < text.length && (
+        <motion.span
+          animate={{ opacity: [1, 0] }}
+          transition={{ duration: 0.5, repeat: Infinity }}
+          className="text-primary"
+        >|</motion.span>
+      )}
+    </span>
   );
 }
 
@@ -71,31 +105,7 @@ const Landing = () => {
           className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] max-w-4xl mx-auto text-foreground"
         >
           Aprenda a investir com{" "}
-          <motion.span
-            className="relative inline-block"
-            initial={{ backgroundSize: "0% 100%" }}
-            animate={{ backgroundSize: "100% 100%" }}
-            transition={{ delay: 1, duration: 1.2, ease }}
-            style={{
-              backgroundImage: "linear-gradient(120deg, hsl(var(--primary) / 0.25) 0%, hsl(var(--primary) / 0.15) 100%)",
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "0 85%",
-              padding: "0 0.15em",
-              borderRadius: "0.2em",
-            }}
-          >
-            <motion.span
-              className="text-primary"
-              initial={{ opacity: 0, filter: "blur(8px)" }}
-              animate={{ opacity: 1, filter: "blur(0px)" }}
-              transition={{ delay: 0.8, duration: 0.9, ease }}
-              style={{
-                textShadow: "0 0 30px hsl(var(--primary) / 0.4), 0 0 60px hsl(var(--primary) / 0.15)",
-              }}
-            >
-              inteligência
-            </motion.span>
-          </motion.span>
+          <Typewriter text="inteligência" delay={1.2} speed={90} />
         </motion.h1>
 
         <motion.p
