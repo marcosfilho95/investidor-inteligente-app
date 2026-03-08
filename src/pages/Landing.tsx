@@ -24,6 +24,40 @@ function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
   );
 }
 
+function Typewriter({ text, delay = 1, speed = 80 }: { text: string; delay?: number; speed?: number }) {
+  const [displayed, setDisplayed] = useState("");
+  const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setStarted(true), delay * 1000);
+    return () => clearTimeout(timeout);
+  }, [delay]);
+
+  useEffect(() => {
+    if (!started) return;
+    if (displayed.length < text.length) {
+      const timeout = setTimeout(() => setDisplayed(text.slice(0, displayed.length + 1)), speed);
+      return () => clearTimeout(timeout);
+    }
+  }, [started, displayed, text, speed]);
+
+  return (
+    <span
+      className="text-primary"
+      style={{ textShadow: "0 0 30px hsl(var(--primary) / 0.4), 0 0 60px hsl(var(--primary) / 0.15)" }}
+    >
+      {displayed}
+      {started && displayed.length < text.length && (
+        <motion.span
+          animate={{ opacity: [1, 0] }}
+          transition={{ duration: 0.5, repeat: Infinity }}
+          className="text-primary"
+        >|</motion.span>
+      )}
+    </span>
+  );
+}
+
 const ease = [0.16, 1, 0.3, 1] as const;
 
 const Landing = () => {
