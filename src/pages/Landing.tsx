@@ -58,11 +58,11 @@ function Typewriter({
   return (
     <span className="inline-flex items-center text-primary [text-shadow:0_0_10px_hsl(var(--primary)/0.22),0_0_24px_hsl(var(--primary)/0.14)]">
       <span>{displayed}</span>
-      {started && displayed.length < text.length && (
+      {started && (
         <motion.span
           className="ml-1 inline-block h-[0.9em] w-[2px] rounded bg-primary/85"
-          animate={{ opacity: [1, 0.2, 1] }}
-          transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+          animate={{ opacity: [1, 1, 0, 0, 1] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: "linear", times: [0, 0.38, 0.4, 0.88, 1] }}
         />
       )}
     </span>
@@ -108,6 +108,13 @@ const Landing = () => {
     window.setTimeout(() => navigate("/login"), 300);
   };
 
+  const goToSignup = (e: MouseEvent<HTMLElement>) => {
+    e.preventDefault();
+    if (isLeaving) return;
+    setIsLeaving(true);
+    window.setTimeout(() => navigate("/login?mode=signup"), 300);
+  };
+
   return (
     <div
       className={`min-h-screen bg-background relative overflow-hidden transition-all duration-300 ease-out motion-reduce:transition-none ${
@@ -125,11 +132,12 @@ const Landing = () => {
             <span className="font-semibold text-sm tracking-tight">Investidor Inteligente</span>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/login" onClick={goToLogin} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              to="/login"
+              onClick={goToLogin}
+              className="px-4 py-1.5 rounded-lg border border-primary/45 bg-primary/10 text-primary text-sm font-semibold hover:bg-primary/15 hover:border-primary/60 transition-colors"
+            >
               Entrar
-            </Link>
-            <Link to="/login" onClick={goToLogin} className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-              Começar grátis
             </Link>
           </div>
         </div>
@@ -164,8 +172,8 @@ const Landing = () => {
 
           <motion.div variants={fadeUp} className="flex items-center justify-center gap-4 mt-10">
             <Link
-              to="/login"
-              onClick={goToLogin}
+              to="/login?mode=signup"
+              onClick={goToSignup}
               className="premium-cta group inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base shadow-xl shadow-primary/30 transition-all duration-300 hover:bg-primary/90 hover:shadow-2xl hover:shadow-primary/40"
             >
               Criar conta gratuita
@@ -269,11 +277,11 @@ const Landing = () => {
               </motion.div>
               <motion.div variants={fadeUp}>
                 <Link
-                  to="/login"
-                  onClick={goToLogin}
+                  to="/login?mode=signup"
+                  onClick={goToSignup}
                   className="premium-cta group inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-base shadow-xl shadow-primary/30 transition-all duration-300 ease-out hover:bg-primary/90"
                 >
-                  Começar agora
+                  Conversar com HODL
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </motion.div>

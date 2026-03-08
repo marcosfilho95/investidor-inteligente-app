@@ -1,5 +1,5 @@
-﻿import { useState, type MouseEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+﻿import { useEffect, useState, type MouseEvent } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { LayoutDashboard, Eye, EyeOff, Mail, Lock, ArrowRight, User, TrendingUp, Shield, Bot } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import AnimatedBackground from "@/components/landing/FloatingElements";
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,6 +20,13 @@ const Login = () => {
   const [focused, setFocused] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const mode = searchParams.get("mode");
+    if (mode === "signup") {
+      setIsLogin(false);
+    }
+  }, [searchParams]);
 
   const getPasswordStrength = (value: string) => {
     let score = 0;
@@ -323,3 +331,6 @@ const Login = () => {
 };
 
 export default Login;
+
+
+
