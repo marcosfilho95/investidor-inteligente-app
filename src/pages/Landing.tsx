@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { LayoutDashboard, BookOpen, TrendingUp, Bot, Shield, BarChart3, ArrowRight, Sparkles, ChevronDown } from "lucide-react";
-import { motion, useScroll, useTransform, useInView } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import AnimatedBackground from "@/components/landing/FloatingElements";
+import FoldSection from "@/components/landing/FoldSection";
 
 const features = [
   { icon: Bot, title: "Hodl — Assistente IA", description: "Tire dúvidas sobre investimentos a qualquer momento. O Hodl explica conceitos de forma simples e te ajuda a tomar decisões." },
@@ -11,92 +13,6 @@ const features = [
   { icon: Shield, title: "Ambiente Seguro", description: "Pratique com simulações antes de investir de verdade. Aprenda sem riscos financeiros." },
   { icon: Sparkles, title: "Personalizado para Você", description: "Recomendações e conteúdos adaptados ao seu perfil de investidor e objetivos." },
 ];
-
-function FoldSection({ children, index }: { children: React.ReactNode; index: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "start 0.15"],
-  });
-
-  const rotateX = useTransform(scrollYProgress, [0, 1], [12, 0]);
-  const scale = useTransform(scrollYProgress, [0, 1], [0.88, 1]);
-  const opacity = useTransform(scrollYProgress, [0, 0.4, 1], [0, 0.6, 1]);
-  const y = useTransform(scrollYProgress, [0, 1], [80, 0]);
-  const blur = useTransform(scrollYProgress, [0, 0.6, 1], [6, 2, 0]);
-
-  return (
-    <motion.div
-      ref={ref}
-      style={{
-        rotateX,
-        scale,
-        opacity,
-        y,
-        filter: useTransform(blur, (v) => `blur(${v}px)`),
-        transformPerspective: 1400,
-        transformOrigin: "top center",
-      }}
-      className="will-change-transform"
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function FloatingCandle({ delay, x, bullish }: { delay: number; x: string; bullish: boolean }) {
-  const bodyH = 10 + Math.random() * 14;
-  const wickH = 3 + Math.random() * 6;
-  const color = bullish ? "hsl(var(--gain))" : "hsl(var(--loss))";
-  return (
-    <motion.div className="absolute flex flex-col items-center" style={{ left: x }}
-      initial={{ y: "100vh", opacity: 0 }}
-      animate={{ y: "-10vh", opacity: [0, 0.22, 0.22, 0] }}
-      transition={{ duration: 14 + Math.random() * 8, delay, repeat: Infinity, ease: "linear" }}>
-      <div style={{ width: 1, height: wickH, backgroundColor: color, opacity: 0.35 }} />
-      <div style={{ width: 5, height: bodyH, border: `1px solid ${color}`, backgroundColor: bullish ? "transparent" : color, opacity: bullish ? 0.25 : 0.12, borderRadius: 1 }} />
-      <div style={{ width: 1, height: wickH * 0.7, backgroundColor: color, opacity: 0.35 }} />
-    </motion.div>
-  );
-}
-
-function FloatingTicker({ delay, x, ticker }: { delay: number; x: string; ticker: string }) {
-  return (
-    <motion.span className="absolute font-mono text-[10px] text-primary/20 select-none" style={{ left: x }}
-      initial={{ y: "100vh", opacity: 0 }}
-      animate={{ y: "-10vh", opacity: [0, 0.18, 0.18, 0] }}
-      transition={{ duration: 16 + Math.random() * 10, delay, repeat: Infinity, ease: "linear" }}>
-      {ticker}
-    </motion.span>
-  );
-}
-
-function FloatingArrow({ delay, x, up }: { delay: number; x: string; up: boolean }) {
-  return (
-    <motion.span className="absolute text-[11px] select-none"
-      style={{ left: x, color: up ? "hsl(var(--gain))" : "hsl(var(--loss))" }}
-      initial={{ y: "100vh", opacity: 0 }}
-      animate={{ y: "-10vh", opacity: [0, 0.2, 0.2, 0] }}
-      transition={{ duration: 12 + Math.random() * 8, delay, repeat: Infinity, ease: "linear" }}>
-      {up ? "↑" : "↓"}
-    </motion.span>
-  );
-}
-
-function FloatingChart({ delay, x, bearish = false }: { delay: number; x: string; bearish?: boolean }) {
-  const points = bearish
-    ? "0,3 7,9 14,5 21,12 28,10 36,16"
-    : "0,14 7,11 14,15 21,7 28,9 36,3";
-  const color = bearish ? "hsl(var(--loss))" : "hsl(var(--primary))";
-  return (
-    <motion.svg className="absolute" width="36" height="18" viewBox="0 0 36 18" style={{ left: x }}
-      initial={{ y: "100vh", opacity: 0 }}
-      animate={{ y: "-10vh", opacity: [0, 0.15, 0.15, 0] }}
-      transition={{ duration: 18 + Math.random() * 8, delay, repeat: Infinity, ease: "linear" }}>
-      <polyline points={points} fill="none" stroke={color} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
-    </motion.svg>
-  );
-}
 
 function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
   const ref = useRef(null);
@@ -108,37 +24,12 @@ function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
   );
 }
 
+const ease = [0.16, 1, 0.3, 1] as const;
+
 const Landing = () => {
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Animated background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-primary/10 rounded-full blur-[90px] animate-pulse-soft" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[400px] bg-primary/7 rounded-full blur-[70px]" />
-        <div className="absolute top-1/3 right-0 w-[400px] h-[400px] bg-primary/6 rounded-full blur-[70px]" />
-        <div className="absolute inset-0" style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, hsl(var(--foreground) / 0.06) 1px, transparent 0)`,
-          backgroundSize: '32px 32px',
-        }} />
-
-        {/* Tickers */}
-        <FloatingTicker delay={1} x="15%" ticker="PETR4" />
-        <FloatingTicker delay={5} x="42%" ticker="VALE3" />
-        <FloatingTicker delay={8} x="68%" ticker="ITUB4" />
-        <FloatingTicker delay={11} x="90%" ticker="WEGE3" />
-
-        {/* Arrows */}
-        <FloatingArrow delay={0.5} x="22%" up />
-        <FloatingArrow delay={3} x="48%" up={false} />
-        <FloatingArrow delay={6} x="72%" up />
-        <FloatingArrow delay={9} x="36%" up={false} />
-
-        {/* Chart lines */}
-        <FloatingChart delay={2} x="10%" />
-        <FloatingChart delay={6.5} x="52%" bearish />
-        <FloatingChart delay={9.5} x="78%" />
-        <FloatingChart delay={4} x="32%" bearish />
-      </div>
+      <AnimatedBackground />
 
       {/* Header */}
       <motion.header
@@ -166,7 +57,7 @@ const Landing = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.8, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ delay: 0.15, duration: 0.6, ease }}
           className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium mb-8"
         >
           <Sparkles className="h-3 w-3" />
@@ -176,7 +67,7 @@ const Landing = () => {
         <motion.h1
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ delay: 0.3, duration: 0.8, ease }}
           className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] max-w-4xl mx-auto text-foreground"
         >
           Aprenda a investir com{" "}
@@ -185,7 +76,7 @@ const Landing = () => {
             <motion.span
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
-              transition={{ delay: 1, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ delay: 1, duration: 0.8, ease }}
               className="absolute -bottom-2 left-0 w-full h-1 bg-primary/40 rounded-full origin-left"
             />
           </span>
@@ -194,7 +85,7 @@ const Landing = () => {
         <motion.p
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ delay: 0.5, duration: 0.7, ease }}
           className="text-muted-foreground text-lg md:text-xl mt-6 max-w-2xl mx-auto leading-relaxed"
         >
           Um ambiente amigável e educativo para investidores iniciantes. Invista, aprenda e conte com o{" "}
@@ -253,12 +144,11 @@ const Landing = () => {
           </motion.div>
         </motion.div>
 
-        {/* Section divider */}
         <div className="mt-8 h-px w-full max-w-xl mx-auto bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
       </section>
 
       {/* SECTION 2 — Features */}
-      <FoldSection index={1}>
+      <FoldSection>
         <section id="features" className="max-w-[1200px] mx-auto px-6 py-24 relative z-10">
           <div className="text-center mb-16">
             <motion.span
@@ -279,11 +169,10 @@ const Landing = () => {
                 initial={{ opacity: 0, y: 40, rotateX: 10 }}
                 whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
                 viewport={{ once: true, amount: 0.2 }}
-                transition={{ delay: i * 0.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ delay: i * 0.1, duration: 0.6, ease }}
                 whileHover={{ y: -6, scale: 1.02, transition: { duration: 0.25 } }}
                 className="glass-card p-7 hover:border-primary/40 transition-all duration-300 group relative overflow-hidden cursor-default"
               >
-                {/* Hover glow */}
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <div className="relative z-10">
                   <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/20 group-hover:shadow-lg group-hover:shadow-primary/10 transition-all duration-300">
@@ -301,13 +190,12 @@ const Landing = () => {
       </FoldSection>
 
       {/* SECTION 3 — Hodl CTA */}
-      <FoldSection index={2}>
+      <FoldSection>
         <section className="max-w-[1200px] mx-auto px-6 py-24 relative z-10">
           <motion.div
             whileHover={{ scale: 1.005, transition: { duration: 0.4 } }}
             className="glass-card p-10 md:p-16 text-center relative overflow-hidden"
           >
-            {/* Animated background layers */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-primary/4" />
             <motion.div
               animate={{ rotate: 360 }}
@@ -325,7 +213,7 @@ const Landing = () => {
                 initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
                 whileInView={{ scale: 1, opacity: 1, rotate: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.7, ease }}
                 className="h-20 w-20 rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary/10"
               >
                 <Bot className="h-10 w-10 text-primary" />
