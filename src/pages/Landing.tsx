@@ -219,18 +219,18 @@ const Landing = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.9, duration: 0.6 }}
-          className="flex items-center justify-center gap-8 md:gap-12 mt-16"
+          className="flex items-center justify-center gap-16 md:gap-24 mt-16"
         >
           {[
             { value: 25, suffix: "+", label: "Ativos da B3" },
             { value: 100, suffix: "%", label: "Gratuito pra sempre" },
             { value: 24, suffix: "/7", label: "IA sem limite de mensagens" },
-          ].map((stat) => (
-            <div key={stat.label} className="text-center">
+          ].map((stat, i) => (
+            <div key={stat.label} className="text-center flex flex-col items-center">
               <div className="text-2xl md:text-3xl font-bold text-foreground font-mono">
                 <CountUp value={stat.value} suffix={stat.suffix} />
               </div>
-              <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
+              <div className="text-xs text-muted-foreground mt-1.5">{stat.label}</div>
             </div>
           ))}
         </motion.div>
