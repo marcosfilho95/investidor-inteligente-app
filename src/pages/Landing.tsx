@@ -240,13 +240,14 @@ const Landing = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.5 }}
-          className="mt-16"
+          className="mt-16 cursor-pointer"
+          onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
         >
           <motion.div
             animate={{ y: [0, 8, 0] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           >
-            <ChevronDown className="h-5 w-5 text-muted-foreground/50" />
+            <ChevronDown className="h-5 w-5 text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
           </motion.div>
         </motion.div>
 
@@ -256,7 +257,7 @@ const Landing = () => {
 
       {/* SECTION 2 — Features */}
       <FoldSection index={1}>
-        <section className="max-w-[1200px] mx-auto px-6 py-24 relative z-10">
+        <section id="features" className="max-w-[1200px] mx-auto px-6 py-24 relative z-10">
           <div className="text-center mb-16">
             <motion.span
               initial={{ opacity: 0 }}
