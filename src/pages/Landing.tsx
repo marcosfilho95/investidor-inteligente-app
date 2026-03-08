@@ -187,9 +187,9 @@ const Landing = () => {
           className="flex items-center justify-center gap-8 md:gap-12 mt-16"
         >
           {[
-            { value: 25, suffix: "+", label: "Ativos B3" },
-            { value: 100, suffix: "%", label: "Gratuito" },
-            { value: 24, suffix: "/7", label: "IA disponível" },
+            { value: 25, suffix: "+", label: "Ativos da B3" },
+            { value: 100, suffix: "%", label: "Gratuito pra sempre" },
+            { value: 24, suffix: "/7", label: "Assistente IA" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <div className="text-2xl md:text-3xl font-bold text-foreground font-mono">
