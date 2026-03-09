@@ -18,6 +18,7 @@ export interface Holding {
   category: string;
   description: string;
   marketCap: string;
+  basileia?: number | null;
   pe: number | null;
   dividend: number;
   sector: string;
@@ -25,7 +26,7 @@ export interface Holding {
   pvp: number | null;
   lpa: number | null;
   vpa: number | null;
-  psr: number | null;
+  payout: number | null;
   pEbit: number | null;
   evEbit: number | null;
   evEbitda: number | null;
@@ -46,82 +47,82 @@ export interface Holding {
 export const holdings: Holding[] = [
   // 🏦 Financeiro (4)
   // 🏦 Financeiro (4) — Preços reais CSV 2026-02-25
-  { symbol: "ITUB4", name: "Itaú Unibanco", shares: 200, price: 47.79, change: -0.38, changePercent: -0.79, value: 9558, allocation: 2.34, category: "Financeiro", description: "Maior banco privado do Brasil, líder em varejo, cartões e seguros. Reconhecido pela eficiência operacional e retornos consistentes aos acionistas.", marketCap: "310B", pe: 8.2, dividend: 5.8, sector: "Financeiro", subsetor: "Bancos", pvp: 1.82, lpa: 4.08, vpa: 18.38, psr: 3.1, pEbit: 6.5, evEbit: 8.2, evEbitda: 6.8, roe: 20.8, roic: 15.2, margemBruta: 68.5, margemEbit: 32.5, margemLiquida: 24.5, cReceita5a: 8.2, cLucro5a: 12.5, giroAtivos: 0.08, liqCorrente: 1.65, divLiqPl: 2.15, divLiqEbitda: 3.85, plAtivos: 0.08 },
-  { symbol: "BBAS3", name: "Banco do Brasil", shares: 150, price: 27.58, change: 0.46, changePercent: 1.70, value: 4137, allocation: 1.52, category: "Financeiro", description: "Maior banco público do Brasil com forte presença no agronegócio. Dividendos consistentes e papel relevante no crédito rural.", marketCap: "162B", pe: 5.1, dividend: 8.2, sector: "Financeiro", subsetor: "Bancos", pvp: 0.92, lpa: 5.67, vpa: 31.43, psr: 1.8, pEbit: 4.2, evEbit: 5.8, evEbitda: 4.5, roe: 18.5, roic: 13.8, margemBruta: 62.2, margemEbit: 28.8, margemLiquida: 21.8, cReceita5a: 10.5, cLucro5a: 15.2, giroAtivos: 0.06, liqCorrente: 1.52, divLiqPl: 1.85, divLiqEbitda: 3.25, plAtivos: 0.06 },
-  { symbol: "BBDC4", name: "Bradesco", shares: 300, price: 21.17, change: -0.23, changePercent: -1.07, value: 6351, allocation: 1.61, category: "Financeiro", description: "Um dos maiores bancos do Brasil, com forte atuação em seguros (Bradesco Seguros) e presença nacional em todas as faixas de renda.", marketCap: "158B", pe: 9.5, dividend: 4.2, sector: "Financeiro", subsetor: "Bancos", pvp: 1.05, lpa: 1.61, vpa: 14.55, psr: 2.4, pEbit: 7.8, evEbit: 9.8, evEbitda: 7.5, roe: 11.2, roic: 8.5, margemBruta: 58.5, margemEbit: 22.8, margemLiquida: 15.8, cReceita5a: 5.8, cLucro5a: 3.2, giroAtivos: 0.07, liqCorrente: 1.42, divLiqPl: 2.35, divLiqEbitda: 4.15, plAtivos: 0.07 },
-  { symbol: "B3SA3", name: "B3 S.A.", shares: 400, price: 18.14, change: -0.08, changePercent: -0.44, value: 7256, allocation: 1.80, category: "Financeiro", description: "Única bolsa de valores do Brasil, responsável por toda a infraestrutura do mercado de capitais nacional. Modelo de negócio com receita recorrente.", marketCap: "68B", pe: 15.8, dividend: 3.5, sector: "Financeiro", subsetor: "Mercado de Capitais", pvp: 3.45, lpa: 0.81, vpa: 3.72, psr: 8.2, pEbit: 12.1, evEbit: 13.5, evEbitda: 11.2, roe: 22.5, roic: 18.3, margemBruta: 72.5, margemEbit: 62.8, margemLiquida: 48.2, cReceita5a: 12.8, cLucro5a: 8.5, giroAtivos: 0.28, liqCorrente: 1.85, divLiqPl: 1.12, divLiqEbitda: 1.45, plAtivos: 0.32 },
-  { symbol: "BBSE3", name: "BB Seguridade", shares: 120, price: 34.20, change: 0.48, changePercent: 1.42, value: 4104, allocation: 0.0, category: "Financeiro", description: "Seguradora e empresa de previdência ligada ao Banco do Brasil, com forte geração de caixa e pagamento recorrente de dividendos.", marketCap: "68B", pe: 8.9, dividend: 8.1, sector: "Financeiro", subsetor: "Seguros", pvp: 4.7, lpa: 3.84, vpa: 7.28, psr: 4.1, pEbit: 7.2, evEbit: 7.5, evEbitda: 0, roe: 65.2, roic: 0, margemBruta: 0, margemEbit: 0, margemLiquida: 83.5, cReceita5a: 10.2, cLucro5a: 10.8, giroAtivos: 0.0, liqCorrente: 0.0, divLiqPl: 0.0, divLiqEbitda: 0.0, plAtivos: 0.0 },
+  { symbol: "ITUB4", name: "Itaú Unibanco", shares: 200, price: 47.79, change: -0.38, changePercent: -0.79, value: 9558, allocation: 2.34, category: "Financeiro", description: "Maior banco privado do Brasil, líder em varejo, cartões e seguros. Reconhecido pela eficiência operacional e retornos consistentes aos acionistas.", marketCap: "460,95B", pe: 10.51, dividend: 7.32, sector: "Financeiro", subsetor: "Bancos", pvp: 2.31, lpa: 4.07, vpa: 18.55, payout: 75.44, pEbit: 9.39, evEbit: 9.14, evEbitda: null, roe: 21.93, roic: 22.42, margemBruta: 35.89, margemEbit: 12.98, margemLiquida: 11.59, cReceita5a: 14.62, cLucro5a: 10.07, giroAtivos: 0.13, liqCorrente: 1.23, divLiqPl: null, divLiqEbitda: null, plAtivos: 0.07, basileia: 15.95 },
+  { symbol: "BBAS3", name: "Banco do Brasil", shares: 150, price: 27.58, change: 0.46, changePercent: 1.70, value: 4137, allocation: 1.52, category: "Financeiro", description: "Maior banco público do Brasil com forte presença no agronegócio. Dividendos consistentes e papel relevante no crédito rural.", marketCap: "141,72B", pe: 10.33, dividend: 5.89, sector: "Financeiro", subsetor: "Bancos", pvp: 0.75, lpa: 2.39, vpa: 33.02, payout: 58.75, pEbit: 25.2, evEbit: 25.2, evEbitda: null, roe: 7.24, roic: 0.21, margemBruta: 31.62, margemEbit: 1.76, margemLiquida: 4.29, cReceita5a: 20.46, cLucro5a: -3.18, giroAtivos: 0.13, liqCorrente: 1.02, divLiqPl: null, divLiqEbitda: null, plAtivos: 0.08, basileia: 14.56 },
+  { symbol: "BBDC4", name: "Bradesco", shares: 300, price: 21.17, change: -0.23, changePercent: -1.07, value: 6351, allocation: 1.61, category: "Financeiro", description: "Um dos maiores bancos do Brasil, com forte atuação em seguros (Bradesco Seguros) e presença nacional em todas as faixas de renda.", marketCap: "192,44B", pe: 8.66, dividend: 7.35, sector: "Financeiro", subsetor: "Bancos", pvp: 1.15, lpa: 2.23, vpa: 16.84, payout: 53.14, pEbit: 9.75, evEbit: 9.07, evEbitda: null, roe: 13.27, roic: 10.16, margemBruta: 28.25, margemEbit: 7.78, margemLiquida: 8.76, cReceita5a: 21.34, cLucro5a: 3.13, giroAtivos: 0.12, liqCorrente: 1.19, divLiqPl: null, divLiqEbitda: null, plAtivos: 0.08, basileia: 15.65 },
+  { symbol: "B3SA3", name: "B3 S.A.", shares: 400, price: 18.14, change: -0.08, changePercent: -0.44, value: 7256, allocation: 1.80, category: "Financeiro", description: "Única bolsa de valores do Brasil, responsável por toda a infraestrutura do mercado de capitais nacional. Modelo de negócio com receita recorrente.", marketCap: "91,11B", pe: 19.51, dividend: 3.44, sector: "Financeiro", subsetor: "Mercado de Capitais", pvp: 5.13, lpa: 0.87, vpa: 3.31, payout: 42.6, pEbit: 13.48, evEbit: 13.39, evEbitda: 12.65, roe: 26.29, roic: 13.21, margemBruta: 90.53, margemEbit: 59.69, margemLiquida: 41.23, cReceita5a: 1.57, cLucro5a: -0.56, giroAtivos: 0.23, liqCorrente: 1.91, divLiqPl: -0.03, divLiqEbitda: -0.08, plAtivos: 0.36 },
+  { symbol: "BBSE3", name: "BB Seguridade", shares: 120, price: 34.20, change: 0.48, changePercent: 1.42, value: 4104, allocation: 0.0, category: "Financeiro", description: "Seguradora e empresa de previdência ligada ao Banco do Brasil, com forte geração de caixa e pagamento recorrente de dividendos.", marketCap: "68,36B", pe: 7.55, dividend: 13.14, sector: "Financeiro", subsetor: "Seguros", pvp: 6.55, lpa: 4.51, vpa: 5.19, payout: 100.89, pEbit: 6.9, evEbit: 5.88, evEbitda: null, roe: 86.84, roic: 76.48, margemBruta: 0, margemEbit: 0, margemLiquida: 0, cReceita5a: -100, cLucro5a: 18.05, giroAtivos: 0, liqCorrente: 1.28, divLiqPl: -0.97, divLiqEbitda: null, plAtivos: 0.45 },
 
   // ⚡ Utilidades Públicas (4)
-  { symbol: "AXIA6", name: "Eletrobras", shares: 120, price: 67.70, change: 0.56, changePercent: 0.83, value: 8124, allocation: 1.77, category: "Utilidades Públicas", description: "Maior empresa de energia elétrica da América Latina. Privatizada em 2022, gera e transmite energia em todo o território nacional. Ticker migrado de ELET3 para AXIA6.", marketCap: "95B", pe: 6.8, dividend: 4.5, sector: "Utilidades Públicas", subsetor: "Energia Elétrica", pvp: 0.78, lpa: 6.20, vpa: 54.08, psr: 2.1, pEbit: 5.2, evEbit: 7.8, evEbitda: 5.5, roe: 12.5, roic: 8.8, margemBruta: 55.2, margemEbit: 38.5, margemLiquida: 28.2, cReceita5a: 6.5, cLucro5a: 18.5, giroAtivos: 0.15, liqCorrente: 1.42, divLiqPl: 0.58, divLiqEbitda: 2.85, plAtivos: 0.42 },
-  { symbol: "CPFE3", name: "CPFL Energia", shares: 80, price: 50.87, change: -0.29, changePercent: -0.57, value: 4069.60, allocation: 1.00, category: "Utilidades Públicas", description: "Grupo do setor elétrico que atua em geração, transmissão e distribuição de energia, principalmente no interior de São Paulo.", marketCap: "41B", pe: 7.5, dividend: 6.8, sector: "Utilidades Públicas", subsetor: "Energia Elétrica", pvp: 2.15, lpa: 4.76, vpa: 16.61, psr: 1.2, pEbit: 5.8, evEbit: 8.2, evEbitda: 5.8, roe: 28.5, roic: 12.5, margemBruta: 42.8, margemEbit: 22.5, margemLiquida: 15.8, cReceita5a: 9.2, cLucro5a: 14.8, giroAtivos: 0.42, liqCorrente: 0.95, divLiqPl: 1.25, divLiqEbitda: 2.52, plAtivos: 0.28 },
-  { symbol: "ISAE4", name: "ISA CTEEP", shares: 100, price: 28.63, change: -1.33, changePercent: -4.44, value: 2863, allocation: 0.89, category: "Utilidades Públicas", description: "Maior empresa privada de transmissão de energia do Brasil. Receita estável e previsível com contratos de longo prazo.", marketCap: "17B", pe: 8.2, dividend: 7.5, sector: "Utilidades Públicas", subsetor: "Transmissão Energia", pvp: 1.65, lpa: 3.10, vpa: 15.39, psr: 4.5, pEbit: 6.8, evEbit: 9.5, evEbitda: 7.2, roe: 20.2, roic: 11.5, margemBruta: 68.5, margemEbit: 55.2, margemLiquida: 38.5, cReceita5a: 8.5, cLucro5a: 12.2, giroAtivos: 0.18, liqCorrente: 1.15, divLiqPl: 0.92, divLiqEbitda: 2.15, plAtivos: 0.35 },
-  { symbol: "SAPR11", name: "Sanepar", shares: 200, price: 6.25, change: 0.08, changePercent: 1.30, value: 1250, allocation: 0.44, category: "Utilidades Públicas", description: "Companhia de saneamento do Paraná, responsável por abastecimento de água e esgoto. Receita regulada e previsível.", marketCap: "8.5B", pe: 6.2, dividend: 5.5, sector: "Utilidades Públicas", subsetor: "Saneamento", pvp: 0.95, lpa: 1.01, vpa: 6.58, psr: 1.5, pEbit: 4.8, evEbit: 6.5, evEbitda: 4.8, roe: 15.8, roic: 9.5, margemBruta: 52.5, margemEbit: 28.2, margemLiquida: 18.5, cReceita5a: 7.8, cLucro5a: 10.5, giroAtivos: 0.32, liqCorrente: 1.05, divLiqPl: 0.65, divLiqEbitda: 1.85, plAtivos: 0.38 },
+  { symbol: "AXIA6", name: "Eletrobras", shares: 120, price: 67.70, change: 0.56, changePercent: 0.83, value: 8124, allocation: 1.77, category: "Utilidades Públicas", description: "Maior empresa de energia elétrica da América Latina. Privatizada em 2022, gera e transmite energia em todo o território nacional. Ticker migrado de ELET3 para AXIA6.", marketCap: "172,37B", pe: 28.39, dividend: 6.43, sector: "Utilidades Públicas", subsetor: "Energia Elétrica", pvp: 1.57, lpa: 2.25, vpa: 40.67, payout: 125.16, pEbit: 47.19, evEbit: 55.18, evEbitda: 25.55, roe: 5.53, roic: -4.97, margemBruta: 42.87, margemEbit: 9.56, margemLiquida: 15.89, cReceita5a: 1.88, cLucro5a: 2.8, giroAtivos: 0.15, liqCorrente: 1.68, divLiqPl: 0.39, divLiqEbitda: 5.48, plAtivos: 0.42 },
+  { symbol: "CPFE3", name: "CPFL Energia", shares: 80, price: 50.87, change: -0.29, changePercent: -0.57, value: 4069.60, allocation: 1.00, category: "Utilidades Públicas", description: "Grupo do setor elétrico que atua em geração, transmissão e distribuição de energia, principalmente no interior de São Paulo.", marketCap: "54,56B", pe: 10.14, dividend: 5.9, sector: "Utilidades Públicas", subsetor: "Energia Elétrica", pvp: 2.47, lpa: 4.76, vpa: 19.52, payout: 58.71, pEbit: 5.03, evEbit: 7.39, evEbitda: 4.92, roe: 24.39, roic: 16.89, margemBruta: 31.83, margemEbit: 24.92, margemLiquida: 12.36, cReceita5a: 2.5, cLucro5a: 3.42, giroAtivos: 0.55, liqCorrente: 0.93, divLiqPl: 1.16, divLiqEbitda: 1.58, plAtivos: 0.28 },
+  { symbol: "ISAE4", name: "ISA CTEEP", shares: 100, price: 28.63, change: -1.33, changePercent: -4.44, value: 2863, allocation: 0.89, category: "Utilidades Públicas", description: "Maior empresa privada de transmissão de energia do Brasil. Receita estável e previsível com contratos de longo prazo.", marketCap: "19,44B", pe: 7.56, dividend: 8.03, sector: "Utilidades Públicas", subsetor: "Transmissão Energia", pvp: 0.87, lpa: 3.72, vpa: 32.1, payout: 52.84, pEbit: 4.48, evEbit: 8.07, evEbitda: 8, roe: 11.57, roic: 10.39, margemBruta: 39.35, margemEbit: 43.9, margemLiquida: 26.01, cReceita5a: 11.2, cLucro5a: -3.74, giroAtivos: 0.2, liqCorrente: 3.76, divLiqPl: 0.65, divLiqEbitda: 3.32, plAtivos: 0.45 },
+  { symbol: "SAPR11", name: "Sanepar", shares: 200, price: 6.25, change: 0.08, changePercent: 1.30, value: 1250, allocation: 0.44, category: "Utilidades Públicas", description: "Companhia de saneamento do Paraná, responsável por abastecimento de água e esgoto. Receita regulada e previsível.", marketCap: "12,47B", pe: 5.83, dividend: 4.86, sector: "Utilidades Públicas", subsetor: "Saneamento", pvp: 0.98, lpa: 6.88, vpa: 40.85, payout: 22.26, pEbit: 5.19, evEbit: 3.67, evEbitda: 2.9, roe: 16.84, roic: 10.71, margemBruta: 56.27, margemEbit: 32.44, margemLiquida: 28.86, cReceita5a: 6.72, cLucro5a: 12.05, giroAtivos: 0.27, liqCorrente: 1.2, divLiqPl: -0.31, divLiqEbitda: -1.28, plAtivos: 0.47 },
 
   // 🛢️ Commodities Cíclicas (3) — Preços reais CSV 2026-02-25
-  { symbol: "PETR4", name: "Petrobras", shares: 250, price: 39.57, change: 0.00, changePercent: 0.00, value: 9892.50, allocation: 3.23, category: "Commodities", description: "Maior empresa de petróleo e gás do Brasil. Líder em exploração de águas profundas (pré-sal), com forte geração de caixa e dividendos expressivos.", marketCap: "480B", pe: 4.5, dividend: 12.5, sector: "Commodities", subsetor: "Petróleo", pvp: 1.25, lpa: 8.18, vpa: 29.46, psr: 1.2, pEbit: 3.2, evEbit: 3.8, evEbitda: 2.5, roe: 28.5, roic: 18.2, margemBruta: 52.8, margemEbit: 38.5, margemLiquida: 25.2, cReceita5a: 15.8, cLucro5a: 32.5, giroAtivos: 0.35, liqCorrente: 1.18, divLiqPl: 0.62, divLiqEbitda: 1.05, plAtivos: 0.42 },
-  { symbol: "VALE3", name: "Vale S.A.", shares: 180, price: 89.97, change: 2.24, changePercent: 2.55, value: 16194.60, allocation: 3.94, category: "Commodities", description: "Uma das maiores mineradoras do mundo, líder na produção de minério de ferro. Presença global e dividendos expressivos.", marketCap: "380B", pe: 6.2, dividend: 8.5, sector: "Commodities", subsetor: "Mineração", pvp: 1.55, lpa: 14.51, vpa: 58.05, psr: 2.5, pEbit: 5.0, evEbit: 5.8, evEbitda: 4.2, roe: 25.0, roic: 17.5, margemBruta: 48.5, margemEbit: 35.8, margemLiquida: 22.5, cReceita5a: 12.5, cLucro5a: 18.2, giroAtivos: 0.38, liqCorrente: 1.52, divLiqPl: 0.45, divLiqEbitda: 0.85, plAtivos: 0.48 },
-  { symbol: "SUZB3", name: "Suzano", shares: 120, price: 54.92, change: -0.88, changePercent: -1.58, value: 6590.4, allocation: 0.0, category: "Commodities", description: "Maior produtora mundial de celulose de eucalipto, com receita exposta ao dólar e ciclo global de papel e celulose.", marketCap: "73B", pe: 7.6, dividend: 4.8, sector: "Commodities", subsetor: "Papel e Celulose", pvp: 1.65, lpa: 7.22, vpa: 33.3, psr: 2.2, pEbit: 5.8, evEbit: 7.9, evEbitda: 4.8, roe: 18.4, roic: 11.2, margemBruta: 46.7, margemEbit: 28.1, margemLiquida: 20.3, cReceita5a: 9.8, cLucro5a: 14.4, giroAtivos: 0.45, liqCorrente: 1.9, divLiqPl: 1.02, divLiqEbitda: 2.35, plAtivos: 0.4 },
-  { symbol: "KLBN11", name: "Klabin Unit", shares: 150, price: 19.53, change: -0.16, changePercent: -0.81, value: 2929.5, allocation: 0.0, category: "Commodities", description: "Companhia integrada de papel e celulose com forte presença em embalagens, florestas e exportação.", marketCap: "27B", pe: 9.4, dividend: 4.2, sector: "Commodities", subsetor: "Papel e Celulose", pvp: 1.4, lpa: 2.08, vpa: 13.95, psr: 1.9, pEbit: 6.9, evEbit: 8.8, evEbitda: 5.4, roe: 15.1, roic: 9.3, margemBruta: 38.2, margemEbit: 22.7, margemLiquida: 16.4, cReceita5a: 8.7, cLucro5a: 11.5, giroAtivos: 0.53, liqCorrente: 1.55, divLiqPl: 1.18, divLiqEbitda: 2.74, plAtivos: 0.36 },
-  { symbol: "GGBR4", name: "Gerdau", shares: 200, price: 21.41, change: 0.28, changePercent: 1.33, value: 4282, allocation: 1.57, category: "Commodities", description: "Maior produtora de aço do Brasil e uma das maiores das Américas. Atua com aços longos e especiais em diversos mercados.", marketCap: "36B", pe: 5.2, dividend: 6.5, sector: "Commodities", subsetor: "Siderurgia", pvp: 0.85, lpa: 4.12, vpa: 25.19, psr: 0.8, pEbit: 3.8, evEbit: 4.5, evEbitda: 3.2, roe: 17.2, roic: 12.5, margemBruta: 28.5, margemEbit: 15.8, margemLiquida: 10.5, cReceita5a: 14.2, cLucro5a: 22.8, giroAtivos: 0.62, liqCorrente: 2.15, divLiqPl: 0.25, divLiqEbitda: 0.65, plAtivos: 0.52 },
+  { symbol: "PETR4", name: "Petrobras", shares: 250, price: 39.57, change: 0.00, changePercent: 0.00, value: 9892.50, allocation: 3.23, category: "Commodities", description: "Maior empresa de petróleo e gás do Brasil. Líder em exploração de águas profundas (pré-sal), com forte geração de caixa e dividendos expressivos.", marketCap: "568,69B", pe: 5.17, dividend: 7.74, sector: "Commodities", subsetor: "Petróleo", pvp: 1.37, lpa: 8.54, vpa: 32.26, payout: 40.63, pEbit: 3.91, evEbit: 6.4, evEbitda: 4.05, roe: 26.49, roic: 13.21, margemBruta: 47.63, margemEbit: 29.27, margemLiquida: 22.13, cReceita5a: 1.91, cLucro5a: 0.62, giroAtivos: 0.41, liqCorrente: 0.71, divLiqPl: 0.8, divLiqEbitda: 1.45, plAtivos: 0.34 },
+  { symbol: "VALE3", name: "Vale S.A.", shares: 180, price: 89.97, change: 2.24, changePercent: 2.55, value: 16194.60, allocation: 3.94, category: "Commodities", description: "Uma das maiores mineradoras do mundo, líder na produção de minério de ferro. Presença global e dividendos expressivos.", marketCap: "355,95B", pe: 25.69, dividend: 6.98, sector: "Commodities", subsetor: "Mineração", pvp: 1.93, lpa: 3.04, vpa: 40.6, payout: 267.45, pEbit: 11.1, evEbit: 13.04, evEbitda: 8.46, roe: 7.5, roic: 5.94, margemBruta: 34.98, margemEbit: 14.97, margemLiquida: 6.47, cReceita5a: -6.04, cLucro5a: -37.26, giroAtivos: 0.45, liqCorrente: 0.12, divLiqPl: 0.34, divLiqEbitda: 1.25, plAtivos: 0.39 },
+  { symbol: "SUZB3", name: "Suzano", shares: 120, price: 54.92, change: -0.88, changePercent: -1.58, value: 6590.4, allocation: 0.0, category: "Commodities", description: "Maior produtora mundial de celulose de eucalipto, com receita exposta ao dólar e ciclo global de papel e celulose.", marketCap: "69,43B", pe: 5.15, dividend: 2.03, sector: "Commodities", subsetor: "Papel e Celulose", pvp: 1.58, lpa: 10.61, vpa: 34.66, payout: 10.53, pEbit: 6.48, evEbit: 13.03, evEbitda: 6.32, roe: 30.6, roic: 2.65, margemBruta: 32.38, margemEbit: 21.25, margemLiquida: 26.75, cReceita5a: 4.11, cLucro5a: 9.25, giroAtivos: 0.3, liqCorrente: 3.19, divLiqPl: 1.59, divLiqEbitda: 3.18, plAtivos: 0.26 },
+  { symbol: "KLBN11", name: "Klabin Unit", shares: 150, price: 19.53, change: -0.16, changePercent: -0.81, value: 2929.5, allocation: 0.0, category: "Commodities", description: "Companhia integrada de papel e celulose com forte presença em embalagens, florestas e exportação.", marketCap: "24,30B", pe: 15.04, dividend: 8.46, sector: "Commodities", subsetor: "Papel e Celulose", pvp: 1.82, lpa: 1.3, vpa: 10.71, payout: 93.66, pEbit: 5.44, evEbit: 11.19, evEbitda: 6.89, roe: 12.12, roic: 7.55, margemBruta: 35.39, margemEbit: 21.65, margemLiquida: 7.83, cReceita5a: 4.66, cLucro5a: -13.19, giroAtivos: 0.32, liqCorrente: 2.06, divLiqPl: 1.93, divLiqEbitda: 3.55, plAtivos: 0.21 },
+  { symbol: "GGBR4", name: "Gerdau", shares: 200, price: 21.41, change: 0.28, changePercent: 1.33, value: 4282, allocation: 1.57, category: "Commodities", description: "Maior produtora de aço do Brasil e uma das maiores das Américas. Atua com aços longos e especiais em diversos mercados.", marketCap: "35,78B", pe: 26.73, dividend: 2.76, sector: "Commodities", subsetor: "Siderurgia", pvp: 0.69, lpa: 0.7, vpa: 26.89, payout: 89.09, pEbit: 9.91, evEbit: 11.54, evEbitda: 5.81, roe: 2.59, roic: 4.34, margemBruta: 11.41, margemEbit: 5.35, margemLiquida: 1.99, cReceita5a: -2.27, cLucro5a: -38.06, giroAtivos: 0.86, liqCorrente: 2.89, divLiqPl: 0.15, divLiqEbitda: 1.05, plAtivos: 0.66 },
 
   // 🏭 Indústria e Bens de Capital (3) — Preços reais CSV 2026-02-25
-  { symbol: "WEGE3", name: "WEG S.A.", shares: 150, price: 50.28, change: -1.13, changePercent: -2.20, value: 7542, allocation: 2.25, category: "Indústria", description: "Multinacional brasileira líder em motores elétricos, automação industrial e equipamentos para energia. Referência em crescimento consistente.", marketCap: "252B", pe: 38.5, dividend: 1.1, sector: "Indústria", subsetor: "Bens de Capital", pvp: 12.2, lpa: 1.31, vpa: 4.12, psr: 7.5, pEbit: 30.2, evEbit: 31.0, evEbitda: 27.5, roe: 31.5, roic: 26.0, margemBruta: 36.5, margemEbit: 23.0, margemLiquida: 17.2, cReceita5a: 24.5, cLucro5a: 30.2, giroAtivos: 0.82, liqCorrente: 2.85, divLiqPl: -0.15, divLiqEbitda: -0.42, plAtivos: 0.55 },
-  { symbol: "EMBJ3", name: "Embraer", shares: 100, price: 80.14, change: -7.02, changePercent: -8.05, value: 8014, allocation: 1.83, category: "Indústria", description: "Terceira maior fabricante de aviões do mundo, líder no segmento de jatos regionais. Atua também em defesa e aviação executiva.", marketCap: "68B", pe: 28.5, dividend: 0.3, sector: "Indústria", subsetor: "Aeroespacial", pvp: 8.2, lpa: 3.25, vpa: 11.28, psr: 3.2, pEbit: 22.5, evEbit: 24.8, evEbitda: 19.5, roe: 28.8, roic: 17.5, margemBruta: 24.5, margemEbit: 14.2, margemLiquida: 9.8, cReceita5a: 10.5, cLucro5a: 52.0, giroAtivos: 0.55, liqCorrente: 1.65, divLiqPl: 0.85, divLiqEbitda: 1.52, plAtivos: 0.35 },
-  { symbol: "TUPY3", name: "Tupy S.A.", shares: 150, price: 13.12, change: -0.32, changePercent: -2.38, value: 1968, allocation: 1.20, category: "Indústria", description: "Líder global em componentes estruturais de ferro fundido para veículos comerciais e máquinas pesadas.", marketCap: "1.9B", pe: 4.5, dividend: 4.8, sector: "Indústria", subsetor: "Autopeças", pvp: 0.52, lpa: 2.92, vpa: 25.23, psr: 0.3, pEbit: 3.2, evEbit: 4.5, evEbitda: 3.2, roe: 11.5, roic: 7.8, margemBruta: 24.8, margemEbit: 9.8, margemLiquida: 5.8, cReceita5a: 18.5, cLucro5a: 15.2, giroAtivos: 0.72, liqCorrente: 1.45, divLiqPl: 0.82, divLiqEbitda: 2.15, plAtivos: 0.38 },
+  { symbol: "WEGE3", name: "WEG S.A.", shares: 150, price: 50.28, change: -1.13, changePercent: -2.20, value: 7542, allocation: 2.25, category: "Indústria", description: "Multinacional brasileira líder em motores elétricos, automação industrial e equipamentos para energia. Referência em crescimento consistente.", marketCap: "195,68B", pe: 30.5, dividend: 4.61, sector: "Indústria", subsetor: "Bens de Capital", pvp: 11.16, lpa: 1.52, vpa: 4.15, payout: 89.65, pEbit: 24.31, evEbit: 23.98, evEbitda: 21.31, roe: 36.61, roic: 30.11, margemBruta: 33.53, margemEbit: 19.6, margemLiquida: 15.63, cReceita5a: 11.61, cLucro5a: 13.12, giroAtivos: 0.96, liqCorrente: 1.55, divLiqPl: -0.15, divLiqEbitda: -0.3, plAtivos: 0.41 },
+  { symbol: "EMBJ3", name: "Embraer", shares: 100, price: 80.14, change: -7.02, changePercent: -8.05, value: 8014, allocation: 1.83, category: "Indústria", description: "Terceira maior fabricante de aviões do mundo, líder no segmento de jatos regionais. Atua também em defesa e aviação executiva.", marketCap: "59,24B", pe: 30.85, dividend: 0.36, sector: "Indústria", subsetor: "Aeroespacial", pvp: 3.18, lpa: 2.64, vpa: 25.6, payout: 11.03, pEbit: 17.99, evEbit: 17.94, evEbitda: 12.6, roe: 10.3, roic: 8.46, margemBruta: 17.57, margemEbit: 7.99, margemLiquida: 4.66, cReceita5a: 13.06, cLucro5a: null, giroAtivos: 0.59, liqCorrente: 1.5, divLiqPl: -0.01, divLiqEbitda: -0.04, plAtivos: 0.27 },
+  { symbol: "TUPY3", name: "Tupy S.A.", shares: 150, price: 13.12, change: -0.32, changePercent: -2.38, value: 1968, allocation: 1.20, category: "Indústria", description: "Líder global em componentes estruturais de ferro fundido para veículos comerciais e máquinas pesadas.", marketCap: "1.9B", pe: -13.1, dividend: 0, sector: "Indústria", subsetor: "Autopeças", pvp: 0.54, lpa: -0.96, vpa: 23.27, payout: 0, pEbit: 13.41, evEbit: 31.82, evEbitda: 7.63, roe: -4.13, roic: 0.97, margemBruta: 14.71, margemEbit: 1.24, margemLiquida: -1.27, cReceita5a: 7.15, cLucro5a: null, giroAtivos: 1.01, liqCorrente: 2.45, divLiqPl: 0.74, divLiqEbitda: 4.42, plAtivos: 0.31 },
 
   // 🛒 Consumo Cíclico (3) — Preços reais CSV 2026-02-25
-  { symbol: "LREN3", name: "Lojas Renner", shares: 200, price: 15.78, change: -0.10, changePercent: -0.63, value: 3156, allocation: 1.28, category: "Consumo Cíclico", description: "Maior varejista de moda do Brasil, com operação omnichannel e serviços financeiros (Realize). Referência em gestão no varejo.", marketCap: "15B", pe: 12.5, dividend: 3.2, sector: "Consumo Cíclico", subsetor: "Varejo", pvp: 3.35, lpa: 1.26, vpa: 4.71, psr: 1.3, pEbit: 9.2, evEbit: 10.5, evEbitda: 7.8, roe: 26.5, roic: 15.8, margemBruta: 55.2, margemEbit: 15.8, margemLiquida: 10.2, cReceita5a: 6.5, cLucro5a: -2.5, giroAtivos: 0.65, liqCorrente: 1.55, divLiqPl: 0.42, divLiqEbitda: 1.25, plAtivos: 0.45 },
-  { symbol: "MGLU3", name: "Magazine Luiza", shares: 500, price: 9.49, change: -0.64, changePercent: -6.32, value: 4745, allocation: 0.38, category: "Consumo Cíclico", description: "Uma das maiores varejistas do Brasil, com forte plataforma de e-commerce e marketplace. Passou por grande transformação digital.", marketCap: "14B", pe: 35.0, dividend: 0.2, sector: "Consumo Cíclico", subsetor: "Varejo", pvp: 5.8, lpa: 0.27, vpa: 1.64, psr: 0.4, pEbit: 28.0, evEbit: 32.0, evEbitda: 18.5, roe: 16.5, roic: 5.2, margemBruta: 30.5, margemEbit: 3.2, margemLiquida: 1.5, cReceita5a: 18.2, cLucro5a: null, giroAtivos: 1.85, liqCorrente: 1.12, divLiqPl: 2.85, divLiqEbitda: 4.52, plAtivos: 0.15 },
-  { symbol: "MRVE3", name: "MRV Engenharia", shares: 200, price: 10.34, change: -0.01, changePercent: -0.10, value: 2068, allocation: 0.59, category: "Consumo Cíclico", description: "Maior construtora de habitação popular do Brasil. Atua no programa Minha Casa Minha Vida e na AHS nos EUA.", marketCap: "7.2B", pe: 15.2, dividend: 1.2, sector: "Consumo Cíclico", subsetor: "Construção", pvp: 0.88, lpa: 0.68, vpa: 11.75, psr: 0.6, pEbit: 10.5, evEbit: 14.2, evEbitda: 10.2, roe: 5.8, roic: 4.2, margemBruta: 28.2, margemEbit: 5.8, margemLiquida: 3.2, cReceita5a: 12.5, cLucro5a: -8.5, giroAtivos: 0.25, liqCorrente: 2.45, divLiqPl: 0.85, divLiqEbitda: 5.25, plAtivos: 0.22 },
-  { symbol: "RENT3", name: "Localiza", shares: 120, price: 45.83, change: -1.07, changePercent: -2.28, value: 5499.6, allocation: 0.0, category: "Consumo Cíclico", description: "Líder em aluguel de carros e gestão de frotas no Brasil, com operação nacional e ganhos de escala relevantes.", marketCap: "49B", pe: 18.3, dividend: 1.6, sector: "Consumo Cíclico", subsetor: "Locação de Veículos", pvp: 2.4, lpa: 2.5, vpa: 19.1, psr: 2.7, pEbit: 11.6, evEbit: 16.4, evEbitda: 8.7, roe: 13.6, roic: 7.4, margemBruta: 29.3, margemEbit: 18.8, margemLiquida: 10.4, cReceita5a: 22.0, cLucro5a: 16.9, giroAtivos: 0.34, liqCorrente: 1.28, divLiqPl: 2.1, divLiqEbitda: 3.7, plAtivos: 0.16 },
+  { symbol: "LREN3", name: "Lojas Renner", shares: 200, price: 15.78, change: -0.10, changePercent: -0.63, value: 3156, allocation: 1.28, category: "Consumo Cíclico", description: "Maior varejista de moda do Brasil, com operação omnichannel e serviços financeiros (Realize). Referência em gestão no varejo.", marketCap: "14,81B", pe: 9.95, dividend: 5.7, sector: "Consumo Cíclico", subsetor: "Varejo", pvp: 1.39, lpa: 1.45, vpa: 10.39, payout: 57.91, pEbit: 8.07, evEbit: 7.23, evEbitda: 4.22, roe: 13.94, roic: 14.21, margemBruta: 61.71, margemEbit: 11.35, margemLiquida: 9.21, cReceita5a: 8.41, cLucro5a: 18.15, giroAtivos: 0.81, liqCorrente: 1.69, divLiqPl: -0.15, divLiqEbitda: -0.5, plAtivos: 0.53 },
+  { symbol: "MGLU3", name: "Magazine Luiza", shares: 500, price: 9.49, change: -0.64, changePercent: -6.32, value: 4745, allocation: 0.38, category: "Consumo Cíclico", description: "Uma das maiores varejistas do Brasil, com forte plataforma de e-commerce e marketplace. Passou por grande transformação digital.", marketCap: "14B", pe: 19.53, dividend: 3.28, sector: "Consumo Cíclico", subsetor: "Varejo", pvp: 0.64, lpa: 0.47, vpa: 14.38, payout: 61.31, pEbit: 3.97, evEbit: 6.39, evEbitda: 3.73, roe: 3.3, roic: 8.11, margemBruta: 30.65, margemEbit: 4.72, margemLiquida: 0.96, cReceita5a: 1.68, cLucro5a: -9.04, giroAtivos: 1.03, liqCorrente: 1.26, divLiqPl: 0.39, divLiqEbitda: 1.41, plAtivos: 0.3 },
+  { symbol: "MRVE3", name: "MRV Engenharia", shares: 200, price: 10.34, change: -0.01, changePercent: -0.10, value: 2068, allocation: 0.59, category: "Consumo Cíclico", description: "Maior construtora de habitação popular do Brasil. Atua no programa Minha Casa Minha Vida e na AHS nos EUA.", marketCap: "7.2B", pe: -4.69, dividend: 0, sector: "Consumo Cíclico", subsetor: "Construção", pvp: 0.92, lpa: -1.85, vpa: 9.47, payout: 0, pEbit: 24.28, evEbit: 65.76, evEbitda: 29.22, roe: -19.56, roic: -0.01, margemBruta: 29.34, margemEbit: 1.84, margemLiquida: -9.56, cReceita5a: 8.91, cLucro5a: null, giroAtivos: 0.38, liqCorrente: 2.03, divLiqPl: 1.57, divLiqEbitda: 18.43, plAtivos: 0.19 },
+  { symbol: "RENT3", name: "Localiza", shares: 120, price: 45.83, change: -1.07, changePercent: -2.28, value: 5499.6, allocation: 0.0, category: "Consumo Cíclico", description: "Líder em aluguel de carros e gestão de frotas no Brasil, com operação nacional e ganhos de escala relevantes.", marketCap: "50,94B", pe: 27.02, dividend: 4.39, sector: "Consumo Cíclico", subsetor: "Locação de Veículos", pvp: 1.98, lpa: 1.67, vpa: 22.71, payout: 111.91, pEbit: 6.49, evEbit: 10.7, evEbitda: 6.73, roe: 7.34, roic: 9.38, margemBruta: 26.64, margemEbit: 18.7, margemLiquida: 4.49, cReceita5a: 30.83, cLucro5a: -1.76, giroAtivos: 0.49, liqCorrente: 1.2, divLiqPl: 1.29, divLiqEbitda: 2.66, plAtivos: 0.3 },
 
   // 🍺 Consumo Não Cíclico (2) — Preços reais CSV 2026-02-25
-  { symbol: "ABEV3", name: "Ambev S.A.", shares: 500, price: 16.44, change: -0.14, changePercent: -0.84, value: 8220, allocation: 2.60, category: "Consumo Não Cíclico", description: "Maior cervejaria do Brasil e uma das maiores do mundo. Marcas icônicas como Brahma, Skol e Budweiser. Liderança absoluta no mercado.", marketCap: "258B", pe: 15.8, dividend: 4.2, sector: "Consumo Não Cíclico", subsetor: "Bebidas", pvp: 3.92, lpa: 1.04, vpa: 4.19, psr: 3.5, pEbit: 11.5, evEbit: 11.8, evEbitda: 9.0, roe: 24.8, roic: 18.0, margemBruta: 53.2, margemEbit: 28.0, margemLiquida: 17.8, cReceita5a: 8.5, cLucro5a: 5.2, giroAtivos: 0.48, liqCorrente: 0.92, divLiqPl: 0.15, divLiqEbitda: 0.35, plAtivos: 0.42 },
-  { symbol: "NTCO3", name: "Natura", shares: 250, price: 8.73, change: 0.04, changePercent: 0.46, value: 2182.5, allocation: 0.0, category: "Consumo Não Cíclico", description: "Multinacional brasileira de cosméticos e higiene pessoal, com marcas como Natura e Avon e forte presença na América Latina.", marketCap: "12B", pe: null, dividend: 0.0, sector: "Consumo Não Cíclico", subsetor: "Higiene e Beleza", pvp: 1.1, lpa: null, vpa: 7.9, psr: 0.6, pEbit: null, evEbit: null, evEbitda: 7.8, roe: null, roic: null, margemBruta: 65.2, margemEbit: 6.4, margemLiquida: -0.8, cReceita5a: 4.3, cLucro5a: null, giroAtivos: 0.74, liqCorrente: 1.05, divLiqPl: 1.3, divLiqEbitda: 3.6, plAtivos: 0.21 },
+  { symbol: "ABEV3", name: "Ambev S.A.", shares: 500, price: 16.44, change: -0.14, changePercent: -0.84, value: 8220, allocation: 2.60, category: "Consumo Não Cíclico", description: "Maior cervejaria do Brasil e uma das maiores do mundo. Marcas icônicas como Brahma, Skol e Budweiser. Liderança absoluta no mercado.", marketCap: "241,00B", pe: 15.6, dividend: 7.29, sector: "Consumo Não Cíclico", subsetor: "Bebidas", pvp: 2.75, lpa: 0.98, vpa: 5.58, payout: 85.92, pEbit: 10.32, evEbit: 9.6, evEbitda: 7.45, roe: 17.63, roic: 21.89, margemBruta: 51.42, margemEbit: 26.54, margemLiquida: 17.57, cReceita5a: 3.91, cLucro5a: 4.03, giroAtivos: 0.61, liqCorrente: 0.96, divLiqPl: -0.19, divLiqEbitda: -0.56, plAtivos: 0.61 },
+  { symbol: "NTCO3", name: "Natura", shares: 250, price: 8.73, change: 0.04, changePercent: 0.46, value: 2182.5, allocation: 0.0, category: "Consumo Não Cíclico", description: "Multinacional brasileira de cosméticos e higiene pessoal, com marcas como Natura e Avon e forte presença na América Latina.", marketCap: "12,10B", pe: -5.61, dividend: 0.0, sector: "Consumo Não Cíclico", subsetor: "Higiene e Beleza", pvp: 0.92, lpa: -1.56, vpa: 9.49, payout: 0, pEbit: 20.37, evEbit: 27.26, evEbitda: 9.97, roe: -16.49, roic: 2.97, margemBruta: 65.54, margemEbit: 2.35, margemLiquida: -8.52, cReceita5a: -8.89, cLucro5a: null, giroAtivos: 0.87, liqCorrente: 1.63, divLiqPl: 0.31, divLiqEbitda: 2.52, plAtivos: 0.45 },
 
   // 📡 Telecom e Tecnologia (3) — Preços reais CSV 2026-02-25
-  { symbol: "VIVT3", name: "Telefônica Vivo", shares: 100, price: 42.07, change: -0.45, changePercent: -1.06, value: 4207, allocation: 1.85, category: "Telecom", description: "Maior operadora de telecomunicações do Brasil, com forte presença em fibra óptica e serviços móveis de alta qualidade.", marketCap: "70B", pe: 12.1, dividend: 6.5, sector: "Telecom", subsetor: "Telefonia", pvp: 1.48, lpa: 3.47, vpa: 28.43, psr: 1.4, pEbit: 6.8, evEbit: 8.2, evEbitda: 4.8, roe: 12.5, roic: 8.8, margemBruta: 48.5, margemEbit: 18.5, margemLiquida: 12.5, cReceita5a: 4.5, cLucro5a: 8.2, giroAtivos: 0.38, liqCorrente: 0.85, divLiqPl: 0.42, divLiqEbitda: 1.15, plAtivos: 0.35 },
-  { symbol: "TIMS3", name: "TIM Brasil", shares: 150, price: 28.05, change: -0.30, changePercent: -1.06, value: 4207.50, allocation: 0.97, category: "Telecom", description: "Segunda maior operadora de telefonia móvel do Brasil, com forte expansão em cobertura 5G e serviços digitais.", marketCap: "68B", pe: 19.5, dividend: 5.8, sector: "Telecom", subsetor: "Telefonia", pvp: 3.27, lpa: 1.44, vpa: 8.58, psr: 3.0, pEbit: 10.8, evEbit: 12.5, evEbitda: 6.5, roe: 18.2, roic: 11.5, margemBruta: 52.2, margemEbit: 25.8, margemLiquida: 15.2, cReceita5a: 5.8, cLucro5a: 22.5, giroAtivos: 0.42, liqCorrente: 0.78, divLiqPl: 0.35, divLiqEbitda: 0.85, plAtivos: 0.38 },
-  { symbol: "TOTS3", name: "Totvs", shares: 100, price: 37.88, change: -0.48, changePercent: -1.25, value: 3788, allocation: 1.13, category: "Tecnologia", description: "Maior empresa de software de gestão do Brasil, com forte presença em ERPs, techfin e business performance.", marketCap: "23B", pe: 33.5, dividend: 0.7, sector: "Tecnologia", subsetor: "Software", pvp: 6.2, lpa: 1.13, vpa: 6.11, psr: 5.0, pEbit: 26.5, evEbit: 28.5, evEbitda: 22.0, roe: 18.5, roic: 12.2, margemBruta: 62.5, margemEbit: 18.2, margemLiquida: 12.8, cReceita5a: 18.5, cLucro5a: 15.2, giroAtivos: 0.52, liqCorrente: 1.85, divLiqPl: 0.28, divLiqEbitda: 0.82, plAtivos: 0.42 },
+  { symbol: "VIVT3", name: "Telefônica Vivo", shares: 100, price: 42.07, change: -0.45, changePercent: -1.06, value: 4207, allocation: 1.85, category: "Telecom", description: "Maior operadora de telecomunicações do Brasil, com forte presença em fibra óptica e serviços móveis de alta qualidade.", marketCap: "133,80B", pe: 21.38, dividend: 2.64, sector: "Telecom", subsetor: "Telefonia", pvp: 1.92, lpa: 1.91, vpa: 21.3, payout: 112.4, pEbit: 13.37, evEbit: 14.71, evEbitda: 5.85, roe: 8.98, roic: 9.85, margemBruta: 44.75, margemEbit: 16.55, margemLiquida: 10.35, cReceita5a: 6.24, cLucro5a: -0.17, giroAtivos: 0.47, liqCorrente: 1, divLiqPl: 0.19, divLiqEbitda: 0.53, plAtivos: 0.54 },
+  { symbol: "TIMS3", name: "TIM Brasil", shares: 150, price: 28.05, change: -0.30, changePercent: -1.06, value: 4207.50, allocation: 0.97, category: "Telecom", description: "Segunda maior operadora de telefonia móvel do Brasil, com forte expansão em cobertura 5G e serviços digitais.", marketCap: "63,87B", pe: 14.72, dividend: 9.1, sector: "Telecom", subsetor: "Telefonia", pvp: 2.65, lpa: 1.8, vpa: 10.02, payout: 118.44, pEbit: 9.97, evEbit: 9.48, evEbitda: 4.49, roe: 17.98, roic: 22.88, margemBruta: 53.93, margemEbit: 23.93, margemLiquida: 16.2, cReceita5a: 13.57, cLucro5a: 7.84, giroAtivos: 0.47, liqCorrente: 0.89, divLiqPl: -0.13, divLiqEbitda: -0.23, plAtivos: 0.42 },
+  { symbol: "TOTS3", name: "Totvs", shares: 100, price: 37.88, change: -0.48, changePercent: -1.25, value: 3788, allocation: 1.13, category: "Tecnologia", description: "Maior empresa de software de gestão do Brasil, com forte presença em ERPs, techfin e business performance.", marketCap: "21,54B", pe: 24.1, dividend: 1.7, sector: "Tecnologia", subsetor: "Software", pvp: 4.21, lpa: 1.49, vpa: 8.52, payout: 41, pEbit: 20.63, evEbit: 20.68, evEbitda: 15.58, roe: 17.47, roic: 12.13, margemBruta: 70.26, margemEbit: 18.05, margemLiquida: 15.45, cReceita5a: 12.11, cLucro5a: 19.74, giroAtivos: 0.61, liqCorrente: 1.96, divLiqPl: 0.01, divLiqEbitda: 0.04, plAtivos: 0.54 },
 
   // 🏥 Saúde (3) — Preços reais CSV 2026-02-25
-  { symbol: "RDOR3", name: "Rede D'Or", shares: 100, price: 43.52, change: 0.05, changePercent: 0.12, value: 4352, allocation: 1.00, category: "Saúde", description: "Maior rede de hospitais privados do Brasil e da América Latina. Opera mais de 70 hospitais com alto padrão de qualidade.", marketCap: "95B", pe: 28.5, dividend: 0.6, sector: "Saúde", subsetor: "Hospitais", pvp: 5.9, lpa: 1.53, vpa: 7.38, psr: 3.5, pEbit: 22.0, evEbit: 26.5, evEbitda: 17.5, roe: 20.5, roic: 10.2, margemBruta: 28.5, margemEbit: 14.5, margemLiquida: 9.2, cReceita5a: 28.5, cLucro5a: 22.5, giroAtivos: 0.42, liqCorrente: 1.25, divLiqPl: 1.52, divLiqEbitda: 2.85, plAtivos: 0.25 },
-  { symbol: "RADL3", name: "Raia Drogasil", shares: 120, price: 23.73, change: -0.26, changePercent: -1.08, value: 2847.6, allocation: 0.0, category: "Saúde", description: "Maior rede de farmácias do Brasil, com foco em expansão orgânica, eficiência operacional e digitalização do varejo farmacêutico.", marketCap: "41B", pe: 24.5, dividend: 1.1, sector: "Saúde", subsetor: "Varejo Farmacêutico", pvp: 3.7, lpa: 0.97, vpa: 6.41, psr: 1.4, pEbit: 17.1, evEbit: 19.3, evEbitda: 10.2, roe: 15.8, roic: 12.1, margemBruta: 28.4, margemEbit: 6.9, margemLiquida: 4.5, cReceita5a: 17.9, cLucro5a: 16.2, giroAtivos: 1.58, liqCorrente: 1.26, divLiqPl: 0.54, divLiqEbitda: 1.35, plAtivos: 0.33 },
-  { symbol: "HAPV3", name: "Hapvida", shares: 300, price: 10.26, change: -0.23, changePercent: -2.19, value: 3078, allocation: 0.45, category: "Saúde", description: "Maior operadora de planos de saúde do Brasil (após fusão com NotreDame Intermédica), com modelo verticalizado e foco em preços acessíveis.", marketCap: "76B", pe: 25.5, dividend: 0.2, sector: "Saúde", subsetor: "Planos de Saúde", pvp: 4.5, lpa: 0.40, vpa: 2.28, psr: 2.8, pEbit: 20.5, evEbit: 24.0, evEbitda: 16.5, roe: 17.8, roic: 8.5, margemBruta: 34.5, margemEbit: 10.5, margemLiquida: 5.8, cReceita5a: 35.2, cLucro5a: 8.5, giroAtivos: 0.52, liqCorrente: 0.92, divLiqPl: 0.85, divLiqEbitda: 2.52, plAtivos: 0.28 },
-  { symbol: "FLRY3", name: "Fleury S.A.", shares: 150, price: 16.80, change: 0.22, changePercent: 1.33, value: 2520, allocation: 0.88, category: "Saúde", description: "Líder em medicina diagnóstica no Brasil, com mais de 500 unidades de atendimento e forte presença digital.", marketCap: "11B", pe: 15.8, dividend: 3.5, sector: "Saúde", subsetor: "Diagnósticos", pvp: 2.25, lpa: 1.06, vpa: 7.47, psr: 1.5, pEbit: 10.8, evEbit: 12.5, evEbitda: 8.5, roe: 14.5, roic: 10.2, margemBruta: 35.2, margemEbit: 15.2, margemLiquida: 10.5, cReceita5a: 12.5, cLucro5a: 8.5, giroAtivos: 0.55, liqCorrente: 1.35, divLiqPl: 0.62, divLiqEbitda: 1.52, plAtivos: 0.38 },
+  { symbol: "RDOR3", name: "Rede D'Or", shares: 100, price: 43.52, change: 0.05, changePercent: 0.12, value: 4352, allocation: 1.00, category: "Saúde", description: "Maior rede de hospitais privados do Brasil e da América Latina. Opera mais de 70 hospitais com alto padrão de qualidade.", marketCap: "88,14B", pe: 19.41, dividend: 11.15, sector: "Saúde", subsetor: "Hospitais", pvp: 3.27, lpa: 1.94, vpa: 11.5, payout: 172.22, pEbit: 9.59, evEbit: 9.56, evEbitda: 7.93, roe: 16.87, roic: 11.54, margemBruta: 21.02, margemEbit: 16.58, margemLiquida: 8.19, cReceita5a: 21.6, cLucro5a: 22.28, giroAtivos: 0.49, liqCorrente: 3.11, divLiqPl: -0.01, divLiqEbitda: -0.03, plAtivos: 0.24 },
+  { symbol: "RADL3", name: "Raia Drogasil", shares: 120, price: 23.73, change: -0.26, changePercent: -1.08, value: 2847.6, allocation: 0.0, category: "Saúde", description: "Maior rede de farmácias do Brasil, com foco em expansão orgânica, eficiência operacional e digitalização do varejo farmacêutico.", marketCap: "41,58B", pe: 31.61, dividend: 1.89, sector: "Saúde", subsetor: "Varejo Farmacêutico", pvp: 5.6, lpa: 0.74, vpa: 4.18, payout: 56.01, pEbit: 15.38, evEbit: 16.63, evEbitda: 9.9, roe: 17.71, roic: 22.5, margemBruta: 29.29, margemEbit: 6.02, margemLiquida: 2.93, cReceita5a: 12.9, cLucro5a: 11.22, giroAtivos: 1.76, liqCorrente: 1.46, divLiqPl: 0.46, divLiqEbitda: 0.75, plAtivos: 0.29 },
+  { symbol: "HAPV3", name: "Hapvida", shares: 300, price: 10.26, change: -0.23, changePercent: -2.19, value: 3078, allocation: 0.45, category: "Saúde", description: "Maior operadora de planos de saúde do Brasil (após fusão com NotreDame Intermédica), com modelo verticalizado e foco em preços acessíveis.", marketCap: "76B", pe: -15.36, dividend: 0.0, sector: "Saúde", subsetor: "Planos de Saúde", pvp: 0.1, lpa: -0.62, vpa: 96.79, payout: 0, pEbit: 3.24, evEbit: 5.86, evEbitda: 2.79, roe: -0.64, roic: 1.9, margemBruta: 16.88, margemEbit: 6.17, margemLiquida: -1.3, cReceita5a: 19.24, cLucro5a: null, giroAtivos: 0.32, liqCorrente: 1.98, divLiqPl: 0.08, divLiqEbitda: 1.25, plAtivos: 0.65 },
+  { symbol: "FLRY3", name: "Fleury S.A.", shares: 150, price: 16.80, change: 0.22, changePercent: 1.33, value: 2520, allocation: 0.88, category: "Saúde", description: "Líder em medicina diagnóstica no Brasil, com mais de 500 unidades de atendimento e forte presença digital.", marketCap: "8,77B", pe: 14.09, dividend: 7.55, sector: "Saúde", subsetor: "Diagnósticos", pvp: 1.73, lpa: 1.12, vpa: 9.14, payout: 90.28, pEbit: 7.07, evEbit: 9.62, evEbitda: 5.54, roe: 12.25, roic: 10.36, margemBruta: 26.61, margemEbit: 14.73, margemLiquida: 7.39, cReceita5a: 16.45, cLucro5a: 11.16, giroAtivos: 0.63, liqCorrente: 1.97, divLiqPl: 0.62, divLiqEbitda: 1.47, plAtivos: 0.38 },
 ];
 
 const indicatorSnapshots: Record<string, Partial<Holding>> = {
-  ITUB4: { dividend: 7.0, pe: 11.06, pvp: 2.31, lpa: 4.07, vpa: 19.5, psr: 1.28, pEbit: 9.88, evEbit: 9.58, evEbitda: 8.35, cReceita5a: 17.38, cLucro5a: 18.88, roe: 20, roic: 0, giroAtivos: 0.13, margemBruta: 35.89, margemEbit: 12.98, margemLiquida: 12, liqCorrente: 0.14, divLiqPl: 0, divLiqEbitda: 0, plAtivos: 0.07 },
-  BBAS3: { dividend: 5.66, pe: 8.86, pvp: 0.77, lpa: 2.93, vpa: 33.78, psr: 0.47, pEbit: 26.48, evEbit: 26.48, evEbitda: 0, cReceita5a: 26.49, cLucro5a: 4.77, roe: 10, roic: 0, giroAtivos: 0.13, margemBruta: 31.62, margemEbit: 1.76, margemLiquida: 6, liqCorrente: 13.33, divLiqPl: 0, divLiqEbitda: 0, plAtivos: 0.08 },
-  BBDC4: { dividend: 6.98, pe: 9.07, pvp: 1.21, lpa: 2.26, vpa: 16.89, psr: 0.8, pEbit: 10.32, evEbit: 9.62, evEbitda: 0, cReceita5a: 22.38, cLucro5a: 8.33, roe: 13, roic: 0, giroAtivos: 0.12, margemBruta: 28.25, margemEbit: 7.78, margemLiquida: 9, liqCorrente: 10.59, divLiqPl: 0, divLiqEbitda: 0, plAtivos: 0.08 },
-  B3SA3: { dividend: 3.27, pe: 20.86, pvp: 5.48, lpa: 0.87, vpa: 3.32, psr: 8.6, pEbit: 14.41, evEbit: 14.32, evEbitda: 9.85, cReceita5a: 3.58, cLucro5a: 2.01, roe: 25, roic: 6.12, giroAtivos: 0.23, margemBruta: 90.53, margemEbit: 59.69, margemLiquida: 45, liqCorrente: 1.91, divLiqPl: -0.03, divLiqEbitda: -0.06, plAtivos: 0.36 },
-  AXIA6: { dividend: 6.17, pe: 29.73, pvp: 1.65, lpa: 2.25, vpa: 40.65, psr: 4.72, pEbit: 49.4, evEbit: 58.4, evEbitda: -38.8, cReceita5a: 7.26, cLucro5a: 0.68, roe: 8, roic: -11.98, giroAtivos: 0.15, margemBruta: 42.92, margemEbit: 9.56, margemLiquida: 23, liqCorrente: 1.68, divLiqPl: 0.39, divLiqEbitda: -7.87, plAtivos: 0.42 },
-  ISAE4: { dividend: 7.78, pe: 7.66, pvp: 0.87, lpa: 3.72, vpa: 32.54, psr: 1.99, pEbit: 4.54, evEbit: 8.18, evEbitda: 8.69, cReceita5a: 20.55, cLucro5a: -6.15, roe: 14, roic: 9.7, giroAtivos: 0.2, margemBruta: 39.35, margemEbit: 43.9, margemLiquida: 33, liqCorrente: 3.76, divLiqPl: 0.65, divLiqEbitda: 3.56, plAtivos: 0.45 },
-  SAPR11: { dividend: 4.64, pe: 6.14, pvp: 1.03, lpa: 6.88, vpa: 40.85, psr: 1.77, pEbit: 5.46, evEbit: 6.23, evEbitda: 4.91, cReceita5a: 8.47, cLucro5a: 15.85, roe: 18, roic: 10.71, giroAtivos: 0.27, margemBruta: 56.27, margemEbit: 32.44, margemLiquida: 30, liqCorrente: 1.2, divLiqPl: 0.14, divLiqEbitda: 0.6, plAtivos: 0.47 },
-  PETR4: { dividend: 8.08, pe: 6.73, pvp: 1.23, lpa: 6.01, vpa: 32.81, psr: 1.06, pEbit: 4.01, evEbit: 6.62, evEbitda: 2.76, cReceita5a: 10.18, cLucro5a: 14.07, roe: 18, roic: 7.19, giroAtivos: 0.41, margemBruta: 48.15, margemEbit: 26.52, margemLiquida: 16, liqCorrente: 0.82, divLiqPl: 0.74, divLiqEbitda: 1, plAtivos: 0.35 },
-  VALE3: { dividend: 9.06, pe: 27.63, pvp: 2.02, lpa: 3.04, vpa: 41.62, psr: 1.79, pEbit: 11.94, evEbit: 13.87, evEbitda: 5.76, cReceita5a: 0.72, cLucro5a: -12.36, roe: 13, roic: 0.5, giroAtivos: 0.45, margemBruta: 34.98, margemEbit: 14.97, margemLiquida: 14, liqCorrente: 1.15, divLiqPl: 0.33, divLiqEbitda: 0.8, plAtivos: 0.4 },
-  GGBR4: { dividend: 3.12, pe: 28.54, pvp: 0.74, lpa: 0.7, vpa: 26.99, psr: 0.57, pEbit: 10.59, evEbit: 12.19, evEbitda: 5.91, cReceita5a: 9.78, cLucro5a: -10.13, roe: 6, roic: 3.73, giroAtivos: 0.86, margemBruta: 11.41, margemEbit: 5.35, margemLiquida: 4, liqCorrente: 2.89, divLiqPl: 0.15, divLiqEbitda: 1.01, plAtivos: 0.66 },
-  WEGE3: { dividend: 4.54, pe: 31.16, pvp: 10.71, lpa: 1.52, vpa: 4.42, psr: 4.87, pEbit: 24.84, evEbit: 24.51, evEbitda: 21.74, cReceita5a: 18.49, cLucro5a: 22.19, roe: 29, roic: 28.61, giroAtivos: 0.96, margemBruta: 33.53, margemEbit: 19.6, margemLiquida: 17, liqCorrente: 1.55, divLiqPl: -0.14, divLiqEbitda: -0.3, plAtivos: 0.44 },
-  EMBJ3: { dividend: 0.33, pe: 36.48, pvp: 3.38, lpa: 2.39, vpa: 25.75, psr: 1.56, pEbit: 17.38, evEbit: 18.11, evEbitda: 0, cReceita5a: 27.61, cLucro5a: 0, roe: 11, roic: 7.38, giroAtivos: 0.62, margemBruta: 18.2, margemEbit: 9, margemLiquida: 6, liqCorrente: 1.43, divLiqPl: 0.14, divLiqEbitda: 0, plAtivos: 0.29 },
-  TUPY3: { dividend: 0, pe: -13.34, pvp: 0.55, lpa: -0.96, vpa: 23.27, psr: 0.17, pEbit: 13.65, evEbit: 32.06, evEbitda: 6.47, cReceita5a: 15.61, cLucro5a: 0, roe: -4, roic: 1.35, giroAtivos: 1.01, margemBruta: 14.71, margemEbit: 1.24, margemLiquida: -1, liqCorrente: 2.45, divLiqPl: 0.74, divLiqEbitda: 3.71, plAtivos: 0.31 },
-  LREN3: { dividend: 5.53, pe: 10.96, pvp: 1.5, lpa: 1.38, vpa: 10.07, psr: 0.98, pEbit: 9.17, evEbit: 8.41, evEbitda: 3.89, cReceita5a: 8.53, cLucro5a: 4.84, roe: 14, roic: 14.06, giroAtivos: 0.85, margemBruta: 61.41, margemEbit: 10.67, margemLiquida: 9, liqCorrente: 1.76, divLiqPl: -0.12, divLiqEbitda: -0.35, plAtivos: 0.55 },
-  MGLU3: { dividend: 3.2, pe: 20.1, pvp: 0.66, lpa: 0.47, vpa: 14.38, psr: 0.19, pEbit: 4.09, evEbit: 6.5, evEbitda: 3.27, cReceita5a: 13.85, cLucro5a: -16.79, roe: 3, roic: 6.85, giroAtivos: 1.03, margemBruta: 30.65, margemEbit: 4.72, margemLiquida: 1, liqCorrente: 1.26, divLiqPl: 0.39, divLiqEbitda: 1.21, plAtivos: 0.3 },
-  MRVE3: { dividend: 0, pe: -4.09, pvp: 1.04, lpa: -2.37, vpa: 9.35, psr: 0.53, pEbit: -32.46, evEbit: -80.23, evEbitda: 35.46, cReceita5a: 8.27, cLucro5a: 0, roe: -22, roic: -3.04, giroAtivos: 0.36, margemBruta: 28.66, margemEbit: -1.64, margemLiquida: -13, liqCorrente: 1.87, divLiqPl: 1.53, divLiqEbitda: 21.11, plAtivos: 0.18 },
-  ABEV3: { dividend: 7.14, pe: 15.86, pvp: 2.77, lpa: 0.98, vpa: 5.63, psr: 2.79, pEbit: 10.5, evEbit: 9.77, evEbitda: 6.66, cReceita5a: 8.61, cLucro5a: 6.38, roe: 18, roic: 21.37, giroAtivos: 0.61, margemBruta: 51.42, margemEbit: 26.54, margemLiquida: 18, liqCorrente: 0.96, divLiqPl: -0.19, divLiqEbitda: -0.49, plAtivos: 0.61 },
-  BBSE3: { dividend: 8.1, pe: 8.9, pvp: 4.7, lpa: 3.84, vpa: 7.28, psr: 4.1, pEbit: 7.2, evEbit: 7.5, evEbitda: 0, cReceita5a: 10.2, cLucro5a: 10.8, roe: 65, roic: 0, giroAtivos: 0, margemBruta: 0, margemEbit: 0, margemLiquida: 83, liqCorrente: 0, divLiqPl: 0, divLiqEbitda: 0, plAtivos: 0 },
-  SUZB3: { dividend: 2, pe: 5.26, pvp: 1.6, lpa: 10.61, vpa: 34.77, psr: 1.41, pEbit: 6.62, evEbit: 13.17, evEbitda: 3.51, cReceita5a: 10.47, cLucro5a: 0, roe: 15, roic: -2.11, giroAtivos: 0.3, margemBruta: 32.38, margemEbit: 21.25, margemLiquida: 13, liqCorrente: 3.19, divLiqPl: 1.59, divLiqEbitda: 1.75, plAtivos: 0.26 },
-  KLBN11: { dividend: 7.23, pe: 14.65, pvp: 1.71, lpa: 1.34, vpa: 11.54, psr: 1.19, pEbit: 5.49, evEbit: 11.25, evEbitda: 5.81, cReceita5a: 11.61, cLucro5a: 0, roe: 14, roic: 6.79, giroAtivos: 0.32, margemBruta: 35.39, margemEbit: 21.65, margemLiquida: 10, liqCorrente: 2.06, divLiqPl: 1.79, divLiqEbitda: 2.98, plAtivos: 0.23 },
-  RENT3: { dividend: 4.25, pe: 28.11, pvp: 2.06, lpa: 1.67, vpa: 22.72, psr: 1.26, pEbit: 6.75, evEbit: 10.97, evEbitda: 5.13, cReceita5a: 32.3, cLucro5a: 12.34, roe: 7, roic: 10.13, giroAtivos: 0.49, margemBruta: 26.64, margemEbit: 18.7, margemLiquida: 4, liqCorrente: 1.2, divLiqPl: 1.29, divLiqEbitda: 1.97, plAtivos: 0.3 },
-  NTCO3: { dividend: 0, pe: -2.14, pvp: 1.01, lpa: -5.16, vpa: 10.94, psr: 0.71, pEbit: 11.11, evEbit: 14.05, evEbitda: -3.43, cReceita5a: 10.77, cLucro5a: 0, roe: -54, roic: 5.69, giroAtivos: 0.62, margemBruta: 66.36, margemEbit: 6.37, margemLiquida: -33, liqCorrente: 1.68, divLiqPl: 0.27, divLiqEbitda: -0.72, plAtivos: 0.43 },
-  RADL3: { dividend: 1.87, pe: 31.32, pvp: 6.01, lpa: 0.77, vpa: 3.99, psr: 1, pEbit: 16.55, evEbit: 17.63, evEbitda: 7.46, cReceita5a: 17.22, cLucro5a: 11.69, roe: 19, roic: 22.56, giroAtivos: 1.77, margemBruta: 29.34, margemEbit: 6.01, margemLiquida: 3, liqCorrente: 1.39, divLiqPl: 0.39, divLiqEbitda: 0.46, plAtivos: 0.29 },
-  VIVT3: { dividend: 2.71, pe: 22.29, pvp: 1.99, lpa: 1.91, vpa: 21.39, psr: 2.31, pEbit: 13.94, evEbit: 15.28, evEbitda: 3.7, cReceita5a: 6.68, cLucro5a: 5.27, roe: 9, roic: 8.63, giroAtivos: 0.47, margemBruta: 44.75, margemEbit: 16.54, margemLiquida: 10, liqCorrente: 1, divLiqPl: 0.19, divLiqEbitda: 0.32, plAtivos: 0.54 },
-  TIMS3: { dividend: 8.86, pe: 32.82, pvp: 3.36, lpa: 0.84, vpa: 8.17, psr: 2.46, pEbit: 10.35, evEbit: 9.21, evEbitda: 4.31, cReceita5a: 9.05, cLucro5a: 1.63, roe: 16, roic: 30.94, giroAtivos: 0.46, margemBruta: 53.93, margemEbit: 23.82, margemLiquida: 15, liqCorrente: 0.93, divLiqPl: -0.37, divLiqEbitda: -0.53, plAtivos: 0.33 },
-  TOTS3: { dividend: 1.64, pe: 24.94, pvp: 4.09, lpa: 1.49, vpa: 9.08, psr: 3.85, pEbit: 19.81, evEbit: 19.85, evEbitda: 12.29, cReceita5a: 17.33, cLucro5a: 24.77, roe: 15, roic: 12, giroAtivos: 0.61, margemBruta: 70.26, margemEbit: 19.45, margemLiquida: 14, liqCorrente: 1.96, divLiqPl: 0.01, divLiqEbitda: 0.03, plAtivos: 0.58 },
-  RDOR3: { dividend: 10.92, pe: 19.2, pvp: 4.16, lpa: 2.05, vpa: 9.44, psr: 1.62, pEbit: 9.11, evEbit: 9.68, evEbitda: 7.85, cReceita5a: 31.77, cLucro5a: 61.38, roe: 16, roic: 13.57, giroAtivos: 0.52, margemBruta: 21.85, margemEbit: 17.74, margemLiquida: 8, liqCorrente: 2.79, divLiqPl: 0.26, divLiqEbitda: 0.47, plAtivos: 0.2 },
-  HAPV3: { dividend: 0, pe: -16.14, pvp: 0.1, lpa: -0.62, vpa: 96.79, psr: 0.17, pEbit: 3.41, evEbit: 6.03, evEbitda: 4.93, cReceita5a: 38.69, cLucro5a: 0, roe: -1, roic: 2.35, giroAtivos: 0.4, margemBruta: 13.55, margemEbit: 4.95, margemLiquida: -1, liqCorrente: 1.98, divLiqPl: 0.08, divLiqEbitda: 2.14, plAtivos: 0.65 },
-  FLRY3: { dividend: 10.1, pe: 15.11, pvp: 1.68, lpa: 1.1, vpa: 9.86, psr: 1.12, pEbit: 7.51, evEbit: 9.99, evEbitda: 4.84, cReceita5a: 21.48, cLucro5a: 13.97, roe: 11, roic: 9.31, giroAtivos: 0.59, margemBruta: 26.88, margemEbit: 14.96, margemLiquida: 7, liqCorrente: 2.21, divLiqPl: 0.55, divLiqEbitda: 1.2, plAtivos: 0.4 },
+  ITUB4: { dividend: 7.32, pe: 10.51, pvp: 2.31, lpa: 4.07, vpa: 18.55, payout: 75.44, pEbit: 9.39, evEbit: 9.14, evEbitda: null, cReceita5a: 14.62, cLucro5a: 10.07, roe: 21.93, roic: 22.42, giroAtivos: 0.13, margemBruta: 35.89, margemEbit: 12.98, margemLiquida: 11.59, liqCorrente: 1.23, divLiqPl: null, divLiqEbitda: null, plAtivos: 0.07, basileia: 15.95 },
+  BBAS3: { dividend: 5.89, pe: 10.33, pvp: 0.75, lpa: 2.39, vpa: 33.02, payout: 58.75, pEbit: 25.2, evEbit: 25.2, evEbitda: null, cReceita5a: 20.46, cLucro5a: -3.18, roe: 7.24, roic: 0.21, giroAtivos: 0.13, margemBruta: 31.62, margemEbit: 1.76, margemLiquida: 4.29, liqCorrente: 1.02, divLiqPl: null, divLiqEbitda: null, plAtivos: 0.08, basileia: 14.56 },
+  BBDC4: { dividend: 7.35, pe: 8.66, pvp: 1.15, lpa: 2.23, vpa: 16.84, payout: 53.14, pEbit: 9.75, evEbit: 9.07, evEbitda: null, cReceita5a: 21.34, cLucro5a: 3.13, roe: 13.27, roic: 10.16, giroAtivos: 0.12, margemBruta: 28.25, margemEbit: 7.78, margemLiquida: 8.76, liqCorrente: 1.19, divLiqPl: null, divLiqEbitda: null, plAtivos: 0.08, basileia: 15.65 },
+  B3SA3: { dividend: 3.44, pe: 19.51, pvp: 5.13, lpa: 0.87, vpa: 3.31, payout: 42.6, pEbit: 13.48, evEbit: 13.39, evEbitda: 12.65, cReceita5a: 1.57, cLucro5a: -0.56, roe: 26.29, roic: 13.21, giroAtivos: 0.23, margemBruta: 90.53, margemEbit: 59.69, margemLiquida: 41.23, liqCorrente: 1.91, divLiqPl: -0.03, divLiqEbitda: -0.08, plAtivos: 0.36 },
+  AXIA6: { dividend: 6.43, pe: 28.39, pvp: 1.57, lpa: 2.25, vpa: 40.67, payout: 125.16, pEbit: 47.19, evEbit: 55.18, evEbitda: 25.55, cReceita5a: 1.88, cLucro5a: 2.8, roe: 5.53, roic: -4.97, giroAtivos: 0.15, margemBruta: 42.87, margemEbit: 9.56, margemLiquida: 15.89, liqCorrente: 1.68, divLiqPl: 0.39, divLiqEbitda: 5.48, plAtivos: 0.42 },
+  ISAE4: { dividend: 8.03, pe: 7.56, pvp: 0.87, lpa: 3.72, vpa: 32.1, payout: 52.84, pEbit: 4.48, evEbit: 8.07, evEbitda: 8, cReceita5a: 11.2, cLucro5a: -3.74, roe: 11.57, roic: 10.39, giroAtivos: 0.2, margemBruta: 39.35, margemEbit: 43.9, margemLiquida: 26.01, liqCorrente: 3.76, divLiqPl: 0.65, divLiqEbitda: 3.32, plAtivos: 0.45 },
+  SAPR11: { dividend: 4.86, pe: 5.83, pvp: 0.98, lpa: 6.88, vpa: 40.85, payout: 22.26, pEbit: 5.19, evEbit: 3.67, evEbitda: 2.9, cReceita5a: 6.72, cLucro5a: 12.05, roe: 16.84, roic: 10.71, giroAtivos: 0.27, margemBruta: 56.27, margemEbit: 32.44, margemLiquida: 28.86, liqCorrente: 1.2, divLiqPl: -0.31, divLiqEbitda: -1.28, plAtivos: 0.47 },
+  PETR4: { dividend: 7.74, pe: 5.17, pvp: 1.37, lpa: 8.54, vpa: 32.26, payout: 40.63, pEbit: 3.91, evEbit: 6.4, evEbitda: 4.05, cReceita5a: 1.91, cLucro5a: 0.62, roe: 26.49, roic: 13.21, giroAtivos: 0.41, margemBruta: 47.63, margemEbit: 29.27, margemLiquida: 22.13, liqCorrente: 0.71, divLiqPl: 0.8, divLiqEbitda: 1.45, plAtivos: 0.34 },
+  VALE3: { dividend: 6.98, pe: 25.69, pvp: 1.93, lpa: 3.04, vpa: 40.6, payout: 267.45, pEbit: 11.1, evEbit: 13.04, evEbitda: 8.46, cReceita5a: -6.04, cLucro5a: -37.26, roe: 7.5, roic: 5.94, giroAtivos: 0.45, margemBruta: 34.98, margemEbit: 14.97, margemLiquida: 6.47, liqCorrente: 0.12, divLiqPl: 0.34, divLiqEbitda: 1.25, plAtivos: 0.39 },
+  GGBR4: { dividend: 2.76, pe: 26.73, pvp: 0.69, lpa: 0.7, vpa: 26.89, payout: 89.09, pEbit: 9.91, evEbit: 11.54, evEbitda: 5.81, cReceita5a: -2.27, cLucro5a: -38.06, roe: 2.59, roic: 4.34, giroAtivos: 0.86, margemBruta: 11.41, margemEbit: 5.35, margemLiquida: 1.99, liqCorrente: 2.89, divLiqPl: 0.15, divLiqEbitda: 1.05, plAtivos: 0.66 },
+  WEGE3: { dividend: 4.61, pe: 30.5, pvp: 11.16, lpa: 1.52, vpa: 4.15, payout: 89.65, pEbit: 24.31, evEbit: 23.98, evEbitda: 21.31, cReceita5a: 11.61, cLucro5a: 13.12, roe: 36.61, roic: 30.11, giroAtivos: 0.96, margemBruta: 33.53, margemEbit: 19.6, margemLiquida: 15.63, liqCorrente: 1.55, divLiqPl: -0.15, divLiqEbitda: -0.3, plAtivos: 0.41 },
+  EMBJ3: { dividend: 0.36, pe: 30.85, pvp: 3.18, lpa: 2.64, vpa: 25.6, payout: 11.03, pEbit: 17.99, evEbit: 17.94, evEbitda: 12.6, cReceita5a: 13.06, cLucro5a: null, roe: 10.3, roic: 8.46, giroAtivos: 0.59, margemBruta: 17.57, margemEbit: 7.99, margemLiquida: 4.66, liqCorrente: 1.5, divLiqPl: -0.01, divLiqEbitda: -0.04, plAtivos: 0.27 },
+  TUPY3: { dividend: 0, pe: -13.1, pvp: 0.54, lpa: -0.96, vpa: 23.27, payout: 0, pEbit: 13.41, evEbit: 31.82, evEbitda: 7.63, cReceita5a: 7.15, cLucro5a: null, roe: -4.13, roic: 0.97, giroAtivos: 1.01, margemBruta: 14.71, margemEbit: 1.24, margemLiquida: -1.27, liqCorrente: 2.45, divLiqPl: 0.74, divLiqEbitda: 4.42, plAtivos: 0.31 },
+  LREN3: { dividend: 5.7, pe: 9.95, pvp: 1.39, lpa: 1.45, vpa: 10.39, payout: 57.91, pEbit: 8.07, evEbit: 7.23, evEbitda: 4.22, cReceita5a: 8.41, cLucro5a: 18.15, roe: 13.94, roic: 14.21, giroAtivos: 0.81, margemBruta: 61.71, margemEbit: 11.35, margemLiquida: 9.21, liqCorrente: 1.69, divLiqPl: -0.15, divLiqEbitda: -0.5, plAtivos: 0.53 },
+  MGLU3: { dividend: 3.28, pe: 19.53, pvp: 0.64, lpa: 0.47, vpa: 14.38, payout: 61.31, pEbit: 3.97, evEbit: 6.39, evEbitda: 3.73, cReceita5a: 1.68, cLucro5a: -9.04, roe: 3.3, roic: 8.11, giroAtivos: 1.03, margemBruta: 30.65, margemEbit: 4.72, margemLiquida: 0.96, liqCorrente: 1.26, divLiqPl: 0.39, divLiqEbitda: 1.41, plAtivos: 0.3 },
+  MRVE3: { dividend: 0, pe: -4.69, pvp: 0.92, lpa: -1.85, vpa: 9.47, payout: 0, pEbit: 24.28, evEbit: 65.76, evEbitda: 29.22, cReceita5a: 8.91, cLucro5a: null, roe: -19.56, roic: -0.01, giroAtivos: 0.38, margemBruta: 29.34, margemEbit: 1.84, margemLiquida: -9.56, liqCorrente: 2.03, divLiqPl: 1.57, divLiqEbitda: 18.43, plAtivos: 0.19 },
+  ABEV3: { dividend: 7.29, pe: 15.6, pvp: 2.75, lpa: 0.98, vpa: 5.58, payout: 85.92, pEbit: 10.32, evEbit: 9.6, evEbitda: 7.45, cReceita5a: 3.91, cLucro5a: 4.03, roe: 17.63, roic: 21.89, giroAtivos: 0.61, margemBruta: 51.42, margemEbit: 26.54, margemLiquida: 17.57, liqCorrente: 0.96, divLiqPl: -0.19, divLiqEbitda: -0.56, plAtivos: 0.61 },
+  BBSE3: { dividend: 13.14, pe: 7.55, pvp: 6.55, lpa: 4.51, vpa: 5.19, payout: 100.89, pEbit: 6.9, evEbit: 5.88, evEbitda: null, cReceita5a: -100, cLucro5a: 18.05, roe: 86.84, roic: 76.48, giroAtivos: 0, margemBruta: 0, margemEbit: 0, margemLiquida: 0, liqCorrente: 1.28, divLiqPl: -0.97, divLiqEbitda: null, plAtivos: 0.45 },
+  SUZB3: { dividend: 2.03, pe: 5.15, pvp: 1.58, lpa: 10.61, vpa: 34.66, payout: 10.53, pEbit: 6.48, evEbit: 13.03, evEbitda: 6.32, cReceita5a: 4.11, cLucro5a: 9.25, roe: 30.6, roic: 2.65, giroAtivos: 0.3, margemBruta: 32.38, margemEbit: 21.25, margemLiquida: 26.75, liqCorrente: 3.19, divLiqPl: 1.59, divLiqEbitda: 3.18, plAtivos: 0.26 },
+  KLBN11: { dividend: 8.46, pe: 15.04, pvp: 1.82, lpa: 1.3, vpa: 10.71, payout: 93.66, pEbit: 5.44, evEbit: 11.19, evEbitda: 6.89, cReceita5a: 4.66, cLucro5a: -13.19, roe: 12.12, roic: 7.55, giroAtivos: 0.32, margemBruta: 35.39, margemEbit: 21.65, margemLiquida: 7.83, liqCorrente: 2.06, divLiqPl: 1.93, divLiqEbitda: 3.55, plAtivos: 0.21 },
+  RENT3: { dividend: 4.39, pe: 27.02, pvp: 1.98, lpa: 1.67, vpa: 22.71, payout: 111.91, pEbit: 6.49, evEbit: 10.7, evEbitda: 6.73, cReceita5a: 30.83, cLucro5a: -1.76, roe: 7.34, roic: 9.38, giroAtivos: 0.49, margemBruta: 26.64, margemEbit: 18.7, margemLiquida: 4.49, liqCorrente: 1.2, divLiqPl: 1.29, divLiqEbitda: 2.66, plAtivos: 0.3 },
+  NTCO3: { dividend: 0, pe: -5.61, pvp: 0.92, lpa: -1.56, vpa: 9.49, payout: 0, pEbit: 20.37, evEbit: 27.26, evEbitda: 9.97, cReceita5a: -8.89, cLucro5a: null, roe: -16.49, roic: 2.97, giroAtivos: 0.87, margemBruta: 65.54, margemEbit: 2.35, margemLiquida: -8.52, liqCorrente: 1.63, divLiqPl: 0.31, divLiqEbitda: 2.52, plAtivos: 0.45 },
+  RADL3: { dividend: 1.89, pe: 31.61, pvp: 5.6, lpa: 0.74, vpa: 4.18, payout: 56.01, pEbit: 15.38, evEbit: 16.63, evEbitda: 9.9, cReceita5a: 12.9, cLucro5a: 11.22, roe: 17.71, roic: 22.5, giroAtivos: 1.76, margemBruta: 29.29, margemEbit: 6.02, margemLiquida: 2.93, liqCorrente: 1.46, divLiqPl: 0.46, divLiqEbitda: 0.75, plAtivos: 0.29 },
+  VIVT3: { dividend: 2.64, pe: 21.38, pvp: 1.92, lpa: 1.91, vpa: 21.3, payout: 112.4, pEbit: 13.37, evEbit: 14.71, evEbitda: 5.85, cReceita5a: 6.24, cLucro5a: -0.17, roe: 8.98, roic: 9.85, giroAtivos: 0.47, margemBruta: 44.75, margemEbit: 16.55, margemLiquida: 10.35, liqCorrente: 1, divLiqPl: 0.19, divLiqEbitda: 0.53, plAtivos: 0.54 },
+  TIMS3: { dividend: 9.1, pe: 14.72, pvp: 2.65, lpa: 1.8, vpa: 10.02, payout: 118.44, pEbit: 9.97, evEbit: 9.48, evEbitda: 4.49, cReceita5a: 13.57, cLucro5a: 7.84, roe: 17.98, roic: 22.88, giroAtivos: 0.47, margemBruta: 53.93, margemEbit: 23.93, margemLiquida: 16.2, liqCorrente: 0.89, divLiqPl: -0.13, divLiqEbitda: -0.23, plAtivos: 0.42 },
+  TOTS3: { dividend: 1.7, pe: 24.1, pvp: 4.21, lpa: 1.49, vpa: 8.52, payout: 41, pEbit: 20.63, evEbit: 20.68, evEbitda: 15.58, cReceita5a: 12.11, cLucro5a: 19.74, roe: 17.47, roic: 12.13, giroAtivos: 0.61, margemBruta: 70.26, margemEbit: 18.05, margemLiquida: 15.45, liqCorrente: 1.96, divLiqPl: 0.01, divLiqEbitda: 0.04, plAtivos: 0.54 },
+  RDOR3: { dividend: 11.15, pe: 19.41, pvp: 3.27, lpa: 1.94, vpa: 11.5, payout: 172.22, pEbit: 9.59, evEbit: 9.56, evEbitda: 7.93, cReceita5a: 21.6, cLucro5a: 22.28, roe: 16.87, roic: 11.54, giroAtivos: 0.49, margemBruta: 21.02, margemEbit: 16.58, margemLiquida: 8.19, liqCorrente: 3.11, divLiqPl: -0.01, divLiqEbitda: -0.03, plAtivos: 0.24 },
+  HAPV3: { dividend: 0, pe: -15.36, pvp: 0.1, lpa: -0.62, vpa: 96.79, payout: 0, pEbit: 3.24, evEbit: 5.86, evEbitda: 2.79, cReceita5a: 19.24, cLucro5a: null, roe: -0.64, roic: 1.9, giroAtivos: 0.32, margemBruta: 16.88, margemEbit: 6.17, margemLiquida: -1.3, liqCorrente: 1.98, divLiqPl: 0.08, divLiqEbitda: 1.25, plAtivos: 0.65 },
+  FLRY3: { dividend: 7.55, pe: 14.09, pvp: 1.73, lpa: 1.12, vpa: 9.14, payout: 90.28, pEbit: 7.07, evEbit: 9.62, evEbitda: 5.54, cReceita5a: 16.45, cLucro5a: 11.16, roe: 12.25, roic: 10.36, giroAtivos: 0.63, margemBruta: 26.61, margemEbit: 14.73, margemLiquida: 7.39, liqCorrente: 1.97, divLiqPl: 0.62, divLiqEbitda: 1.47, plAtivos: 0.38 },
 };
 
 function applyIndicatorSnapshots() {
@@ -154,10 +155,11 @@ export const indicatorTooltips: Record<string, { title: string; description: str
   pvp: { title: "P/VP (Preço/Valor Patrimonial)", description: "Relação entre preço de mercado e valor patrimonial. Abaixo de 1 pode indicar ativo subvalorizado.", formula: "Preço da ação ÷ Valor patrimonial por ação (VPA)" },
   lpa: { title: "LPA (Lucro por Ação)", description: "Quanto de lucro líquido cada ação gerou no período.", formula: "Lucro Líquido ÷ Número total de ações" },
   vpa: { title: "VPA (Valor Patrimonial por Ação)", description: "Quanto do patrimônio líquido corresponde a cada ação.", formula: "Patrimônio Líquido ÷ Número total de ações" },
-  psr: { title: "PSR (Price to Sales Ratio)", description: "Compara o preço com a receita. Útil para empresas que ainda não dão lucro.", formula: "Preço da ação ÷ Receita por ação" },
+  payout: { title: "PAYOUT", description: "Percentual do lucro distribuido aos acionistas em dividendos.", formula: "(Dividendos Totais ÷ Lucro Liquido) x 100" },
   pEbit: { title: "P/EBIT", description: "Relação entre preço e lucro operacional, desconsidera impostos e juros.", formula: "Valor de mercado ÷ EBIT" },
   evEbit: { title: "EV/EBIT", description: "Valor da firma em relação ao lucro operacional. Considera dívidas.", formula: "Enterprise Value ÷ EBIT" },
   evEbitda: { title: "EV/EBITDA", description: "Valor da firma relativo ao EBITDA. Um dos mais usados para comparar empresas.", formula: "Enterprise Value ÷ EBITDA" },
+  basileia: { title: "Indice de Basileia", description: "Indicador regulatorio de solidez de capital dos bancos. Quanto maior, maior capacidade de absorver perdas.", formula: "Capital de Referencia ÷ Ativos Ponderados pelo Risco × 100" },
   roe: { title: "ROE (Return on Equity)", description: "Retorno sobre o patrimônio líquido. Mede eficiência em gerar lucro com capital próprio.", formula: "Lucro Líquido ÷ Patrimônio Líquido × 100" },
   roic: { title: "ROIC (Return on Invested Capital)", description: "Retorno sobre capital investido. Mostra eficiência do capital total.", formula: "NOPAT ÷ Capital Investido × 100" },
   margemBruta: { title: "Margem Bruta", description: "Percentual da receita que sobra após custos diretos de produção.", formula: "(Receita - Custo dos Produtos) ÷ Receita × 100" },
@@ -176,6 +178,63 @@ export const indicatorTooltips: Record<string, { title: string; description: str
 export function calcGrahamPrice(asset: Holding): number | null {
   if (!asset.lpa || !asset.vpa || asset.lpa <= 0 || asset.vpa <= 0) return null;
   return Math.round(Math.sqrt(22.5 * asset.lpa * asset.vpa) * 100) / 100;
+}
+
+export type ActiveValuationType = "graham" | "preco_justo" | null;
+
+export interface ActiveValuation {
+  type: ActiveValuationType;
+  price: number | null;
+  upside: number | null;
+  label: "Método Graham" | "Preço Justo Estimado" | null;
+}
+
+const isValidPositiveNumber = (value: number | null | undefined): value is number =>
+  value !== null && value !== undefined && Number.isFinite(value) && value > 0;
+
+const isGrahamValid = (asset: Holding, grahamPrice: number | null): grahamPrice is number => {
+  // Graham valido somente quando:
+  // - LPA > 0
+  // - VPA > 0
+  // - resultado numerico, finito e > 0
+  return (
+    isValidPositiveNumber(asset.lpa) &&
+    isValidPositiveNumber(asset.vpa) &&
+    isValidPositiveNumber(grahamPrice)
+  );
+};
+
+// Prioridade de valuation:
+// 1) Graham valido
+// 2) Preco Justo Estimado (fallback)
+// 3) null (sem valuation disponivel)
+export function resolveActiveValuation(asset: Holding): ActiveValuation {
+  const grahamPrice = calcGrahamPrice(asset);
+  if (isGrahamValid(asset, grahamPrice)) {
+    return {
+      type: "graham",
+      price: grahamPrice,
+      upside: ((grahamPrice / asset.price) - 1) * 100,
+      label: "Método Graham",
+    };
+  }
+
+  const fairPrice = calcFairPrice(asset);
+  if (isValidPositiveNumber(fairPrice)) {
+    return {
+      type: "preco_justo",
+      price: fairPrice,
+      upside: ((fairPrice / asset.price) - 1) * 100,
+      label: "Preço Justo Estimado",
+    };
+  }
+
+  return {
+    type: null,
+    price: null,
+    upside: null,
+    label: null,
+  };
 }
 
 export function calcGrahamSafetyPrice(
@@ -1537,93 +1596,714 @@ export async function getInvestmentComparison(symbol: string, period: string): P
   return result.points;
 }
 
+const clamp = (value: number, min: number, max: number): number =>
+  Math.max(min, Math.min(max, value));
+
+const safeWeighted = (maxPoints: number, ratio: number): number =>
+  maxPoints * clamp(ratio, 0, 1);
+
+function scoreValuationGraham(asset: Holding, maxPoints: number): number {
+  // A recomendacao usa SEMPRE o valuation ativo (Graham > Preco Justo Estimado).
+  const activeValuation = resolveActiveValuation(asset);
+  if (
+    !activeValuation.price ||
+    !Number.isFinite(activeValuation.price) ||
+    activeValuation.upside === null ||
+    !Number.isFinite(activeValuation.upside) ||
+    asset.price <= 0
+  ) {
+    return maxPoints * 0.5;
+  }
+
+  const upside = activeValuation.upside;
+  if (upside >= 40) return maxPoints;
+  if (upside >= 25) return safeWeighted(maxPoints, 0.85);
+  if (upside >= 10) return safeWeighted(maxPoints, 0.7);
+  if (upside >= -10) return safeWeighted(maxPoints, 0.5);
+  if (upside >= -25) return safeWeighted(maxPoints, 0.25);
+  return safeWeighted(maxPoints, 0.05);
+}
+
+function scoreValuationPL(asset: Holding, maxPoints: number, isTech: boolean, isCommodities: boolean): number {
+  if (asset.pe === null || !Number.isFinite(asset.pe)) return maxPoints * 0.5;
+  const pe = asset.pe;
+  if (pe <= 0) return safeWeighted(maxPoints, 0.1);
+
+  // Tecnologia: aceita P/L mais alto.
+  if (isTech) {
+    if (pe <= 15) return maxPoints;
+    if (pe <= 25) return safeWeighted(maxPoints, 0.85);
+    if (pe <= 35) return safeWeighted(maxPoints, 0.65);
+    if (pe <= 50) return safeWeighted(maxPoints, 0.45);
+    return safeWeighted(maxPoints, 0.25);
+  }
+
+  // Commodities: reduz sensibilidade a P/L isolado por ciclicidade.
+  if (isCommodities) {
+    if (pe <= 6) return maxPoints;
+    if (pe <= 10) return safeWeighted(maxPoints, 0.85);
+    if (pe <= 16) return safeWeighted(maxPoints, 0.7);
+    if (pe <= 25) return safeWeighted(maxPoints, 0.55);
+    return safeWeighted(maxPoints, 0.35);
+  }
+
+  if (pe <= 8) return maxPoints;
+  if (pe <= 12) return safeWeighted(maxPoints, 0.85);
+  if (pe <= 18) return safeWeighted(maxPoints, 0.65);
+  if (pe <= 25) return safeWeighted(maxPoints, 0.45);
+  if (pe <= 35) return safeWeighted(maxPoints, 0.25);
+  return safeWeighted(maxPoints, 0.1);
+}
+
+function scoreValuationPVP(asset: Holding, maxPoints: number, isFinancial: boolean): number {
+  if (asset.pvp === null || !Number.isFinite(asset.pvp)) return maxPoints * 0.5;
+  const pvp = asset.pvp;
+
+  let ratio = 0.1;
+  if (pvp <= 0.8) ratio = 1;
+  else if (pvp <= 1.2) ratio = 0.9;
+  else if (pvp <= 2) ratio = 0.75;
+  else if (pvp <= 3) ratio = 0.55;
+  else if (pvp <= 5) ratio = 0.3;
+
+  // Financeiro: P/VP e ROE sao mais relevantes.
+  if (isFinancial) ratio = clamp(ratio * 1.1, 0, 1);
+
+  return safeWeighted(maxPoints, ratio);
+}
+
+function scoreProfitabilityROE(asset: Holding, maxPoints: number, isFinancial: boolean): number {
+  if (asset.roe === null || !Number.isFinite(asset.roe)) return maxPoints * 0.5;
+  const roe = asset.roe;
+
+  let ratio = 0.05;
+  if (roe >= 25) ratio = 1;
+  else if (roe >= 18) ratio = 0.9;
+  else if (roe >= 12) ratio = 0.75;
+  else if (roe >= 8) ratio = 0.5;
+  else if (roe >= 0) ratio = 0.3;
+
+  if (isFinancial) ratio = clamp(ratio * 1.1, 0, 1);
+
+  return safeWeighted(maxPoints, ratio);
+}
+
+function scoreProfitabilityMargin(asset: Holding, maxPoints: number, isCommodities: boolean): number {
+  if (asset.margemLiquida === null || !Number.isFinite(asset.margemLiquida)) return maxPoints * 0.5;
+  const margin = asset.margemLiquida;
+
+  if (isCommodities) {
+    if (margin >= 30) return maxPoints;
+    if (margin >= 20) return safeWeighted(maxPoints, 0.9);
+    if (margin >= 10) return safeWeighted(maxPoints, 0.75);
+    if (margin >= 5) return safeWeighted(maxPoints, 0.55);
+    if (margin >= 0) return safeWeighted(maxPoints, 0.35);
+    return safeWeighted(maxPoints, 0.05);
+  }
+
+  if (margin >= 20) return maxPoints;
+  if (margin >= 10) return safeWeighted(maxPoints, 0.8);
+  if (margin >= 5) return safeWeighted(maxPoints, 0.55);
+  if (margin >= 0) return safeWeighted(maxPoints, 0.3);
+  return safeWeighted(maxPoints, 0.05);
+}
+
+function scoreRiskBlock(
+  asset: Holding,
+  maxPoints: number,
+  isFinancial: boolean,
+  isUtilities: boolean,
+  isCommodities: boolean
+): number {
+  // Financeiro: usa Basileia (nao usa Div.Liq/EBITDA).
+  if (isFinancial) {
+    if (asset.basileia === null || asset.basileia === undefined || !Number.isFinite(asset.basileia)) {
+      return maxPoints * 0.5;
+    }
+    const basileia = asset.basileia;
+
+    if (basileia >= 16) return maxPoints;
+    if (basileia >= 14) return safeWeighted(maxPoints, 0.9);
+    if (basileia >= 13) return safeWeighted(maxPoints, 0.7);
+    if (basileia >= 12) return safeWeighted(maxPoints, 0.5);
+    if (basileia >= 10.5) return safeWeighted(maxPoints, 0.3);
+    return safeWeighted(maxPoints, 0.1);
+  }
+
+  // Demais setores: usa Div.Liq/EBITDA (nao usa Basileia).
+  if (asset.divLiqEbitda === null || !Number.isFinite(asset.divLiqEbitda)) {
+    return maxPoints * 0.5;
+  }
+  const debt = asset.divLiqEbitda;
+
+  // Utilities: aceita alavancagem maior.
+  if (isUtilities) {
+    if (debt < 0) return maxPoints;
+    if (debt <= 1.5) return safeWeighted(maxPoints, 0.9);
+    if (debt <= 3) return safeWeighted(maxPoints, 0.75);
+    if (debt <= 4) return safeWeighted(maxPoints, 0.6);
+    if (debt <= 5) return safeWeighted(maxPoints, 0.4);
+    return safeWeighted(maxPoints, 0.15);
+  }
+
+  // Commodities: maior foco em risco financeiro.
+  if (isCommodities) {
+    if (debt < 0) return maxPoints;
+    if (debt <= 1) return safeWeighted(maxPoints, 0.9);
+    if (debt <= 2) return safeWeighted(maxPoints, 0.75);
+    if (debt <= 3) return safeWeighted(maxPoints, 0.55);
+    if (debt <= 4) return safeWeighted(maxPoints, 0.3);
+    return safeWeighted(maxPoints, 0.1);
+  }
+
+  if (debt < 0) return maxPoints;
+  if (debt <= 1.5) return safeWeighted(maxPoints, 0.9);
+  if (debt <= 2.5) return safeWeighted(maxPoints, 0.75);
+  if (debt <= 3.5) return safeWeighted(maxPoints, 0.55);
+  if (debt <= 5) return safeWeighted(maxPoints, 0.3);
+  return safeWeighted(maxPoints, 0.1);
+}
+
+function scoreGrowth(asset: Holding, maxPoints: number, isTech: boolean, isCommodities: boolean): number {
+  if (asset.cLucro5a === null || !Number.isFinite(asset.cLucro5a)) return maxPoints * 0.5;
+  const growth = asset.cLucro5a;
+
+  // Tecnologia: maior importancia para crescimento dentro do proprio bloco.
+  if (isTech) {
+    if (growth >= 20) return maxPoints;
+    if (growth >= 10) return safeWeighted(maxPoints, 0.85);
+    if (growth >= 5) return safeWeighted(maxPoints, 0.65);
+    if (growth >= 0) return safeWeighted(maxPoints, 0.45);
+    if (growth >= -10) return safeWeighted(maxPoints, 0.25);
+    return safeWeighted(maxPoints, 0.05);
+  }
+
+  // Commodities: suaviza penalizacao por variacoes pontuais de ciclo.
+  if (isCommodities) {
+    if (growth >= 20) return maxPoints;
+    if (growth >= 12) return safeWeighted(maxPoints, 0.85);
+    if (growth >= 5) return safeWeighted(maxPoints, 0.7);
+    if (growth >= -5) return safeWeighted(maxPoints, 0.5);
+    if (growth >= -20) return safeWeighted(maxPoints, 0.3);
+    return safeWeighted(maxPoints, 0.15);
+  }
+
+  if (growth >= 20) return maxPoints;
+  if (growth >= 12) return safeWeighted(maxPoints, 0.9);
+  if (growth >= 5) return safeWeighted(maxPoints, 0.7);
+  if (growth >= 0) return safeWeighted(maxPoints, 0.45);
+  if (growth >= -15) return safeWeighted(maxPoints, 0.25);
+  return safeWeighted(maxPoints, 0.05);
+}
+
+function scoreDividend(asset: Holding, maxPoints: number): number {
+  const dy = asset.dividend;
+  if (!Number.isFinite(dy)) return maxPoints * 0.5;
+
+  if (dy >= 10) return maxPoints;
+  if (dy >= 7) return safeWeighted(maxPoints, 0.9);
+  if (dy >= 4) return safeWeighted(maxPoints, 0.75);
+  if (dy >= 2) return safeWeighted(maxPoints, 0.55);
+  if (dy > 0) return safeWeighted(maxPoints, 0.35);
+  return safeWeighted(maxPoints, 0.15);
+}
+
+function calculateSectorAdjustment(ticker: string, asset: Holding): number {
+  let sectorAdjustment = 0;
+  const symbol = ticker.toUpperCase();
+  const lucroCagr5a = Number.isFinite(asset.cLucro5a) ? asset.cLucro5a : null;
+  const debtToEbitda = Number.isFinite(asset.divLiqEbitda) ? asset.divLiqEbitda : null;
+  const roe = Number.isFinite(asset.roe) ? asset.roe : null;
+
+  const stateOwned = [
+    "PETR3",
+    "PETR4",
+    "BBAS3",
+    "SAPR11",
+  ];
+
+  const commodityCompanies = [
+    "PETR4",
+    "VALE3",
+    "SUZB3",
+    "KLBN11",
+    "GGBR4",
+  ];
+
+  const utilities = [
+    "AXIA6",
+    "CPFE3",
+    "ISAE4",
+    "SAPR11",
+  ];
+
+  const financials = [
+    "ITUB4",
+    "BBAS3",
+    "BBDC4",
+    "B3SA3",
+    "BBSE3",
+  ];
+
+  const technology = [
+    "TOTS3",
+  ];
+
+  const industry = [
+    "WEGE3",
+    "EMBJ3",
+    "TUPY3",
+  ];
+
+  const cyclical = [
+    "LREN3",
+    "MGLU3",
+    "MRVE3",
+    "RENT3",
+  ];
+
+  const defensive = [
+    "ABEV3",
+    "NATU3",
+    // Compatibilidade com ticker atual no dataset.
+    "NTCO3",
+  ];
+
+  const telecom = [
+    "VIVT3",
+    "TIMS3",
+  ];
+
+  const healthcare = [
+    "RDOR3",
+    "RADL3",
+    "HAPV3",
+    "FLRY3",
+  ];
+
+  // Estatais: risco politico e maior chance de interferencia governamental.
+  // AXIA6 (Eletrobras) nao entra aqui pois foi privatizada.
+  if (stateOwned.includes(symbol)) {
+    sectorAdjustment -= 4;
+  }
+
+  // Commodities: maior volatilidade de lucro por ciclo de precos.
+  if (commodityCompanies.includes(symbol)) {
+    sectorAdjustment -= 2;
+    if (lucroCagr5a !== null && lucroCagr5a > 8) {
+      sectorAdjustment += 1;
+    }
+  }
+
+  // Utilities: previsibilidade maior, mas com risco estrutural de alavancagem.
+  if (utilities.includes(symbol)) {
+    sectorAdjustment += 1;
+    if (debtToEbitda !== null && debtToEbitda < 3.5) {
+      sectorAdjustment += 1;
+    }
+    if (debtToEbitda !== null && debtToEbitda > 5) {
+      sectorAdjustment -= 2;
+    }
+  }
+
+  // Financeiro: ajuste neutro (0), os indicadores-base ja capturam bem o setor.
+  if (financials.includes(symbol)) {
+    sectorAdjustment += 0;
+  }
+
+  // Tecnologia: crescimento estrutural permite multiplos maiores quando sustentado.
+  if (technology.includes(symbol)) {
+    if (lucroCagr5a !== null && lucroCagr5a > 12) {
+      sectorAdjustment += 3;
+    }
+    if (roe !== null && roe > 18) {
+      sectorAdjustment += 1;
+    }
+    if (lucroCagr5a !== null && lucroCagr5a < 5) {
+      sectorAdjustment -= 2;
+    }
+  }
+
+  // Industria: ajuste neutro (setor ciclico sem vies estrutural positivo/negativo).
+  if (industry.includes(symbol)) {
+    sectorAdjustment += 0;
+  }
+
+  // Consumo ciclico: maior sensibilidade a juros e ciclo economico.
+  if (cyclical.includes(symbol)) {
+    sectorAdjustment -= 1;
+    if (lucroCagr5a !== null && lucroCagr5a > 10) {
+      sectorAdjustment += 1;
+    }
+  }
+
+  // Consumo defensivo: demanda mais estavel.
+  if (defensive.includes(symbol)) {
+    sectorAdjustment += 1;
+  }
+
+  // Telecom: crescimento historicamente menor e estrutura de capital pressionada.
+  if (telecom.includes(symbol)) {
+    sectorAdjustment -= 1;
+  }
+
+  // Saude: crescimento estrutural com envelhecimento populacional.
+  if (healthcare.includes(symbol)) {
+    sectorAdjustment += 1;
+    if (lucroCagr5a !== null && lucroCagr5a > 10) {
+      sectorAdjustment += 1;
+    }
+  }
+
+  // Limites de controle para o ajuste setorial.
+  if (sectorAdjustment > 6) sectorAdjustment = 6;
+  if (sectorAdjustment < -8) sectorAdjustment = -8;
+
+  return sectorAdjustment;
+}
+
 export function calcRecommendationScore(asset: Holding): { score: number; label: string; color: string } {
-  if (asset.pe === null) return { score: 30, label: "Sem dados", color: "hsl(var(--muted-foreground))" };
-  
-  let score = 40; // Start at 40 (neutral-low) instead of 50
-  
-  // Graham valuation check — KEY differentiator
-  const graham = calcGrahamPrice(asset);
-  if (graham) {
-    const upside = (graham / asset.price - 1) * 100;
-    if (upside > 30) score += 18;       // Strong margin of safety
-    else if (upside > 10) score += 10;   // Moderate margin
-    else if (upside > 0) score += 4;     // Slight margin
-    else if (upside > -15) score -= 5;   // Slightly overpriced
-    else score -= 15;                     // Very overpriced — penalize hard
-  }
-  
-  // P/L — lower is cheaper, but negatives are bad
-  if (asset.pe) {
-    if (asset.pe < 0) score -= 12;
-    else if (asset.pe < 8) score += 10;
-    else if (asset.pe < 12) score += 5;
-    else if (asset.pe < 20) score += 0;   // neutral
-    else if (asset.pe < 30) score -= 5;
-    else score -= 12;                      // Very expensive
-  }
-  
-  // P/VP — below 1 is undervalued
-  if (asset.pvp !== null) {
-    if (asset.pvp < 0.8) score += 8;
-    else if (asset.pvp < 1.5) score += 3;
-    else if (asset.pvp < 3) score -= 2;
-    else if (asset.pvp < 6) score -= 6;
-    else score -= 10;                      // Extremely overpriced by book
-  }
-  
-  // ROE — quality metric
-  if (asset.roe !== null) {
-    if (asset.roe < 0) score -= 10;
-    else if (asset.roe > 20) score += 6;
-    else if (asset.roe > 12) score += 3;
-    else score -= 2;
-  }
-  
-  // Margem líquida
-  if (asset.margemLiquida !== null) {
-    if (asset.margemLiquida < 0) score -= 8;
-    else if (asset.margemLiquida > 15) score += 4;
-    else if (asset.margemLiquida > 8) score += 2;
-  }
-  
-  // Endividamento — critical safety check
-  if (asset.divLiqEbitda !== null) {
-    if (asset.divLiqEbitda < 0) score += 6;   // Net cash
-    else if (asset.divLiqEbitda < 1.5) score += 3;
-    else if (asset.divLiqEbitda < 3) score += 0;
-    else if (asset.divLiqEbitda < 4) score -= 5;
-    else score -= 10;                          // Dangerously leveraged
-  }
-  
-  // Dividendos
-  if (asset.dividend > 7) score += 5;
-  else if (asset.dividend > 4) score += 2;
-  else if (asset.dividend < 1) score -= 3;
-  
-  // Crescimento lucro 5 anos
-  if (asset.cLucro5a !== null) {
-    if (asset.cLucro5a === null || asset.cLucro5a < -10) score -= 6;
-    else if (asset.cLucro5a < 0) score -= 3;
-    else if (asset.cLucro5a > 15) score += 4;
-    else if (asset.cLucro5a > 5) score += 2;
-  }
-  
-  score = Math.max(0, Math.min(100, Math.round(score)));
-  
+  const isFinancial = asset.sector === "Financeiro";
+  const isUtilities = asset.sector === "Utilidades Públicas";
+  const isTech = asset.sector === "Tecnologia";
+  const isCommodities = asset.sector === "Commodities";
+
+  // PESOS FIXOS (total = 100)
+  // 1) Valuation = 30% (Graham 15 + P/L 10 + P/VP 5)
+  const valuationScore =
+    scoreValuationGraham(asset, 15) +
+    scoreValuationPL(asset, 10, isTech, isCommodities) +
+    scoreValuationPVP(asset, 5, isFinancial);
+
+  // 2) Rentabilidade = 25% (ROE 15 + Margem Líquida 10)
+  const profitabilityScore =
+    scoreProfitabilityROE(asset, 15, isFinancial) +
+    scoreProfitabilityMargin(asset, 10, isCommodities);
+
+  // 3) Risco/Estrutura = 20%
+  // Financeiro -> Basileia | Demais setores -> Div.Liq/EBITDA
+  const riskScore = scoreRiskBlock(asset, 20, isFinancial, isUtilities, isCommodities);
+
+  // 4) Crescimento = 15% (CAGR lucro 5 anos)
+  const growthScore = scoreGrowth(asset, 15, isTech, isCommodities);
+
+  // 5) Dividendos = 10%
+  const dividendScore = scoreDividend(asset, 10);
+
+  const rawScore = valuationScore + profitabilityScore + riskScore + growthScore + dividendScore;
+  const scoreBase = Math.round(clamp(rawScore, 0, 100));
+  const sectorAdjustment = calculateSectorAdjustment(asset.symbol, asset);
+  const score = Math.round(clamp(scoreBase + sectorAdjustment, 0, 100));
+
   let label: string, color: string;
   if (score >= 70) { label = "Comprar"; color = "hsl(var(--gain))"; }
-  else if (score >= 55) { label = "Bom"; color = "hsl(142, 60%, 40%)"; }
+  else if (score >= 55) { label = "Manter"; color = "hsl(142, 60%, 40%)"; }
   else if (score >= 40) { label = "Neutro"; color = "hsl(var(--warning))"; }
-  else if (score >= 25) { label = "Cautela"; color = "hsl(25, 80%, 50%)"; }
+  else if (score >= 25) { label = "Reduzir"; color = "hsl(25, 80%, 50%)"; }
   else { label = "Vender"; color = "hsl(var(--loss))"; }
   return { score, label, color };
 }
 
+type RecommendationBreakdown = {
+  ticker: string;
+  score_base: number;
+  sector_adjustment: number;
+  score_final: number;
+  recommendation: string;
+  breakdown: {
+    valuation_graham: number;
+    valuation_pl: number;
+    valuation_pvp: number;
+    profitability_roe: number;
+    profitability_margin: number;
+    risk_block: number;
+    growth: number;
+    dividends: number;
+  };
+  sector_reasons: string[];
+};
+
+const MODEL_SANITY_TICKERS: string[] = [
+  "ITUB4",
+  "BBAS3",
+  "BBDC4",
+  "B3SA3",
+  "BBSE3",
+  "AXIA6",
+  "CPFE3",
+  "ISAE4",
+  "SAPR11",
+  "PETR4",
+  "VALE3",
+  "SUZB3",
+  "KLBN11",
+  "GGBR4",
+  "WEGE3",
+  "EMBJ3",
+  "TUPY3",
+  "LREN3",
+  "MGLU3",
+  "MRVE3",
+  "RENT3",
+  "ABEV3",
+  "NATU3",
+  "VIVT3",
+  "TIMS3",
+  "TOTS3",
+  "RDOR3",
+  "RADL3",
+  "HAPV3",
+  "FLRY3",
+];
+
+const round2 = (value: number): number => Math.round(value * 100) / 100;
+
+function resolveHoldingForDebug(ticker: string): Holding | null {
+  const symbol = ticker.toUpperCase();
+  const direct = holdings.find((h) => h.symbol.toUpperCase() === symbol);
+  if (direct) return direct;
+
+  // Compatibilidade de ticker para base atual.
+  if (symbol === "NATU3") {
+    return holdings.find((h) => h.symbol.toUpperCase() === "NTCO3") ?? null;
+  }
+
+  return null;
+}
+
+function calculateSectorAdjustmentDebug(ticker: string, asset: Holding): { adjustment: number; reasons: string[] } {
+  let sectorAdjustment = 0;
+  const reasons: string[] = [];
+  const symbol = ticker.toUpperCase();
+  const lucroCagr5a = Number.isFinite(asset.cLucro5a) ? asset.cLucro5a : null;
+  const debtToEbitda = Number.isFinite(asset.divLiqEbitda) ? asset.divLiqEbitda : null;
+  const roe = Number.isFinite(asset.roe) ? asset.roe : null;
+
+  const stateOwned = ["PETR3", "PETR4", "BBAS3", "SAPR11"];
+  const commodityCompanies = ["PETR4", "VALE3", "SUZB3", "KLBN11", "GGBR4"];
+  const utilities = ["AXIA6", "CPFE3", "ISAE4", "SAPR11"];
+  const technology = ["TOTS3"];
+  const cyclical = ["LREN3", "MGLU3", "MRVE3", "RENT3"];
+  const defensive = ["ABEV3", "NATU3", "NTCO3"];
+  const telecom = ["VIVT3", "TIMS3"];
+  const healthcare = ["RDOR3", "RADL3", "HAPV3", "FLRY3"];
+
+  if (stateOwned.includes(symbol)) {
+    sectorAdjustment -= 4;
+    reasons.push("estatal: -4");
+  }
+
+  if (commodityCompanies.includes(symbol)) {
+    sectorAdjustment -= 2;
+    reasons.push("commodity: -2");
+    if (lucroCagr5a !== null && lucroCagr5a > 8) {
+      sectorAdjustment += 1;
+      reasons.push("commodity com CAGR lucro > 8%: +1");
+    }
+  }
+
+  if (utilities.includes(symbol)) {
+    sectorAdjustment += 1;
+    reasons.push("utility estavel: +1");
+    if (debtToEbitda !== null && debtToEbitda < 3.5) {
+      sectorAdjustment += 1;
+      reasons.push("utility com divida/EBITDA < 3.5: +1");
+    }
+    if (debtToEbitda !== null && debtToEbitda > 5) {
+      sectorAdjustment -= 2;
+      reasons.push("utility com divida/EBITDA > 5: -2");
+    }
+  }
+
+  if (technology.includes(symbol)) {
+    if (lucroCagr5a !== null && lucroCagr5a > 12) {
+      sectorAdjustment += 3;
+      reasons.push("tecnologia com CAGR lucro > 12%: +3");
+    }
+    if (roe !== null && roe > 18) {
+      sectorAdjustment += 1;
+      reasons.push("tecnologia com ROE > 18%: +1");
+    }
+    if (lucroCagr5a !== null && lucroCagr5a < 5) {
+      sectorAdjustment -= 2;
+      reasons.push("tecnologia com CAGR lucro < 5%: -2");
+    }
+  }
+
+  if (cyclical.includes(symbol)) {
+    sectorAdjustment -= 1;
+    reasons.push("consumo ciclico: -1");
+    if (lucroCagr5a !== null && lucroCagr5a > 10) {
+      sectorAdjustment += 1;
+      reasons.push("consumo ciclico com CAGR lucro > 10%: +1");
+    }
+  }
+
+  if (defensive.includes(symbol)) {
+    sectorAdjustment += 1;
+    reasons.push("consumo defensivo: +1");
+  }
+
+  if (telecom.includes(symbol)) {
+    sectorAdjustment -= 1;
+    reasons.push("telecom: -1");
+  }
+
+  if (healthcare.includes(symbol)) {
+    sectorAdjustment += 1;
+    reasons.push("saude: +1");
+    if (lucroCagr5a !== null && lucroCagr5a > 10) {
+      sectorAdjustment += 1;
+      reasons.push("saude com CAGR lucro > 10%: +1");
+    }
+  }
+
+  if (sectorAdjustment > 6) {
+    reasons.push("limite superior de ajuste aplicado: 6");
+    sectorAdjustment = 6;
+  }
+  if (sectorAdjustment < -8) {
+    reasons.push("limite inferior de ajuste aplicado: -8");
+    sectorAdjustment = -8;
+  }
+
+  return { adjustment: sectorAdjustment, reasons };
+}
+
+export function getRecommendationBreakdown(ticker: string): RecommendationBreakdown {
+  const symbol = ticker.toUpperCase();
+  const asset = resolveHoldingForDebug(symbol);
+
+  if (!asset) {
+    return {
+      ticker: symbol,
+      score_base: 0,
+      sector_adjustment: 0,
+      score_final: 0,
+      recommendation: "Ativo nao encontrado",
+      breakdown: {
+        valuation_graham: 0,
+        valuation_pl: 0,
+        valuation_pvp: 0,
+        profitability_roe: 0,
+        profitability_margin: 0,
+        risk_block: 0,
+        growth: 0,
+        dividends: 0,
+      },
+      sector_reasons: ["ticker nao encontrado na base atual"],
+    };
+  }
+
+  const isFinancial = asset.sector === "Financeiro";
+  const isUtilities = asset.sector === "Utilidades Públicas";
+  const isTech = asset.sector === "Tecnologia";
+  const isCommodities = asset.sector === "Commodities";
+
+  const valuationGraham = scoreValuationGraham(asset, 15);
+  const valuationPL = scoreValuationPL(asset, 10, isTech, isCommodities);
+  const valuationPVP = scoreValuationPVP(asset, 5, isFinancial);
+  const profitabilityRoe = scoreProfitabilityROE(asset, 15, isFinancial);
+  const profitabilityMargin = scoreProfitabilityMargin(asset, 10, isCommodities);
+  const riskBlock = scoreRiskBlock(asset, 20, isFinancial, isUtilities, isCommodities);
+  const growth = scoreGrowth(asset, 15, isTech, isCommodities);
+  const dividends = scoreDividend(asset, 10);
+
+  const rawScore =
+    valuationGraham +
+    valuationPL +
+    valuationPVP +
+    profitabilityRoe +
+    profitabilityMargin +
+    riskBlock +
+    growth +
+    dividends;
+
+  const scoreBase = Math.round(clamp(rawScore, 0, 100));
+  const sectorAdjustment = calculateSectorAdjustment(asset.symbol, asset);
+  const scoreFinal = Math.round(clamp(scoreBase + sectorAdjustment, 0, 100));
+  const recommendation = calcRecommendationScore(asset).label;
+
+  const sectorDebug = calculateSectorAdjustmentDebug(asset.symbol, asset);
+  const sectorReasons = [...sectorDebug.reasons];
+  if (sectorDebug.adjustment !== sectorAdjustment) {
+    sectorReasons.push(
+      `aviso debug: ajuste calculado no debug (${sectorDebug.adjustment}) difere do oficial (${sectorAdjustment})`
+    );
+  }
+
+  return {
+    ticker: symbol,
+    score_base: scoreBase,
+    sector_adjustment: sectorAdjustment,
+    score_final: scoreFinal,
+    recommendation,
+    breakdown: {
+      valuation_graham: round2(valuationGraham),
+      valuation_pl: round2(valuationPL),
+      valuation_pvp: round2(valuationPVP),
+      profitability_roe: round2(profitabilityRoe),
+      profitability_margin: round2(profitabilityMargin),
+      risk_block: round2(riskBlock),
+      growth: round2(growth),
+      dividends: round2(dividends),
+    },
+    sector_reasons: sectorReasons,
+  };
+}
+
+export function runModelSanityTest(): RecommendationBreakdown[] {
+  return MODEL_SANITY_TICKERS.map((ticker) => getRecommendationBreakdown(ticker));
+}
+
+export function printModelSanityReport(): RecommendationBreakdown[] {
+  const rows = runModelSanityTest();
+  console.log("Ticker | Base | Ajuste | Final | Recomendacao");
+  for (const row of rows) {
+    console.log(
+      `${row.ticker.padEnd(6)} | ${String(row.score_base).padStart(4)} | ${String(row.sector_adjustment).padStart(6)} | ${String(row.score_final).padStart(5)} | ${row.recommendation}`
+    );
+  }
+  return rows;
+}
+
+function buildScoreMethodologyContext(): string {
+  return [
+    "METODOLOGIA DO SCORE FUNDAMENTALISTA (0-100):",
+    "Classificacao: >=70 Comprar | 55-69 Manter | 40-54 Neutro | 25-39 Reduzir | <25 Vender",
+    "",
+    "Pesos por bloco:",
+    "- Valuation = 30% (Valuation ativo 15% + P/L 10% + P/VP 5%)",
+    "- Rentabilidade = 25% (ROE 15% + Margem Liquida 10%)",
+    "- Risco/Estrutura = 20% (Basileia para Financeiro OU Div.Liq/EBITDA para nao Financeiro)",
+    "- Crescimento = 15% (CAGR Lucro 5 anos)",
+    "- Dividendos = 10% (Dividend Yield)",
+    "- Ajuste Setorial/Estrutural pos-score base (faixa: -8 a +6)",
+    "",
+    "Ajustes por setor:",
+    "- Financeiro: risco via Basileia; maior relevancia de P/VP e ROE.",
+    "- Utilidades Publicas: tolerancia maior para Div.Liq/EBITDA (ate ~4x pode ser aceitavel).",
+    "- Tecnologia: maior tolerancia para P/L elevado e foco maior em crescimento.",
+    "- Commodities: menor sensibilidade a P/L isolado, maior atencao a divida e margens.",
+    "",
+    "Prioridade de valuation ativo: Graham valido > Preco Justo Estimado (fallback).",
+    "Observacao: o card Recomendacao e multifatorial; Metodo Graham permanece separado como estimativa de valor."
+  ].join("\n");
+}
+
 export function calcFairPrice(asset: Holding): number | null {
-  if (!asset.lpa || !asset.roe) return null;
-  const fairPE = Math.min(Math.max(asset.roe * 0.8, 8), 25);
-  return Math.round(asset.lpa * fairPE * 100) / 100;
+  // Prioridade: usar lucro (LPA) quando possivel.
+  if (asset.lpa !== null && asset.lpa > 0 && asset.roe !== null) {
+    const fairPE = Math.min(Math.max(asset.roe * 0.8, 8), 25);
+    return Math.round(asset.lpa * fairPE * 100) / 100;
+  }
+
+  // Se LPA nao permite valuation por lucro (ex.: negativo), usar ancora patrimonial.
+  if (asset.vpa !== null && asset.vpa > 0) {
+    return Math.round(asset.vpa * 100) / 100;
+  }
+
+  return null;
 }
 
 // Build dataset string for AI context — accepts optional symbol filter for user portfolio
@@ -1676,21 +2356,28 @@ export function buildDatasetContext(userSymbols?: string[], userHoldingsData?: {
     : "";
 
   const allocBlock = `\nALOCAÇÃO POR SETOR:\n${Object.entries(sectorAllocations).map(([s, a]) => `- ${s}: ${a.toFixed(1)}%`).join('\n')}\n`;
+  const methodologyBlock = `\n${buildScoreMethodologyContext()}\n`;
 
   const body = enrichedAssets.map(h => {
     const alloc = totalValue > 0 ? (h.realValue / totalValue * 100).toFixed(1) : '0';
     const rec = calcRecommendationScore(h);
-    const graham = calcGrahamPrice(h);
-    const fair = calcFairPrice(h);
+    const activeValuation = resolveActiveValuation(h);
+    const activeValuationLine = activeValuation.type
+      ? `${activeValuation.label}: R$${activeValuation.price?.toFixed(2) ?? 'N/A'} | Upside: ${activeValuation.upside?.toFixed(1) ?? 'N/A'}%`
+      : "Valuation ativo: N/A";
+    const basileiaLine = h.subsetor === "Bancos"
+      ? `\nÍndice de Basileia: ${h.basileia ?? 'N/A'}%`
+      : "";
     return `${h.symbol} (${h.name}) - Setor: ${h.sector}/${h.subsetor} - Alocação: ${alloc}% - Qtd: ${h.realShares} ações - Valor: R$${h.realValue.toFixed(2)}
 Preço Atual: R$${h.price} | Preço Médio: R$${h.realAvgPrice.toFixed(2)} | P/L: ${h.pe ?? 'N/A'} | P/VP: ${h.pvp ?? 'N/A'} | DY: ${h.dividend}%
 ROE: ${h.roe ?? 'N/A'}% | ROIC: ${h.roic ?? 'N/A'}% | Marg.Líq: ${h.margemLiquida ?? 'N/A'}%
 Dív.Líq/EBITDA: ${h.divLiqEbitda ?? 'N/A'} | Liq.Corrente: ${h.liqCorrente ?? 'N/A'}
-Score: ${rec.score}/100 (${rec.label}) | Graham: R$${graham ?? 'N/A'} | Preço Justo: R$${fair ?? 'N/A'}
+${basileiaLine}
+Score: ${rec.score}/100 (${rec.label}) | ${activeValuationLine}
 ${h.description}`;
   }).join('\n\n');
 
-  return header + warningBlock + allocBlock + '\n' + body;
+  return header + warningBlock + allocBlock + methodologyBlock + '\n' + body;
 }
 
 // Build context for a specific asset (used by AiChatWidget for RAG)
@@ -1698,8 +2385,11 @@ export function buildAssetContext(symbol: string): string {
   const h = holdings.find(a => a.symbol === symbol);
   if (!h) return `Ativo ${symbol} não encontrado no dataset.`;
   const rec = calcRecommendationScore(h);
-  const graham = calcGrahamPrice(h);
-  const fair = calcFairPrice(h);
+  const activeValuation = resolveActiveValuation(h);
+
+  const grahamVsScore =
+    "Observação: A recomendação final considera outros fatores (rentabilidade, dívida, crescimento e dividendos).";
+  const scoreMethodology = buildScoreMethodologyContext();
 
   // Calculate 12-month benchmark returns for comparison
   const benchmarks = getBenchmarkHistory();
@@ -1733,7 +2423,8 @@ export function buildAssetContext(symbol: string): string {
   return `Dados atuais de ${h.symbol} (${h.name}):
 Preço: R$ ${h.price} | Variação: ${h.changePercent >= 0 ? '+' : ''}${h.changePercent}%
 Market Cap: ${h.marketCap} | Setor: ${h.sector} / ${h.subsetor}
-P/L: ${h.pe ?? 'N/A'} | P/VP: ${h.pvp ?? 'N/A'} | DY: ${h.dividend}% | PSR: ${h.psr ?? 'N/A'}
+Índice de Basileia: ${h.subsetor === "Bancos" ? `${h.basileia ?? 'N/A'}%` : 'N/A'}
+P/L: ${h.pe ?? 'N/A'} | P/VP: ${h.pvp ?? 'N/A'} | DY: ${h.dividend}% | PAYOUT: ${h.payout ?? 'N/A'}%
 LPA: ${h.lpa ?? 'N/A'} | VPA: ${h.vpa ?? 'N/A'}
 P/EBIT: ${h.pEbit ?? 'N/A'} | EV/EBIT: ${h.evEbit ?? 'N/A'} | EV/EBITDA: ${h.evEbitda ?? 'N/A'}
 ROE: ${h.roe ?? 'N/A'}% | ROIC: ${h.roic ?? 'N/A'}% 
@@ -1742,10 +2433,13 @@ Cresc. Receita 5A: ${h.cReceita5a ?? 'N/A'}% | Cresc. Lucro 5A: ${h.cLucro5a ?? 
 Giro Ativos: ${h.giroAtivos ?? 'N/A'} | Liq. Corrente: ${h.liqCorrente ?? 'N/A'}
 Dív.Líq/PL: ${h.divLiqPl ?? 'N/A'} | Dív.Líq/EBITDA: ${h.divLiqEbitda ?? 'N/A'} | PL/Ativos: ${h.plAtivos ?? 'N/A'}
 Score de Recomendação: ${rec.score}/100 (${rec.label})
-Preço Graham: R$ ${graham ?? 'N/A'} | Preço Justo: R$ ${fair ?? 'N/A'}
+Valuation Ativo: ${activeValuation.label ?? 'N/A'}
+Preço de Referência: R$ ${activeValuation.price ?? 'N/A'}
+Upside da Referência: ${activeValuation.upside !== null ? `${activeValuation.upside.toFixed(1)}%` : 'N/A'}
+Leitura Graham vs Score: ${grahamVsScore}
+${scoreMethodology}
 Performance 12 meses: ${h.symbol} ${assetReturn12m}% | IBOV ${benchReturns.IBOV ?? 'N/A'}% | CDI ${benchReturns.CDI ?? 'N/A'}% | IPCA ${benchReturns.IPCA ?? 'N/A'}%
 Descrição: ${h.description}`;
 }
-
 
 

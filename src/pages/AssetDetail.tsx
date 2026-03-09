@@ -1,8 +1,8 @@
-﻿import { useParams, Link, useSearchParams } from "react-router-dom";
+﻿import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getFilteredPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, calcGrahamPrice } from "@/data/investments";
+import { holdings, getFilteredPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
@@ -10,6 +10,7 @@ import { AiChatWidget } from "@/components/AiChatWidget";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { useEffect, useMemo, useState } from "react";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
+import { getAssetRouteSymbol, getCanonicalSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
 
 const periods = ["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
 const periodMap: Record<string, string> = { "1 DIA": "1D", "7 DIAS": "7D", "30 DIAS": "30D", "6 MESES": "6M", "YTD": "YTD", "1 ANO": "1A", "5 ANOS": "5A" };
@@ -56,8 +57,10 @@ function computeVisualDomain(
 
 const AssetDetail = () => {
   const { symbol } = useParams<{ symbol: string }>();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const asset = holdings.find((h) => h.symbol === symbol);
+  const canonicalSymbol = getCanonicalSymbol(symbol ?? "");
+  const asset = holdings.find((h) => h.symbol === canonicalSymbol);
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [orderType, setOrderType] = useState<"buy" | "sell">("buy");
   const [selectedPeriod, setSelectedPeriod] = useState("YTD");
@@ -88,10 +91,17 @@ const AssetDetail = () => {
   }
 
   const userHolding = userHoldings.find(h => h.symbol === asset.symbol);
+  const displaySymbol = getDisplaySymbol(asset.symbol);
   const isPositive = asset.changePercent >= 0;
   const recommendation = useMemo(() => calcRecommendationScore(asset), [asset]);
-  const grahamPrice = useMemo(() => calcGrahamPrice(asset), [asset]);
-  const grahamUpside = grahamPrice ? ((grahamPrice / asset.price - 1) * 100).toFixed(1) : null;
+  const activeValuation = useMemo(() => resolveActiveValuation(asset), [asset]);
+  const activeValuationType = activeValuation.type;
+  const activeFairPrice = activeValuation.price;
+  const activeUpside = activeValuation.upside;
+  const activeValuationLabel = activeValuation.label;
+  const activeUpsideFormatted = activeUpside !== null ? activeUpside.toFixed(1) : null;
+  const recommendationDisclaimer =
+    "Observação: A recomendação final considera outros fatores (rentabilidade, dívida, crescimento e dividendos).";
 
   const priceHistory = useMemo(
     () => (chartsReady ? getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]) : []),
@@ -196,6 +206,14 @@ const AssetDetail = () => {
   const hasValidOrderQty = Number.isInteger(parsedOrderQty) && parsedOrderQty >= 1;
   const effectiveOrderQty = hasValidOrderQty ? parsedOrderQty : 0;
 
+  useEffect(() => {
+    if (!symbol) return;
+    const routeSymbol = getAssetRouteSymbol(canonicalSymbol);
+    if (symbol !== routeSymbol) {
+      navigate(`/ativos/${routeSymbol}`, { replace: true });
+    }
+  }, [symbol, canonicalSymbol, navigate]);
+
   const handleOrder = async () => {
     if (!hasValidOrderQty) return;
     const now = new Date();
@@ -276,7 +294,7 @@ const AssetDetail = () => {
               <AssetLogoWithFallback symbol={asset.symbol} size={56} />
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-semibold">{asset.symbol}</h1>
+                  <h1 className="text-xl font-semibold">{displaySymbol}</h1>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent text-muted-foreground">{asset.sector}</span>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{asset.subsetor}</span>
                 </div>
@@ -299,7 +317,7 @@ const AssetDetail = () => {
             </div>
           </div>
 
-          {/* Recommendation + Graham */}
+          {/* Recommendation + Valuation ativo (Graham > Preço Justo Estimado fallback) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <AnimatedCard delay={0.1}>
               <div className="glass-card p-5 flex flex-col items-center justify-center">
@@ -310,11 +328,21 @@ const AssetDetail = () => {
             <AnimatedCard delay={0.2}>
               <div className="glass-card p-5">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-base font-semibold">Método Graham</h3>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">Value Investing</span>
+                  <h3 className="text-base font-semibold">{activeValuationType === "graham" ? "Método Graham" : activeValuationType === "preco_justo" ? "Preço Justo Estimado" : "Valuation"}</h3>
                 </div>
-                <p className="text-xs text-muted-foreground mb-4">Benjamin Graham, o pai do Value Investing, criou uma fórmula para estimar o preço justo de uma ação com base nos fundamentos reais da empresa.</p>
-                {grahamPrice ? (
+                {activeValuationType === "preco_justo" && (
+                  <p className="text-[11px] text-muted-foreground -mt-1 mb-2">
+                    Visão rápida de valor com base nos fundamentos.
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground mb-4">
+                  {activeValuationType === "graham"
+                    ? "Benjamin Graham, o pai do Value Investing, criou uma fórmula para estimar o preço justo de uma ação com base nos fundamentos reais da empresa."
+                    : activeValuationType === "preco_justo"
+                      ? "Estimativa simplificada para indicar uma faixa de valor da ação."
+                      : "Não há valuation disponível para este ativo no momento."}
+                </p>
+                {activeValuationType === "graham" && activeFairPrice !== null && activeUpsideFormatted !== null ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-3 gap-3">
                       <div className="bg-muted/50 rounded-xl p-4 text-center">
@@ -323,24 +351,63 @@ const AssetDetail = () => {
                       </div>
                       <div className="bg-primary/10 rounded-xl p-4 text-center border border-primary/20">
                         <p className="text-[10px] text-primary uppercase tracking-wider font-medium">Preco Graham</p>
-                        <p className="text-lg font-mono font-bold text-primary mt-1.5">R$ {grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        <p className="text-lg font-mono font-bold text-primary mt-1.5">R$ {activeFairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                       </div>
-                      <div className={`rounded-xl p-4 text-center ${Number(grahamUpside) > 15 ? "bg-gain/10 border border-gain/20" : Number(grahamUpside) >= -15 ? "bg-warning/10 border border-warning/20" : "bg-loss/10 border border-loss/20"}`}>
+                      <div className={`rounded-xl p-4 text-center ${Number(activeUpsideFormatted) > 15 ? "bg-gain/10 border border-gain/20" : Number(activeUpsideFormatted) >= -15 ? "bg-warning/10 border border-warning/20" : "bg-loss/10 border border-loss/20"}`}>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Upside</p>
-                        <p className={`text-lg font-mono font-bold mt-1.5 ${Number(grahamUpside) > 15 ? "text-gain" : Number(grahamUpside) >= -15 ? "text-warning" : "text-loss"}`}>{Number(grahamUpside) >= 0 ? "+" : ""}{grahamUpside}%</p>
+                        <p className={`text-lg font-mono font-bold mt-1.5 ${Number(activeUpsideFormatted) > 15 ? "text-gain" : Number(activeUpsideFormatted) >= -15 ? "text-warning" : "text-loss"}`}>{Number(activeUpsideFormatted) >= 0 ? "+" : ""}{activeUpsideFormatted}%</p>
                       </div>
                     </div>
-                    {Number(grahamUpside) > 15 ? (
+                    {Number(activeUpsideFormatted) > 15 ? (
                       <div className="bg-gain/5 border border-gain/15 rounded-xl px-4 py-3 flex items-center gap-2">
                         <p className="text-xs text-gain font-medium">Preço descontado: abaixo do valor estimado por Graham</p>
                       </div>
-                    ) : Number(grahamUpside) >= -15 ? (
+                    ) : Number(activeUpsideFormatted) >= -15 ? (
                       <div className="bg-warning/5 border border-warning/15 rounded-xl px-4 py-3 flex items-center gap-2">
-                        <p className="text-xs text-warning font-medium">Preço neutro: dentro da faixa de +/-15% do valor estimado por Graham</p>
+                        <p className="text-xs text-warning font-medium">Preço neutro: dentro da faixa do valor estimado por Graham</p>
                       </div>
                     ) : (
                       <div className="bg-loss/5 border border-loss/15 rounded-xl px-4 py-3 flex items-center gap-2">
                         <p className="text-xs text-loss font-medium">Preço esticado: acima do valor estimado por Graham</p>
+                      </div>
+                    )}
+                  </div>
+                ) : activeValuationType === "preco_justo" && activeFairPrice !== null && activeUpsideFormatted !== null ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-muted/50 rounded-xl p-4 text-center">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preco atual</p>
+                        <p className="text-lg font-mono font-bold mt-1.5">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                      </div>
+                      <div className="bg-warning/10 rounded-xl p-4 text-center border border-warning/20">
+                        <p className="text-[10px] text-warning uppercase tracking-wider font-medium">Preço Justo Estimado</p>
+                        <p className="text-lg font-mono font-bold text-warning mt-1.5">R$ {activeFairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                      </div>
+                      <div className={`rounded-xl p-4 text-center ${Number(activeUpsideFormatted) > 15 ? "bg-gain/10 border border-gain/20" : Number(activeUpsideFormatted) >= -15 ? "bg-warning/10 border border-warning/20" : "bg-loss/10 border border-loss/20"}`}>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Upside</p>
+                        <p className={`text-lg font-mono font-bold mt-1.5 ${Number(activeUpsideFormatted) > 15 ? "text-gain" : Number(activeUpsideFormatted) >= -15 ? "text-warning" : "text-loss"}`}>{Number(activeUpsideFormatted) >= 0 ? "+" : ""}{activeUpsideFormatted}%</p>
+                      </div>
+                    </div>
+                    <div className="bg-warning/5 border border-warning/15 rounded-xl px-4 py-3">
+                      <p className="text-xs text-warning font-medium">
+                        Método Graham indisponível no momento. Exibindo estimativa alternativa.
+                      </p>
+                    </div>
+                    {Number(activeUpsideFormatted) > 15 ? (
+                      <div className="bg-gain/5 border border-gain/15 rounded-xl px-4 py-3">
+                        <p className="text-xs text-gain font-medium">Potencial de valorização relevante</p>
+                      </div>
+                    ) : Number(activeUpsideFormatted) >= 5 ? (
+                      <div className="bg-warning/5 border border-warning/15 rounded-xl px-4 py-3">
+                        <p className="text-xs text-warning font-medium">Leve desconto em relação ao valor estimado.</p>
+                      </div>
+                    ) : Number(activeUpsideFormatted) >= -5 ? (
+                      <div className="bg-warning/5 border border-warning/15 rounded-xl px-4 py-3">
+                        <p className="text-xs text-warning font-medium">Preço próximo do valor estimado</p>
+                      </div>
+                    ) : (
+                      <div className="bg-loss/5 border border-loss/15 rounded-xl px-4 py-3">
+                        <p className="text-xs text-loss font-medium">Ação negociando acima do valor estimado</p>
                       </div>
                     )}
                   </div>
@@ -411,7 +478,7 @@ const AssetDetail = () => {
               <div className="glass-card p-5">
                 <h3 className="text-base font-semibold mb-1">Se você tivesse investido R$ 1.000</h3>
                 <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <p className="text-xs text-muted-foreground">{asset.symbol} vs IBOV vs CDI vs IPCA</p>
+                  <p className="text-xs text-muted-foreground">{displaySymbol} vs IBOV vs CDI vs IPCA</p>
                 </div>
                 <ResponsiveContainer width="100%" height={280}>
                   <ComposedChart key={`compare-${asset.symbol}-${selectedPeriod}-${compareAnimKey}`} data={investmentComparison}>
@@ -513,7 +580,7 @@ const AssetDetail = () => {
                 </ResponsiveContainer>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
                   {[
-                    { name: asset.symbol, value: lastComparison[asset.symbol], color: "hsl(142, 72%, 48%)" },
+                    { name: displaySymbol, value: lastComparison[asset.symbol], color: "hsl(142, 72%, 48%)" },
                     { name: "IBOV", value: lastComparison.IBOV, color: "hsl(217, 91%, 60%)" },
                     { name: "CDI", value: lastComparison.CDI, color: "hsl(38, 92%, 50%)" },
                     { name: "IPCA", value: lastComparison.IPCA, color: "hsl(280, 65%, 60%)" },
@@ -535,8 +602,8 @@ const AssetDetail = () => {
               ticker={asset.symbol}
               fullHeight
               className="h-full"
-              context={`Analise de ${asset.symbol}`}
-              welcomeMessage={`Analisando ${asset.symbol} (${asset.name})...\n\n${asset.description}\n\nSetor: ${asset.sector} / ${asset.subsetor}\nScore: ${recommendation.score}/100 (${recommendation.label})\nP/L: ${asset.pe ?? 'N/A'} | DY: ${asset.dividend}% | ROE: ${asset.roe ?? 'N/A'}%\n${grahamPrice ? `Graham: R$ ${grahamPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${grahamUpside}% upside)` : ""}\n\nPergunte sobre indicadores, riscos ou estrategias para este ativo.`}
+              context={`Analise de ${displaySymbol}`}
+              welcomeMessage={`Analisando ${displaySymbol} (${asset.name})...\n\n${asset.description}\n\nSetor: ${asset.sector} / ${asset.subsetor}\nScore: ${recommendation.score}/100 (${recommendation.label})\nP/L: ${asset.pe ?? 'N/A'} | DY: ${asset.dividend}% | ROE: ${asset.roe ?? 'N/A'}%\n${activeValuationType ? `${activeValuationLabel}: R$ ${activeFairPrice?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${activeUpsideFormatted}% upside)\n` : ""}\n${recommendationDisclaimer}\n\nPergunte sobre indicadores, riscos ou estrategias para este ativo.`}
             />
           </div>
 
@@ -553,10 +620,20 @@ const AssetDetail = () => {
                     <IndicatorCard label="P/VP" value={asset.pvp?.toFixed(2) ?? null} tooltip={indicatorTooltips.pvp} />
                     <IndicatorCard label="LPA" value={asset.lpa?.toFixed(2) ?? null} tooltip={indicatorTooltips.lpa} />
                     <IndicatorCard label="VPA" value={asset.vpa?.toFixed(2) ?? null} tooltip={indicatorTooltips.vpa} />
-                    <IndicatorCard label="PSR" value={asset.psr?.toFixed(2) ?? null} tooltip={indicatorTooltips.psr} />
+                    <IndicatorCard label="PAYOUT" value={asset.payout !== null ? `${asset.payout.toFixed(2)}%` : null} tooltip={indicatorTooltips.payout} />
                     <IndicatorCard label="P/EBIT" value={asset.pEbit?.toFixed(2) ?? null} tooltip={indicatorTooltips.pEbit} />
                     <IndicatorCard label="EV/EBIT" value={asset.evEbit?.toFixed(1) ?? null} tooltip={indicatorTooltips.evEbit} />
-                    <IndicatorCard label="EV/EBITDA" value={asset.evEbitda?.toFixed(1) ?? null} tooltip={indicatorTooltips.evEbitda} />
+                    {asset.subsetor === "Bancos"
+                      ? (
+                        <IndicatorCard
+                          label="Indice Basileia"
+                          value={asset.basileia !== null && asset.basileia !== undefined ? `${asset.basileia.toFixed(2)}%` : null}
+                          tooltip={indicatorTooltips.basileia}
+                        />
+                      )
+                      : (
+                        <IndicatorCard label="EV/EBITDA" value={asset.evEbitda?.toFixed(1) ?? null} tooltip={indicatorTooltips.evEbitda} />
+                      )}
                     <IndicatorCard label="Market Cap" value={asset.marketCap} tooltip={indicatorTooltips.marketCap} />
                   </div>
                 </div>
@@ -600,7 +677,7 @@ const AssetDetail = () => {
       {showBuyModal && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowBuyModal(false)}>
           <div className="glass-card p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold">{orderType === "buy" ? "Comprar" : "Vender"} {asset.symbol}</h3>
+            <h3 className="text-lg font-semibold">{orderType === "buy" ? "Comprar" : "Vender"} {displaySymbol}</h3>
             {orderType === "sell" && userHolding && (
               <p className="text-xs text-muted-foreground">Você possui {userHolding.shares} ações</p>
             )}
@@ -650,4 +727,8 @@ const AssetDetail = () => {
 };
 
 export default AssetDetail;
+
+
+
+
 

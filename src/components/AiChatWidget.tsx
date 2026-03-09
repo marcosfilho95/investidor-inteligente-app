@@ -2,6 +2,7 @@
 import { Bot, Send, Sparkles, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { buildDatasetContext, buildAssetContext } from "@/data/investments";
+import { getCanonicalSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
 
 interface AiChatWidgetProps {
   context?: string;
@@ -33,6 +34,16 @@ const SUPABASE_PUBLISHABLE_KEY =
   import.meta.env.SUPABASE_ANON_KEY ||
   "";
 const CHAT_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/chat` : "";
+const NATURA_TICKER_MIGRATION_NOTE =
+  "Ticker antigo da Natura: NTCO3. Após reorganização societária, o ticker atual negociado na B3 é NATU3.";
+
+function normalizeTickerAliasesInContext(text: string): string {
+  if (!text) return text;
+  const normalized = text.replace(/\bNTCO3\b/g, "NATU3");
+  return normalized.includes(NATURA_TICKER_MIGRATION_NOTE)
+    ? normalized
+    : `${normalized}\n${NATURA_TICKER_MIGRATION_NOTE}`;
+}
 
 export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, userSymbols, userHoldingsData, className = "", fullHeight = false }: AiChatWidgetProps) {
   const initialWelcome = welcomeMessage || "Olá! Sou o Hodl 🤖, seu assistente inteligente. Como posso te ajudar hoje?";
@@ -153,10 +164,11 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
 
       // Inject ticker-specific context for asset pages
       if (ticker) {
-        body.ticker = ticker;
-        body.currentData = buildAssetContext(ticker);
+        const canonicalTicker = getCanonicalSymbol(ticker);
+        body.ticker = canonicalTicker;
+        body.currentData = normalizeTickerAliasesInContext(buildAssetContext(canonicalTicker));
       } else {
-        body.dataset = buildDatasetContext(userSymbols, userHoldingsData);
+        body.dataset = normalizeTickerAliasesInContext(buildDatasetContext(userSymbols, userHoldingsData));
       }
 
       const resp = await fetch(CHAT_URL, {
@@ -240,7 +252,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
             Hodl AI <Sparkles className="h-3 w-3 text-primary" />
           </p>
           <p className="text-xs text-muted-foreground">
-            {ticker ? `Analisando ${ticker}` : "Seu assistente de investimentos"}
+            {ticker ? `Analisando ${getDisplaySymbol(ticker)}` : "Seu assistente de investimentos"}
           </p>
         </div>
       </div>

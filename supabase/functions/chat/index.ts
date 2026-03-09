@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -11,61 +11,269 @@ const corsHeaders = {
 };
 
 const KNOWLEDGE_BASE = [
-  "=== BASE DE CONHECIMENTO (Fonte: TCC Investidor Inteligente - Marcos Antonio Felix, Unifor, 2026) ===",
+  "=== BASE DE CONHECIMENTO (Fonte: TCC Investidor Inteligente - Marcos Antônio Felix, Unifor, 2026) ===",
   "",
   "FILOSOFIA CENTRAL - VALUE INVESTING (Buy and Hold):",
-  "O Value Investing, criado por Benjamin Graham, consiste em identificar o VALOR INTRINSECO de uma empresa e comprar quando o preco de mercado esta ABAIXO desse valor (margem de seguranca). Warren Buffett e Peter Lynch expandiram essa filosofia.",
+  "O Value Investing, criado por Benjamin Graham, consiste em identificar o VALOR INTRÍNSECO de uma empresa e comprar quando o preço de mercado está ABAIXO desse valor (margem de segurança). Warren Buffett e Peter Lynch expandiram essa filosofia.",
   "",
-  "FORMULAS ESSENCIAIS:",
-  "1. Valor Intrinseco de Graham: VI = sqrt(22,5 x LPA x VPA). Se preco < VI = margem de seguranca positiva. Upside de -10% a +10% = ZONA NEUTRA.",
-  "2. Preco-Teto de Bazin: Pteto = Dividendo Anual / 0,06. Garante DY minimo de 6% a.a.",
-  "3. PEG Ratio (Peter Lynch): PEG = P/L / Crescimento do Lucro. PEG < 1 pode indicar acao subvalorizada.",
+  "FÓRMULAS ESSENCIAIS:",
+  "1. Valor Intrínseco de Graham: VI = sqrt(22,5 x LPA x VPA). Se preço < VI = margem de segurança positiva. Upside de -10% a +10% = ZONA NEUTRA.",
+  "Limitação do Graham: requer LPA positivo. Se LPA <= 0, o método clássico não pode ser aplicado.",
+  "Fallback de valuation: quando Graham não estiver disponível, usar Preço Justo Estimado como referência alternativa de valor.",
+  "2. Preço-Teto de Bazin: Pteto = Dividendo Anual / 0,06. Garante DY mínimo de 6% a.a.",
+  "3. PEG Ratio (Peter Lynch): PEG = P/L / Crescimento do Lucro. PEG < 1 pode indicar ação subvalorizada.",
   "",
-  "INDICADORES: VALOR (P/L, P/VP, EV/EBITDA, PSR), RENDIMENTO (DY), EFICIENCIA (ROE>15%, ROIC, Margens), SAUDE (Div.Liq/EBITDA<3x, Liq.Corrente>1), CRESCIMENTO (CAGR Receita/Lucro 5A).",
+  "INDICADORES: VALOR (P/L, P/VP, EV/EBITDA), RENDIMENTO (DY, PAYOUT), EFICIÊNCIA (ROE>15%, ROIC, Margens), SAÚDE (Div.Liq/EBITDA<3x, Liq.Corrente>1), CRESCIMENTO (CAGR Receita/Lucro 5A).",
   "",
-  "ESTUDO FGV: 99,43% dos day-traders DESISTIRAM. Dos 554 que persistiram, media de lucro bruto diario foi de -49 reais. Day-trade NAO e estrategia viavel.",
+  "ESTUDO FGV: 99,43% dos day-traders DESISTIRAM. Dos 554 que persistiram, média de lucro bruto diário foi de -49 reais. Day-trade NÃO é estratégia viável.",
   "",
   "Curiosidade sobre o nome HODL:",
-  "O termo HODL nasceu em 18 de dezembro de 2013, no forum Bitcointalk. Um usuario chamado GameKyuubi criou um post com o titulo I AM HODLING. Ele queria escrever HOLDING (segurando), mas digitou errado. No texto, ele dizia que era um pessimo trader e que ia apenas segurar o Bitcoin, mesmo com a volatilidade. Ele tambem mencionou que estava bebendo whisky. A comunidade abracou o erro como simbolo de mentalidade de longo prazo: paciencia, disciplina e foco em estrategia. Com o tempo, o meme virou um mantra do mercado cripto, e muita gente passou a interpretar HODL como Hold On for Dear Life.",
+  "O termo HODL nasceu em 18 de dezembro de 2013, no fórum Bitcointalk. Um usuário chamado GameKyuubi criou um post com o título I AM HODLING. Ele queria escrever HOLDING (segurando), mas digitou errado. No texto, ele dizia que era um péssimo trader e que ia apenas segurar o Bitcoin, mesmo com a volatilidade. Ele também mencionou que estava bebendo whisky. A comunidade abraçou o erro como símbolo de mentalidade de longo prazo: paciência, disciplina e foco em estratégia. Com o tempo, o meme virou um mantra do mercado cripto, e muita gente passou a interpretar HODL como Hold On for Dear Life.",
+  "",
+  "NATURA &CO (NATU3):",
+  "A Natura &Co passou por uma reorganização societária. O ticker antigo NTCO3 (Natura &Co Holding) foi substituído por NATU3 na B3.",
+  "NATU3 representa a nova estrutura societária da empresa após simplificação da holding.",
+  "Se o usuário mencionar NTCO3, trate como denominação antiga e informe que o ticker atual negociado na B3 é NATU3.",
+  "",
+  "ÍNDICE DE BASILEIA (BANCOS):",
+  "O Índice de Basileia mede a solidez de capital dos bancos. Em geral, quanto maior, maior capacidade de absorver perdas.",
+  "Leitura prática: acima de 14% tende a ser confortável; entre 11% e 14% exige monitoramento; abaixo de 11% é sinal de maior risco.",
+  "Para bancos (ITUB4, BBAS3, BBDC4), priorize esse indicador na análise de risco e qualidade.",
+  "",
+  "METODOLOGIA DO SCORE FUNDAMENTALISTA (0-100):",
+  "Classificação: >=70 Comprar | 55-69 Manter | 40-54 Neutro | 25-39 Reduzir | <25 Vender.",
+  "Pesos: Valuation 30% (Graham 15% + P/L 10% + P/VP 5%), Rentabilidade 25% (ROE 15% + Margem Líquida 10%), Risco 20%, Crescimento 15%, Dividendos 10%.",
+  "A recomendação final aplica ajuste setorial/estrutural após o score base (faixa controlada).",
+  "Regra de risco por setor: Financeiro usa Basileia (não usa Div.Liq/EBITDA); demais setores usam Div.Liq/EBITDA (não usam Basileia).",
+  "Ajustes setoriais:",
+  "- Utilidades Públicas: tolerância maior para Div.Liq/EBITDA (até ~4x pode ser aceitável).",
+  "- Tecnologia: tolerância maior para P/L e maior ênfase em crescimento do lucro.",
+  "- Commodities: menor sensibilidade a P/L isolado, com maior foco em dívida e margens.",
+  "INDICADORES N/D EM BANCOS:",
+  "Para bancos, métricas como EBITDA, EV/EBITDA e Dívida Líquida/EBITDA podem aparecer como N/D, porque o modelo contábil de instituições financeiras é diferente de empresas industriais.",
+  "Nesses casos, foque mais em Basileia, P/VP, ROE, qualidade da carteira de crédito e eficiência.",
   "",
   "ATIVOS COBERTOS: ITUB4, BBAS3, BBDC4, B3SA3, AXIA6, CPFE3, ISAE4, SAPR11, PETR4, VALE3, GGBR4, WEGE3, EMBJ3, TUPY3, LREN3, MGLU3, MRVE3, ABEV3, JBSS3, VIVT3, TIMS3, TOTS3, RDOR3, HAPV3, FLRY3, KLBN11, NATU3, RADL3, RENT3, SUZB3.",
+  "",
+  "COMPORTAMENTO QUANDO GRAHAM NÃO ESTIVER DISPONÍVEL (ex.: LPA negativo):",
+  "1) Explicar brevemente por que Graham não se aplica.",
+  "2) Mudar o foco para Preço Justo Estimado.",
+  "3) Comparar preço atual vs preço justo estimado e interpretar upside/desconto.",
+  "4) Complementar com fundamentos (rentabilidade, crescimento, dívida, dividendos).",
+  "5) Evitar repetir excessivamente a explicação do Graham.",
+  "",
+  "=== COMPLEMENTO DE BASE DE CONHECIMENTO - REFERÊNCIAS DO MERCADO ===",
+  "",
+  "CONTEXTO HISTÓRICO RECENTE DO MERCADO (2008-2025):",
+  "A crise financeira global de 2008 mostrou os riscos do excesso de alavancagem e derivativos complexos. Investidores fundamentalistas reforçaram a importância de empresas com balanço sólido e baixo endividamento.",
+  "Entre 2010 e 2020 ocorreu um grande ciclo de liquidez global com juros muito baixos. Nesse período empresas de tecnologia e crescimento se valorizaram fortemente, enquanto setores tradicionais tiveram menor desempenho.",
+  "Entre 2020 e 2022 houve a pandemia de COVID-19, que causou forte volatilidade nos mercados globais. Muitos investidores reforçaram a importância de diversificação e resiliência das empresas.",
+  "Entre 2022 e 2024 ocorreu um ciclo global de aumento de juros para combater inflação. Nesse ambiente, empresas com forte geração de caixa, baixo endividamento e dividendos consistentes passaram a ser novamente valorizadas pelos investidores.",
+  "Esse contexto reforçou a importância da análise fundamentalista e da paciência no investimento de longo prazo.",
+  "",
+  "GRANDES INVESTIDORES INTERNACIONAIS:",
+  "Benjamin Graham: considerado o pai do Value Investing. Defendia comprar empresas com desconto em relação ao valor intrínseco e sempre buscar margem de segurança.",
+  "Warren Buffett: aluno de Graham e um dos investidores mais bem-sucedidos da história. Defende comprar empresas excelentes e mantê-las por longos períodos. Frase famosa: Nosso período favorito de holding é para sempre.",
+  "Peter Lynch: gestor do fundo Fidelity Magellan. Defendia que investidores podem encontrar boas empresas observando produtos e serviços no cotidiano. Popularizou o indicador PEG Ratio.",
+  "Charlie Munger: parceiro de Warren Buffett. Defendia modelos mentais multidisciplinares e foco em qualidade de negócios.",
+  "Howard Marks: fundador da Oaktree Capital. Conhecido por suas análises sobre ciclos de mercado e controle de risco.",
+  "Ray Dalio: fundador da Bridgewater Associates. Popularizou o conceito de diversificação global e estudo dos ciclos econômicos.",
+  "",
+  "GRANDES INVESTIDORES BRASILEIROS:",
+  "Luiz Barsi Filho: um dos maiores investidores pessoas físicas da história do Brasil. Estratégia baseada em dividendos e renda passiva. Defende investir em empresas sólidas e manter por muitos anos.",
+  "Barsi é muitas vezes chamado de Buffett brasileiro pela filosofia de longo prazo e foco em dividendos.",
+  "Flavio Augusto da Silva: empresário e investidor brasileiro que defende educação financeira e visão empreendedora de longo prazo.",
+  "Luis Stuhlberger: gestor do fundo Verde. Conhecido por sua visão macroeconômica e disciplina na gestão de risco.",
+  "Guilherme Benchimol: fundador da XP. Contribuiu para popularizar o acesso de investidores pessoas físicas ao mercado de capitais brasileiro.",
+  "",
+  "PRINCÍPIOS FUNDAMENTAIS DO INVESTIMENTO DE LONGO PRAZO:",
+  "1) Diversificação: distribuir investimentos entre setores diferentes reduz risco específico.",
+  "2) Margem de segurança: conceito central do Value Investing para comprar ativos com desconto em relação ao valor intrínseco.",
+  "3) Paciência: grandes retornos geralmente acontecem no longo prazo.",
+  "4) Disciplina: evitar decisões emocionais durante momentos de euforia ou pânico do mercado.",
+  "5) Reinvestimento de dividendos: dividendos reinvestidos aceleram o crescimento do patrimônio ao longo do tempo.",
+  "",
+  "COMPORTAMENTO DO INVESTIDOR:",
+  "Estudos de finanças comportamentais mostram erros sistemáticos comuns: vender ativos bons cedo demais, comprar ativos apenas quando estão em alta, seguir modismos e tentar prever movimentos de curto prazo.",
+  "Investidores disciplinados tendem a evitar essas armadilhas.",
+  "",
+  "REGRA DE EDUCAÇÃO DO AGENTE:",
+  "Ao explicar conceitos, o agente pode citar exemplos e frases de Benjamin Graham, Warren Buffett, Peter Lynch e Luiz Barsi para ilustrar a educação financeira.",
+  "As referências devem ser usadas apenas para reforço didático, sem apelo de recomendação direta.",
+  "=== FIM DO COMPLEMENTO ===",
   "=== FIM DA BASE DE CONHECIMENTO ==="
 ].join("\n");
 
 const SYSTEM_PROMPT = [
-  "Voce e o Hodl, assistente tecnico do projeto Investidor Inteligente, especializado EXCLUSIVAMENTE em ANALISE FUNDAMENTALISTA, VALUATION e estrategia BUY AND HOLD.",
+  "Você é o Hodl, assistente técnico do projeto Investidor Inteligente, especializado EXCLUSIVAMENTE em ANÁLISE FUNDAMENTALISTA, VALUATION e estratégia BUY AND HOLD.",
   "",
-  "PERSONALIDADE: Amigavel, educativo e motivador. Linguagem simples e acessivel, humor leve quando apropriado. Explica conceitos de forma clara para iniciantes. Incentiva aprendizado e paciencia. Nunca recomenda compra/venda direta. Defende investimento de longo prazo com base em fundamentos.",
+  "PERSONALIDADE: Amigável, educativo e motivador. Linguagem simples e acessível, humor leve quando apropriado. Explica conceitos de forma clara para iniciantes. Incentiva aprendizado e paciência. Nunca recomenda compra/venda direta. Defende investimento de longo prazo com base em fundamentos.",
   "",
-  "POSICIONAMENTO: 100% a favor de ANALISE FUNDAMENTALISTA e VALUE INVESTING. CONTRA day trade, swing trade, analise tecnica, robos de trading, opcoes binarias e especulacao. Quando perguntado sobre trading, cite dados do estudo da FGV.",
+  "POSICIONAMENTO: 100% a favor de ANÁLISE FUNDAMENTALISTA e VALUE INVESTING. CONTRA day trade, swing trade, análise técnica, robôs de trading, opções binárias e especulação. Quando perguntado sobre trading, cite dados do estudo da FGV.",
   "",
-  "REGRAS: Baseie-se APENAS nos dados do contexto. Nunca invente precos ou indicadores. Responda em portugues do Brasil. Seja conciso (max 3-4 paragrafos). Use emojis com moderacao. Explique indicadores. Sugira aba Aprender para duvidas conceituais. Mencione Graham, Buffett ou Bazin quando relevante.",
+  "REGRAS: Baseie-se APENAS nos dados do contexto. Nunca invente preços ou indicadores. Responda em português do Brasil. Seja conciso (max 3-4 parágrafos). Use emojis com moderação. Explique indicadores. Sugira aba Aprender para dúvidas conceituais. Mencione Graham, Buffett ou Bazin quando relevante.",
+  "FORMATAÇÃO OBRIGATÓRIA: nunca use LaTeX ou markdown matemático (ex.: \\sqrt, \\times, \\frac, $, $$, \\( \\)). Nunca use barra invertida em fórmulas. Sempre escreva fórmulas em texto simples. Ex.: VI = sqrt(22,5 x LPA x VPA).",
+  "REGRA DE INTERPRETAÇÃO DO PAYOUT: em análises, explique que PAYOUT mostra o percentual do lucro distribuído em dividendos. Referência geral: 30% a 70% tende a ser mais sustentável; muito acima disso pode indicar risco de distribuição insustentável.",
+  "REGRA GRAHAM VS RECOMENDAÇÃO: quando houver divergência entre Preço Graham e Score de Recomendação (ex.: ativo caro no Graham, mas classificado como Manter), explique explicitamente que a recomendação final não depende apenas do valuation de Graham. O score é composto e considera, além do valuation, fatores como rentabilidade, endividamento, crescimento, dividendos, risco financeiro e ajustes contextuais/setoriais, como risco estatal, ciclicidade de commodities, sensibilidade a juros e características estruturais do setor.",
+  "REGRA DE FOCO NO FALLBACK: quando Graham não estiver disponível, não insistir no método clássico; priorizar explicação curta do Preço Justo Estimado, interpretação do upside e limites do fallback.",
+  "REGRA DE TRANSPARÊNCIA DO SCORE: quando o usuário perguntar 'como foi calculado', explique os pesos por bloco e os ajustes por setor de forma objetiva.",
+  "REGRA PARA BANCOS: quando analisar bancos (ITUB4, BBAS3, BBDC4), considerar o ÍNDICE DE BASILEIA com peso adicional na conclusão de risco.",
+  "REGRA PARA DADOS NULOS DE BANCOS: se EV/EBITDA ou Dívida Líquida/EBITDA estiver N/D em bancos, explique que isso é esperado pelo modelo de negócio bancário e não necessariamente erro de dados.",
+  "REGRA DE TICKER ANTIGO/DESCONTINUADO: quando o usuário mencionar NTCO3, Natura &Co ou Natura, responda explicitamente: 'O ticker antigo da Natura era NTCO3, mas após reorganização societária o ticker atual negociado na B3 é NATU3.'",
+  "Se o contexto vier com NTCO3, interprete como NATU3 e informe brevemente que houve mudança de ticker.",
   "",
-  "REGRA CRITICA SOBRE CARTEIRA:",
+  "REGRA CRÍTICA SOBRE CARTEIRA:",
   "- Mencione SOMENTE ativos listados no contexto.",
-  "- NUNCA assuma que o usuario possui ativos nao listados.",
-  "- Se o contexto diz que a carteira tem ativos, NUNCA diga que a carteira esta vazia.",
+  "- NUNCA assuma que o usuário possui ativos não listados.",
+  "- Se o contexto diz que a carteira tem ativos, NUNCA diga que a carteira está vazia.",
   "",
-  "VALUATION: Graham sqrt(22,5 x LPA x VPA), Bazin (Dividendo/0,06), P/L, P/VP, ROE, ROIC, Div.Liq/EBITDA, DY. Zona Neutra: upside -10% a +10%.",
+  "VALUATION: Graham sqrt(22,5 x LPA x VPA), Bazin (Dividendo/0,06), P/L, P/VP, ROE, ROIC, Div.Liq/EBITDA, DY, PAYOUT. Zona Neutra: upside -10% a +10%.",
   "",
-  "COMPORTAMENTO POR PAGINA:",
+  "COMPORTAMENTO POR PÁGINA:",
   "- Dashboard: Acolhedor, motive estudo dos fundamentos",
-  "- Carteira: Analise APENAS ativos do usuario, sugira diversificacao",
-  "- Ativo especifico: Analise TODOS os indicadores, calcule valuation",
-  "- Aprender: Aprofunde conceitos, cite autores, exemplos praticos",
+  "- Carteira: Analise APENAS ativos do usuário, sugira diversificação",
+  "- Ativo específico: Analise TODOS os indicadores, calcule valuation e SEMPRE explique o PAYOUT (percentual do lucro distribuído em dividendos) com leitura de sustentabilidade. Se for banco, destaque também o Índice de Basileia.",
+  "- Aprender: Aprofunde conceitos, cite autores, exemplos práticos",
   "",
-  "QUANDO PERGUNTAREM SOBRE O NOME HODL: Conte a historia do Bitcointalk 2013, GameKyuubi, I AM HODLING, erro de digitacao, filosofia de longo prazo. Tom simpatico, max 6-8 linhas.",
+  "QUANDO PERGUNTAREM SOBRE O NOME HODL: Conte a história do Bitcointalk 2013, GameKyuubi, I AM HODLING, erro de digitação, filosofia de longo prazo. Tom simpático, max 6-8 linhas.",
   "",
   KNOWLEDGE_BASE
 ].join("\n");
 
+function sanitizeMathFormatting(text) {
+  if (!text || typeof text !== "string") return text;
+
+  let sanitized = text
+    // Remove delimitadores LaTeX comuns.
+    .replace(/\\\(/g, "")
+    .replace(/\\\)/g, "")
+    .replace(/\\\[/g, "")
+    .replace(/\\\]/g, "")
+    .replace(/\\left/g, "")
+    .replace(/\\right/g, "")
+    .replace(/\$\$/g, "")
+    .replace(/\$/g, "")
+    // Remove cercas de bloco math.
+    .replace(/```math/gi, "```")
+    // Converte comandos matemáticos para texto simples.
+    .replace(/\\times/g, "x")
+    .replace(/\\cdot/g, "x")
+    .replace(/\\pm/g, "+/-")
+    .replace(/\\leq/g, "<=")
+    .replace(/\\geq/g, ">=")
+    .replace(/\\neq/g, "!=")
+    .replace(/\\approx/g, "~=")
+    .replace(/\\div/g, "/")
+    .replace(/\\operatorname\{([^}]*)\}/g, "$1")
+    .replace(/\\text\{([^}]*)\}/g, "$1")
+    .replace(/\\mathrm\{([^}]*)\}/g, "$1")
+    .replace(/\\mathbf\{([^}]*)\}/g, "$1")
+    // Ex.: x^{2} -> x^2 ; x_{t} -> x_t
+    .replace(/\^\{([^}]*)\}/g, "^$1")
+    .replace(/_\{([^}]*)\}/g, "_$1")
+    // Ex.: \sqrt[3]{x} -> root(3, x)
+    .replace(/\\sqrt\[([^\]]+)\]\{([^}]*)\}/g, "root($1, $2)")
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, "$1/$2")
+    .replace(/\\sqrt\{([^}]*)\}/g, "sqrt($1)")
+    // Fallback de escapes residuais.
+    .replace(/\\_/g, "_")
+    .replace(/\\%/g, "%");
+
+  // Processa frações aninhadas simples em múltiplas passagens.
+  for (let i = 0; i < 3; i++) {
+    const next = sanitized.replace(/\\frac\{([^{}]*)\}\{([^{}]*)\}/g, "$1/$2");
+    if (next === sanitized) break;
+    sanitized = next;
+  }
+
+  // Remove barras invertidas remanescentes para evitar quebra visual no chat.
+  sanitized = sanitized.replace(/\\/g, "");
+
+  return sanitized;
+}
+
+function sanitizeSseLine(line) {
+  if (!line.startsWith("data: ")) return line;
+  const payload = line.slice(6).trim();
+  if (!payload || payload === "[DONE]") return line;
+
+  try {
+    const parsed = JSON.parse(payload);
+    const choices = parsed?.choices;
+    if (!Array.isArray(choices) || choices.length === 0) return line;
+
+    const choice = choices[0];
+    if (choice?.delta?.content && typeof choice.delta.content === "string") {
+      choice.delta.content = sanitizeMathFormatting(choice.delta.content);
+    }
+    if (choice?.message?.content && typeof choice.message.content === "string") {
+      choice.message.content = sanitizeMathFormatting(choice.message.content);
+    }
+
+    return "data: " + JSON.stringify(parsed);
+  } catch {
+    return line;
+  }
+}
+
+function sanitizeSseResponse(response) {
+  if (!response?.body) return response;
+
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const reader = response.body.getReader();
+      let buffer = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            controller.enqueue(encoder.encode(sanitizeSseLine(line) + "\n"));
+          }
+        }
+
+        if (buffer.length > 0) {
+          controller.enqueue(encoder.encode(sanitizeSseLine(buffer)));
+        }
+        controller.close();
+      } catch (err) {
+        controller.error(err);
+      } finally {
+        reader.releaseLock();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
+
+function toCanonicalTicker(symbol) {
+  var s = String(symbol || "").trim().toUpperCase();
+  if (s === "NATU3") return "NTCO3";
+  return s;
+}
+
 async function fetchPriceCacheContext(ticker) {
   try {
+    const canonicalTicker = toCanonicalTicker(ticker);
     const supabase = createClient(Deno.env.get("SUPABASE_URL"), Deno.env.get("SUPABASE_ANON_KEY"));
-    const { data, error } = await supabase.from("price_cache").select("*").eq("symbol", ticker).maybeSingle();
+    const { data, error } = await supabase.from("price_cache").select("*").eq("symbol", canonicalTicker).maybeSingle();
     if (error || !data) return "";
     const lines = [
-      "\n--- DADOS REAIS DO MERCADO (price_cache) para " + ticker + " ---",
+      "\n--- DADOS REAIS DO MERCADO (price_cache) para " + canonicalTicker + " ---",
       "Preco atual: R$ " + data.current_price,
       data.return_7d != null ? "Retorno 7d: " + data.return_7d + "%" : null,
       data.return_30d != null ? "Retorno 30d: " + data.return_30d + "%" : null,
@@ -88,11 +296,12 @@ async function fetchPriceCacheContext(ticker) {
 async function fetchPortfolioCacheContext(symbols) {
   if (!symbols || symbols.length === 0) return "";
   try {
+    const normalizedSymbols = symbols.map(toCanonicalTicker);
     const supabase = createClient(Deno.env.get("SUPABASE_URL"), Deno.env.get("SUPABASE_ANON_KEY"));
     const { data, error } = await supabase
       .from("price_cache")
       .select("symbol, current_price, return_7d, return_30d, return_12m")
-      .in("symbol", symbols);
+      .in("symbol", normalizedSymbols);
     if (error || !data || data.length === 0) return "";
     const lines = [
       "\n--- DADOS REAIS DA CARTEIRA (price_cache) ---",
@@ -188,7 +397,8 @@ serve(async function(req) {
       });
     }
 
-    return new Response(response.body, {
+    const sanitizedResponse = sanitizeSseResponse(response);
+    return new Response(sanitizedResponse.body, {
       headers: Object.assign({}, corsHeaders, { "Content-Type": "text/event-stream" }),
     });
   } catch (e) {

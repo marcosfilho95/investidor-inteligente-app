@@ -5,6 +5,7 @@ import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import { holdings } from "@/data/investments";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
+import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
 
 const Assets = () => {
   const [search, setSearch] = useState("");
@@ -12,7 +13,11 @@ const Assets = () => {
   const categories = ["Todos", ...Array.from(new Set(holdings.map((h) => h.sector)))];
 
   const filtered = holdings.filter((h) => {
-    const matchSearch = h.symbol.toLowerCase().includes(search.toLowerCase()) || h.name.toLowerCase().includes(search.toLowerCase());
+    const displaySymbol = getDisplaySymbol(h.symbol);
+    const matchSearch =
+      h.symbol.toLowerCase().includes(search.toLowerCase()) ||
+      displaySymbol.toLowerCase().includes(search.toLowerCase()) ||
+      h.name.toLowerCase().includes(search.toLowerCase());
     const matchCategory = categoryFilter === "Todos" || h.sector === categoryFilter;
     return matchSearch && matchCategory;
   });
@@ -46,12 +51,12 @@ const Assets = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((asset, i) => (
               <AnimatedCard key={asset.symbol} delay={i * 0.04}>
-                <Link to={`/ativos/${asset.symbol}`} className="glass-card p-5 hover:border-primary/30 transition-all group block">
+                <Link to={`/ativos/${getAssetRouteSymbol(asset.symbol)}`} className="glass-card p-5 hover:border-primary/30 transition-all group block">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <AssetLogoWithFallback symbol={asset.symbol} size={40} />
                       <div>
-                        <p className="text-sm font-semibold group-hover:text-primary transition-colors">{asset.symbol}</p>
+                        <p className="text-sm font-semibold group-hover:text-primary transition-colors">{getDisplaySymbol(asset.symbol)}</p>
                         <p className="text-xs text-muted-foreground">{asset.name}</p>
                       </div>
                     </div>

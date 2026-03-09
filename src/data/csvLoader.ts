@@ -305,7 +305,9 @@ function pickRicherSeries(a: OHLCVDay[] | undefined, b: OHLCVDay[] | undefined):
   if (bLast > aLast) return bRows;
   if (aLast > bLast) return aRows;
   if (bRows.length > aRows.length) return bRows;
-  return aRows;
+  // Tie-breaker: prefer fallback (local CSV) so manual corrections can
+  // override stale remote/cache data with the same date range.
+  return bRows;
 }
 
 function mergePreferRicherSeries(

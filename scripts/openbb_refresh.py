@@ -212,7 +212,9 @@ def load_manual_csvs() -> dict[str, pd.DataFrame]:
                 }
             )
 
-        out = out.dropna(subset=["date", "open", "high", "low", "close", "volume"])
+        # Keep manual rows even when volume is missing in source file.
+        # Empty volume is treated as zero to avoid losing valid price history dates.
+        out = out.dropna(subset=["date", "open", "high", "low", "close"])
         out = out[pd.to_datetime(out["date"], errors="coerce") >= pd.to_datetime(HISTORY_START)]
         if out.empty:
             continue
@@ -434,10 +436,13 @@ def main() -> int:
                     data = manual_data
                     log(f"OK {ticker} rows={len(data)} source=manual-only")
                 else:
-                    merged = pd.concat([data, manual_data], ignore_index=True)
-                    merged = merged.sort_values("date")
-                    manual_dates = set(manual_data["date"].astype(str).tolist())
-                    merged["is_manual"] = merged["date"].astype(str).isin(manual_dates)
+                    merged = pd.concat(
+                        [
+                            data.assign(is_manual=False),
+                            manual_data.assign(is_manual=True),
+                        ],
+                        ignore_index=True,
+                    )
                     merged = merged.sort_values(["date", "is_manual"]).drop_duplicates(
                         subset=["date", "ticker"], keep="last"
                     )

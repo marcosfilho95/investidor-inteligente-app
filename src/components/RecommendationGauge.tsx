@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 interface GaugeProps {
   score: number;
@@ -6,15 +6,26 @@ interface GaugeProps {
   color: string;
 }
 
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+const getRecommendationByScore = (value: number): { label: string; color: string } => {
+  if (value >= 70) return { label: "Comprar", color: "hsl(146, 74%, 50%)" };
+  if (value >= 55) return { label: "Manter", color: "hsl(110, 55%, 52%)" };
+  if (value >= 40) return { label: "Neutro", color: "hsl(47, 88%, 56%)" };
+  if (value >= 25) return { label: "Reduzir", color: "hsl(25, 85%, 55%)" };
+  return { label: "Vender", color: "hsl(0, 78%, 58%)" };
+};
+
 export function RecommendationGauge({ score, label, color }: GaugeProps) {
   const [animatedScore, setAnimatedScore] = useState(0);
+  const uid = useId().replace(/:/g, "");
 
   useEffect(() => {
     let frame = 0;
     const durationMs = 2000;
     const start = performance.now();
     const initial = animatedScore;
-    const target = Math.max(0, Math.min(100, score));
+    const target = clamp(score, 0, 100);
     const diff = target - initial;
 
     const step = (now: number) => {
@@ -28,98 +39,199 @@ export function RecommendationGauge({ score, label, color }: GaugeProps) {
     return () => cancelAnimationFrame(frame);
   }, [score]);
 
-  const width = 240;
-  const height = 150;
+  const width = 280;
+  const height = 182;
   const cx = width / 2;
-  const cy = 120;
-  const radius = 90;
-  const strokeWidth = 22;
+  const cy = 142;
+  const outerRadius = 100;
+  const innerRadius = 76;
+  const pointerLen = innerRadius - 14;
 
-  // Score 0-100 mapped to 180deg-0deg arc
-  const scoreAngle = 180 - (animatedScore / 100) * 180;
-  const needleRad = (scoreAngle * Math.PI) / 180;
-  const needleLen = radius - 28;
-  const needleX = cx + needleLen * Math.cos(needleRad);
-  const needleY = cy - needleLen * Math.sin(needleRad);
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const angleForScore = (value: number) => 180 - (value / 100) * 180;
 
-  const arcPath = (startDeg: number, endDeg: number) => {
-    const s = { x: cx + radius * Math.cos((startDeg * Math.PI) / 180), y: cy - radius * Math.sin((startDeg * Math.PI) / 180) };
-    const e = { x: cx + radius * Math.cos((endDeg * Math.PI) / 180), y: cy - radius * Math.sin((endDeg * Math.PI) / 180) };
+  const polar = (r: number, deg: number) => ({
+    x: cx + r * Math.cos(toRad(deg)),
+    y: cy - r * Math.sin(toRad(deg)),
+  });
+
+  const ringSegmentPath = (startDeg: number, endDeg: number) => {
+    const outerStart = polar(outerRadius, startDeg);
+    const outerEnd = polar(outerRadius, endDeg);
+    const innerEnd = polar(innerRadius, endDeg);
+    const innerStart = polar(innerRadius, startDeg);
     const largeArc = startDeg - endDeg > 180 ? 1 : 0;
-    return `M ${s.x} ${s.y} A ${radius} ${radius} 0 ${largeArc} 1 ${e.x} ${e.y}`;
+
+    return [
+      `M ${outerStart.x} ${outerStart.y}`,
+      `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${outerEnd.x} ${outerEnd.y}`,
+      `L ${innerEnd.x} ${innerEnd.y}`,
+      `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y}`,
+      "Z",
+    ].join(" ");
   };
 
-  let recText: string;
-  if (animatedScore >= 70) recText = "Comprar";
-  else if (animatedScore >= 40) recText = "Neutro";
-  else recText = "Vender";
+  const scoreAngle = angleForScore(clamp(animatedScore, 0, 100));
+  const scoreRad = toRad(scoreAngle);
+  const dirX = Math.cos(scoreRad);
+  const dirY = -Math.sin(scoreRad);
+  const perpX = -dirY;
+  const perpY = dirX;
+
+  const tip = {
+    x: cx + pointerLen * dirX,
+    y: cy + pointerLen * dirY,
+  };
+  const baseDist = 8;
+  const baseHalf = 3.2;
+  const baseCenter = {
+    x: cx + baseDist * dirX,
+    y: cy + baseDist * dirY,
+  };
+  const left = {
+    x: baseCenter.x + baseHalf * perpX,
+    y: baseCenter.y + baseHalf * perpY,
+  };
+  const right = {
+    x: baseCenter.x - baseHalf * perpX,
+    y: baseCenter.y - baseHalf * perpY,
+  };
+
+  const pointerPath = `M ${left.x} ${left.y} L ${tip.x} ${tip.y} L ${right.x} ${right.y} Z`;
+
+  const animatedRec = getRecommendationByScore(animatedScore);
+  const isSettled = Math.abs(animatedScore - clamp(score, 0, 100)) < 0.25;
+  const displayLabel = isSettled ? label : animatedRec.label;
+  const displayColor = isSettled ? color : animatedRec.color;
+  const venderLabelPos = polar(outerRadius + 18, angleForScore(0));
+  const reduzirLabelPos = polar(outerRadius + 18, angleForScore(25));
+  const neutroLabelPos = polar(outerRadius + 18, angleForScore(50));
+  const manterLabelPos = polar(outerRadius + 18, angleForScore(75));
+  const comprarLabelPos = polar(outerRadius + 18, angleForScore(100));
+  const sideLabelsY = (reduzirLabelPos.y + manterLabelPos.y) / 2;
 
   return (
     <div className="flex flex-col items-center w-full">
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+        <defs>
+          <linearGradient
+            id={`${uid}-gaugeBandBase`}
+            gradientUnits="userSpaceOnUse"
+            x1={cx - outerRadius}
+            y1={cy}
+            x2={cx + outerRadius}
+            y2={cy}
+          >
+            <stop offset="0%" stopColor="hsl(0, 84%, 53%)" />
+            <stop offset="22%" stopColor="hsl(18, 88%, 53%)" />
+            <stop offset="50%" stopColor="hsl(47, 93%, 55%)" />
+            <stop offset="78%" stopColor="hsl(122, 66%, 47%)" />
+            <stop offset="100%" stopColor="hsl(146, 74%, 45%)" />
+          </linearGradient>
+          <linearGradient
+            id={`${uid}-gaugeBandDepth`}
+            gradientUnits="userSpaceOnUse"
+            x1={cx - outerRadius}
+            y1={cy}
+            x2={cx + outerRadius}
+            y2={cy}
+          >
+            <stop offset="0%" stopColor="rgba(255,255,255,0.00)" />
+            <stop offset="16%" stopColor="rgba(255,255,255,0.06)" />
+            <stop offset="50%" stopColor="rgba(255,255,255,0.02)" />
+            <stop offset="84%" stopColor="rgba(255,255,255,0.07)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.00)" />
+          </linearGradient>
+          <linearGradient
+            id={`${uid}-gaugeBandSheen`}
+            gradientUnits="userSpaceOnUse"
+            x1={cx}
+            y1={cy - outerRadius}
+            x2={cx}
+            y2={cy}
+          >
+            <stop offset="0%" stopColor="rgba(255,255,255,0.18)" />
+            <stop offset="38%" stopColor="rgba(255,255,255,0.06)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </linearGradient>
+          <linearGradient id={`${uid}-arcTopHighlight`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.22)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.06)" />
+          </linearGradient>
+          <linearGradient id={`${uid}-bandAmbient`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.02)" />
+            <stop offset="50%" stopColor="rgba(255,255,255,0.10)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.02)" />
+          </linearGradient>
+          <radialGradient id={`${uid}-hubGradient`} cx="35%" cy="30%" r="75%">
+            <stop offset="0%" stopColor="hsl(220, 20%, 78%)" />
+            <stop offset="45%" stopColor="hsl(220, 16%, 48%)" />
+            <stop offset="100%" stopColor="hsl(220, 16%, 22%)" />
+          </radialGradient>
+          <linearGradient id={`${uid}-pointerBody`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.98)" />
+            <stop offset="100%" stopColor="rgba(230,236,246,0.86)" />
+          </linearGradient>
+          <filter id={`${uid}-pointerGlow`} x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="1.2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        <path d={ringSegmentPath(180, 0)} fill="hsl(222, 20%, 12%)" opacity={0.9} />
+        <path d={ringSegmentPath(180, 0)} fill={`url(#${uid}-gaugeBandBase)`} />
+        <path d={ringSegmentPath(180, 0)} fill={`url(#${uid}-gaugeBandDepth)`} opacity={0.9} />
+        <path d={ringSegmentPath(180, 0)} fill={`url(#${uid}-gaugeBandSheen)`} />
+
         <path
-          d={arcPath(180, 0)}
+          d={ringSegmentPath(180, 0)}
           fill="none"
-          stroke="hsl(220, 14%, 16%)"
-          strokeWidth={strokeWidth + 4}
-          strokeLinecap="round"
+          stroke={`url(#${uid}-arcTopHighlight)`}
+          strokeWidth={1.5}
+          opacity={0.85}
         />
+        <path d={ringSegmentPath(180, 0)} fill={`url(#${uid}-bandAmbient)`} opacity={0.32} />
 
-        <path d={arcPath(180, 120)} fill="none" stroke="hsl(0, 72%, 50%)" strokeWidth={strokeWidth} strokeLinecap="butt" />
-        <path d={arcPath(120, 108)} fill="none" stroke="hsl(25, 80%, 50%)" strokeWidth={strokeWidth} strokeLinecap="butt" />
-        <path d={arcPath(108, 72)} fill="none" stroke="hsl(45, 85%, 50%)" strokeWidth={strokeWidth} strokeLinecap="butt" />
-        <path d={arcPath(72, 60)} fill="none" stroke="hsl(100, 50%, 45%)" strokeWidth={strokeWidth} strokeLinecap="butt" />
-        <path d={arcPath(60, 0)} fill="none" stroke="hsl(142, 72%, 45%)" strokeWidth={strokeWidth} strokeLinecap="butt" />
+        <g filter={`url(#${uid}-pointerGlow)`}>
+          <path d={pointerPath} fill={`url(#${uid}-pointerBody)`} />
+          <line
+            x1={baseCenter.x}
+            y1={baseCenter.y}
+            x2={tip.x}
+            y2={tip.y}
+            stroke="rgba(255,255,255,0.72)"
+            strokeWidth={0.85}
+          />
+        </g>
 
-        {[0, 25, 50, 75, 100].map((tick) => {
-          const angle = 180 - (tick / 100) * 180;
-          const rad = (angle * Math.PI) / 180;
-          const inner = radius + strokeWidth / 2 + 2;
-          const outer = inner + 6;
-          return (
-            <line
-              key={tick}
-              x1={cx + inner * Math.cos(rad)}
-              y1={cy - inner * Math.sin(rad)}
-              x2={cx + outer * Math.cos(rad)}
-              y2={cy - outer * Math.sin(rad)}
-              stroke="hsl(220, 14%, 30%)"
-              strokeWidth={1.5}
-            />
-          );
-        })}
+        <circle cx={cx} cy={cy} r={10} fill={`url(#${uid}-hubGradient)`} stroke="rgba(255,255,255,0.22)" strokeWidth={1.2} />
+        <circle cx={cx} cy={cy} r={4} fill={displayColor} />
 
-        <line
-          x1={cx}
-          y1={cy + 1}
-          x2={needleX}
-          y2={needleY + 1}
-          stroke="hsl(0, 0%, 0%)"
-          strokeWidth={4}
-          strokeLinecap="round"
-          opacity={0.3}
-        />
-
-        <line
-          x1={cx}
-          y1={cy}
-          x2={needleX}
-          y2={needleY}
-          stroke="hsl(var(--foreground))"
-          strokeWidth={3}
-          strokeLinecap="round"
-        />
-
-        <circle cx={cx} cy={cy} r={8} fill="hsl(220, 14%, 14%)" stroke="hsl(220, 14%, 25%)" strokeWidth={2} />
-        <circle cx={cx} cy={cy} r={4} fill={color} />
-
-        <text x={12} y={cy + 20} fill="hsl(0, 72%, 55%)" fontSize="10" fontWeight="600">Vender</text>
-        <text x={cx - 14} y={16} fill="hsl(45, 85%, 55%)" fontSize="10" fontWeight="600">Neutro</text>
-        <text x={width - 58} y={cy + 20} fill="hsl(142, 72%, 50%)" fontSize="10" fontWeight="600">Comprar</text>
+        <text x={venderLabelPos.x} y={venderLabelPos.y} textAnchor="end" dominantBaseline="middle" fill="hsl(0, 78%, 58%)" fontSize="10" fontWeight="600">Vender</text>
+        <text x={reduzirLabelPos.x} y={sideLabelsY} textAnchor="end" dominantBaseline="middle" fill="hsl(25, 85%, 55%)" fontSize="10" fontWeight="600">Reduzir</text>
+        <text x={neutroLabelPos.x} y={neutroLabelPos.y} textAnchor="middle" dominantBaseline="middle" fill="hsl(47, 88%, 56%)" fontSize="10" fontWeight="600">Neutro</text>
+        <text x={manterLabelPos.x} y={sideLabelsY} textAnchor="start" dominantBaseline="middle" fill="hsl(110, 55%, 52%)" fontSize="10" fontWeight="600">Manter</text>
+        <text x={comprarLabelPos.x} y={comprarLabelPos.y} textAnchor="start" dominantBaseline="middle" fill="hsl(146, 74%, 50%)" fontSize="10" fontWeight="600">Comprar</text>
       </svg>
+
       <div className="text-center -mt-1">
-        <p className="text-3xl font-bold font-mono" style={{ color }}>{Math.round(animatedScore)}</p>
-        <p className="text-sm font-semibold mt-0.5" style={{ color }}>{recText}</p>
+        <p className="text-4xl font-bold tracking-tight font-mono leading-none transition-colors duration-300" style={{ color: displayColor }}>
+          {Math.round(animatedScore)}
+        </p>
+        <span
+          className="mt-2 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border uppercase tracking-wider transition-all duration-300"
+          style={{
+            color: displayColor,
+            borderColor: "color-mix(in srgb, currentColor 55%, transparent)",
+            backgroundColor: "color-mix(in srgb, currentColor 16%, transparent)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18)",
+          }}
+        >
+          {displayLabel}
+        </span>
       </div>
     </div>
   );

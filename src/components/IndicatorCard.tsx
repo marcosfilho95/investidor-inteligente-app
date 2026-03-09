@@ -22,7 +22,7 @@ export function IndicatorCard({ label, value, tooltip }: IndicatorCardProps) {
             <TooltipContent side="top" className="max-w-[280px] p-3 space-y-1.5">
               <p className="font-semibold text-xs">{tooltip.title}</p>
               <p className="text-xs text-muted-foreground leading-relaxed">{tooltip.description}</p>
-              <p className="text-[10px] text-muted-foreground/70 font-mono">Calculo: {tooltip.formula}</p>
+              <p className="text-[10px] text-gain font-mono">Calculo: {tooltip.formula}</p>
             </TooltipContent>
           </Tooltip>
         )}

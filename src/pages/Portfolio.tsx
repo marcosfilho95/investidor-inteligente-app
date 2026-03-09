@@ -14,6 +14,7 @@ import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
+import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
 
 const chartColors = [
   "hsl(var(--chart-1))",
@@ -61,7 +62,7 @@ const Portfolio = () => {
   const assetAllocation = useMemo(
     () =>
       enrichedHoldings.map((h, i) => ({
-        name: h.symbol,
+        name: getDisplaySymbol(h.symbol),
         value: h.allocation,
         color: chartColors[i % chartColors.length],
       })),
@@ -526,10 +527,10 @@ const Portfolio = () => {
                               className="border-b border-border/30 hover:bg-accent/50 transition-colors"
                             >
                               <td className="px-5 py-3">
-                                <Link to={`/ativos/${h.symbol}`} className="flex items-center gap-2.5 hover:underline">
+                                <Link to={`/ativos/${getAssetRouteSymbol(h.symbol)}`} className="flex items-center gap-2.5 hover:underline">
                                   <AssetLogoWithFallback symbol={h.symbol} size={28} />
                                   <div>
-                                    <span className="text-sm font-medium">{h.symbol}</span>
+                                    <span className="text-sm font-medium">{getDisplaySymbol(h.symbol)}</span>
                                     <p className="text-[10px] text-muted-foreground">{h.sector}</p>
                                   </div>
                                 </Link>
@@ -691,7 +692,7 @@ const Portfolio = () => {
                                       {t.side === "buy" ? "Compra" : "Venda"}
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3 text-sm font-medium">{t.symbol}</td>
+                                  <td className="px-4 py-3 text-sm font-medium">{getDisplaySymbol(t.symbol)}</td>
                                   <td className="text-right px-4 py-3 text-sm font-mono">{t.shares}</td>
                                   <td className="text-right px-5 py-3 text-sm font-mono">
                                     R$ {t.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -757,7 +758,7 @@ const Portfolio = () => {
         >
           <div className="glass-card p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold">
-              {orderType === "buy" ? "Comprar" : "Vender"} {selectedTradeAsset.symbol}
+              {orderType === "buy" ? "Comprar" : "Vender"} {getDisplaySymbol(selectedTradeAsset.symbol)}
             </h3>
             {orderType === "sell" && (
               <p className="text-xs text-muted-foreground">
