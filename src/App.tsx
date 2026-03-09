@@ -5,8 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
-import { loadRealPriceData } from "@/data/csvLoader";
-import { loadMacroData } from "@/data/macroLoader";
+import { getRealPricesSync, loadRealPriceData } from "@/data/csvLoader";
+import { getMacroDataSync, loadMacroData } from "@/data/macroLoader";
 import { setMacroMarketData, setRealMarketData } from "@/data/investments";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { supabase } from "@/integrations/supabase/client";
@@ -68,7 +68,7 @@ function AppContent() {
   useEffect(() => {
     const refreshAllData = async (forceRefresh = false) => {
       try {
-        // Preload CSV + macro data and inject into market history cache.
+        // Load datasets (version-aware; only downloads when a new version is available).
         const [priceData, macroData] = await Promise.all([
           loadRealPriceData(forceRefresh),
           loadMacroData(forceRefresh),
@@ -88,23 +88,31 @@ function AppContent() {
 
     void refreshAllData(false);
 
-    const intervalId = window.setInterval(() => {
-      void refreshAllData(true);
-    }, 5 * 60 * 1000);
-
-    const onVisibilityOrFocus = () => {
-      if (document.visibilityState === "visible") {
-        void refreshAllData(true);
-      }
+    const onPricesUpdated = () => {
+      const latest = getRealPricesSync();
+      if (!latest || Object.keys(latest).length === 0) return;
+      setRealMarketData(latest);
+      setDataVersion((v) => v + 1);
     };
 
-    document.addEventListener("visibilitychange", onVisibilityOrFocus);
-    window.addEventListener("focus", onVisibilityOrFocus);
+    const onMacroUpdated = () => {
+      const latest = getMacroDataSync();
+      if (!latest) return;
+      setMacroMarketData(latest);
+      setDataVersion((v) => v + 1);
+    };
+
+    // Light version check every hour (no 5-minute/full refresh loops).
+    const intervalId = window.setInterval(() => {
+      void refreshAllData(true);
+    }, 60 * 60 * 1000);
+    window.addEventListener("ii:prices-data-updated", onPricesUpdated as EventListener);
+    window.addEventListener("ii:macro-data-updated", onMacroUpdated as EventListener);
 
     return () => {
       window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", onVisibilityOrFocus);
-      window.removeEventListener("focus", onVisibilityOrFocus);
+      window.removeEventListener("ii:prices-data-updated", onPricesUpdated as EventListener);
+      window.removeEventListener("ii:macro-data-updated", onMacroUpdated as EventListener);
     };
   }, []);
 

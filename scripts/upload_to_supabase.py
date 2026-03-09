@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import json
 import os
 import sys
 import time
@@ -89,7 +90,7 @@ def count_rows(filepath: str) -> int:
         return max(0, sum(1 for _ in f) - 1)
 
 
-def upload_file(sb, filepath: str, storage_path: str) -> None:
+def upload_file(sb, filepath: str, storage_path: str, content_type: str = "text/csv") -> None:
     with open(filepath, "rb") as f:
         content = f.read()
 
@@ -98,7 +99,7 @@ def upload_file(sb, filepath: str, storage_path: str) -> None:
         sb.storage.from_(BUCKET).upload(
             storage_path,
             content,
-            file_options={"content-type": "text/csv", "upsert": "true"},
+            file_options={"content-type": content_type, "upsert": "true"},
         )
         log(f"Uploaded {BUCKET}/{storage_path} bytes={len(content)} md5={local_md5}")
     except Exception as exc:
@@ -135,6 +136,14 @@ def upload_file(sb, filepath: str, storage_path: str) -> None:
         f"Verification failed for {BUCKET}/{storage_path}: "
         f"local_md5={local_md5} remote_md5={remote_md5}"
     )
+
+def upload_data_status(sb, version_date: str) -> None:
+    status_path = os.path.join(OUTPUT_DIR, "data-status.json")
+    payload = {"last_version_date": version_date}
+    with open(status_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=True)
+    upload_file(sb, status_path, "data-status.json", content_type="application/json")
+    log(f"Updated market-data/data-status.json last_version_date={version_date}")
 
 
 def update_meta(sb, dataset_name, version_date, file_path, row_count, checksum, status="ok", message=None):
@@ -325,6 +334,8 @@ def main() -> int:
         update_meta(sb, "macro", TODAY, f"macro/macro_{TODAY}.csv", macro_rows, macro_checksum, status="ok")
     else:
         log("No macro file found. Macro upload skipped.")
+
+    upload_data_status(sb, TODAY)
 
     log("Run completed successfully.")
     return 0
