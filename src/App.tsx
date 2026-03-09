@@ -9,6 +9,7 @@ import { loadRealPriceData } from "@/data/csvLoader";
 import { loadMacroData } from "@/data/macroLoader";
 import { setMacroMarketData, setRealMarketData } from "@/data/investments";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { supabase } from "@/integrations/supabase/client";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Index";
@@ -33,15 +34,25 @@ function ScrollToTop() {
 function AppContent() {
   const [dataVersion, setDataVersion] = useState(0);
   const [showTour, setShowTour] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const location = useLocation();
 
   useEffect(() => {
-    const seen = localStorage.getItem("onboarding_completed");
-    const forced = sessionStorage.getItem("force_onboarding_tour") === "1";
-    if (!seen || forced) {
-      setShowTour(true);
-      if (forced) sessionStorage.removeItem("force_onboarding_tour");
-    }
+    let mounted = true;
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) return;
+      setCurrentUserId(data.user?.id ?? null);
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUserId(session?.user?.id ?? null);
+    });
+
+    return () => {
+      mounted = false;
+      data.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -93,9 +104,43 @@ function AppContent() {
     };
   }, []);
 
+  useEffect(() => {
+    const forceTour = sessionStorage.getItem("force_onboarding_tour") === "1";
+    const isPublicRoute = location.pathname === "/" || location.pathname === "/login";
+
+    if (!currentUserId || isPublicRoute) {
+      setShowTour(false);
+      return;
+    }
+
+    const legacySeen = localStorage.getItem("onboarding_completed") === "true";
+    const userSeenKey = `onboarding_completed_${currentUserId}`;
+
+    if (legacySeen && localStorage.getItem(userSeenKey) !== "true") {
+      localStorage.setItem(userSeenKey, "true");
+    }
+
+    if (forceTour) {
+      setShowTour(true);
+      sessionStorage.removeItem("force_onboarding_tour");
+      return;
+    }
+
+    const userSeen = localStorage.getItem(userSeenKey) === "true";
+    setShowTour(!userSeen);
+  }, [currentUserId, location.pathname]);
+
+  const handleTourComplete = () => {
+    if (currentUserId) {
+      localStorage.setItem(`onboarding_completed_${currentUserId}`, "true");
+    }
+    localStorage.setItem("onboarding_completed", "true");
+    setShowTour(false);
+  };
+
   return (
     <>
-      <AnimatePresence>{showTour && <OnboardingTour onComplete={() => { localStorage.setItem("onboarding_completed", "true"); setShowTour(false); }} />}</AnimatePresence>
+      <AnimatePresence>{showTour && <OnboardingTour onComplete={handleTourComplete} />}</AnimatePresence>
       <Toaster />
       <Sonner />
       <ScrollToTop />

@@ -312,7 +312,7 @@ const Landing = () => {
             </div>
 
             <a
-              href="https://github.com/marcosfilho95/investidor-inteligente-app"
+              href="https://github.com/marcosfilho95/"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors"
