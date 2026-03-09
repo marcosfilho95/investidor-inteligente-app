@@ -245,6 +245,7 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
                 fontFamily: "JetBrains Mono",
                 color: "hsl(var(--foreground))",
               }}
+              labelFormatter={(label: string) => label}
               formatter={(value: number, name: string) => {
                 const label = benchmarks.find((b) => b.key === name)?.label || name;
                 const numeric = Number(value || 0);

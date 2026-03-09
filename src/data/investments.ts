@@ -619,37 +619,19 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
   
   switch (period) {
     case "1D": {
-      // Simulate intraday from last trading day (15-min updates):
-      // first point = session open, last point = session close.
       const lastDay = allData[allData.length - 1];
-      const prevDay = allData.length > 1 ? allData[allData.length - 2] : lastDay;
-      const rand = seededRandom(hashStr(symbol + "1D"));
+      const prevDay = allData.length > 1 ? allData[allData.length - 2] : null;
       const points: { month: string; price: number }[] = [];
-      const openStart =
-        Number.isFinite(lastDay.open) && lastDay.open > 0
-          ? lastDay.open
-          : (Number.isFinite(prevDay.close) && prevDay.close > 0 ? prevDay.close : lastDay.close);
-      let p = openStart;
-      const target = lastDay.close;
-      const startMin = 10 * 60;
-      const endMin = 17 * 60 + 45;
-      const stepMin = 15;
-      const totalPoints = Math.floor((endMin - startMin) / stepMin) + 1;
-      for (let i = 0; i < totalPoints; i++) {
-        const min = startMin + i * stepMin;
-        const h = Math.floor(min / 60);
-        const m = min % 60;
-        const label = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        if (i === 0) {
-          points.push({ month: label, price: Math.round(openStart * 100) / 100 });
-          continue;
-        }
-        const drift = (target - p) / Math.max(1, (totalPoints - i)) * 0.30;
-        p += drift + (rand() - 0.5) * lastDay.close * 0.0012;
-        points.push({ month: label, price: Math.round(p * 100) / 100 });
+
+      if (prevDay && Number.isFinite(prevDay.close)) {
+        points.push({ month: "Fech. ant.", price: Math.round(prevDay.close * 100) / 100 });
       }
-      points[points.length - 1].price = target;
-      return points;
+      points.push({ month: "Abertura", price: Math.round(lastDay.open * 100) / 100 });
+      points.push({ month: "Minima", price: Math.round(lastDay.low * 100) / 100 });
+      points.push({ month: "Maxima", price: Math.round(lastDay.high * 100) / 100 });
+      points.push({ month: "Fechamento", price: Math.round(lastDay.close * 100) / 100 });
+
+      return points.filter((p) => Number.isFinite(p.price));
     }
     case "7D": startDate = new Date(now); startDate.setDate(now.getDate() - 7); break;
     case "30D": startDate = new Date(now); startDate.setDate(now.getDate() - 30); break;
@@ -661,7 +643,12 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
   }
   
   const startStr = startDate.toISOString().slice(0, 10);
-  let filtered = allData.filter(d => d.date >= startStr);
+  let filtered =
+    period === "7D"
+      ? allData.slice(-7)
+      : period === "30D"
+        ? allData.filter(d => d.date >= startStr)
+        : allData.filter(d => d.date >= startStr);
 
   // If a ticker is stale (e.g. stopped updating months ago), short ranges can go empty.
   // In that case, fallback to the most recent available window for that period
@@ -679,38 +666,6 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
     filtered = allData.slice(-Math.min(allData.length, fallbackCount));
   }
 
-  // 7D: hourly updates using daily closes as anchors
-  if (period === "7D") {
-    if (filtered.length === 0) return [];
-    if (filtered.length === 1) {
-      const only = filtered[0];
-      return [{ month: only.date.slice(8, 10) + "/" + only.date.slice(5, 7), price: only.close }];
-    }
-
-    const rand = seededRandom(hashStr(symbol + "7D"));
-    const points: { month: string; price: number }[] = [];
-    const hours = [10, 11, 12, 13, 14, 15, 16, 17];
-
-    for (let d = 1; d < filtered.length; d++) {
-      const prev = filtered[d - 1].close;
-      const next = filtered[d].close;
-      const date = filtered[d].date; // YYYY-MM-DD
-      const day = date.slice(8, 10);
-      const month = date.slice(5, 7);
-      for (let hIdx = 0; hIdx < hours.length; hIdx++) {
-        const t = hIdx / (hours.length - 1);
-        const base = prev + (next - prev) * t;
-        const wiggle = (rand() - 0.5) * Math.max(0.005, Math.abs(next - prev) * 0.045);
-        const px = Math.round((base + wiggle) * 100) / 100;
-        const hh = hours[hIdx].toString().padStart(2, "0");
-        points.push({ month: `${day}/${month} ${hh}h`, price: px });
-      }
-      // Clamp final hour of each day to true daily close
-      points[points.length - 1].price = Math.round(next * 100) / 100;
-    }
-    return points;
-  }
-  
   // Thin out if too many points (keep daily cadence for requested ranges)
   const maxPoints = period === "5A" ? 300 : period === "1A" ? 150 : period === "6M" ? 180 : 120;
   const step = Math.max(1, Math.floor(filtered.length / maxPoints));
@@ -739,19 +694,7 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
       return { month: label, price: d.close };
     });
 
-  if (period !== "30D") return mapped;
-  // Extra smoothing on 30D to reduce visual amplitude/noise.
-  const alpha = 0.28;
-  let ema = mapped[0]?.price ?? 0;
-  const smoothed = mapped.map((point) => {
-    ema = alpha * point.price + (1 - alpha) * ema;
-    return { ...point, price: Math.round(ema * 100) / 100 };
-  });
-  if (smoothed.length > 0) {
-    smoothed[0].price = mapped[0].price;
-    smoothed[smoothed.length - 1].price = mapped[mapped.length - 1].price;
-  }
-  return smoothed;
+  return mapped;
 }
 
 // Get benchmark data filtered by period for PerformanceChart
@@ -766,112 +709,7 @@ export function getFilteredBenchmarks(
   let startDate: Date;
   
   switch (period) {
-    case "1 DIA": {
-      // Intraday path in PnL space (starts at 0), 10-minute steps.
-      const rand = seededRandom(hashStr("portfolio1D"));
-      const points: any[] = [];
-      const marketData = getMarketHistory();
-      const benchmarkData = getBenchmarkHistory();
-      const activePositions = (userPortfolio && userPortfolio.length > 0)
-        ? userPortfolio
-        : holdings.map((h) => ({ symbol: h.symbol, shares: h.shares }));
-      const investedReference = activePositions.reduce((sum, p) => {
-        const avg = Number((p as { avgPrice?: number }).avgPrice ?? 0);
-        return sum + Math.max(0, avg * p.shares);
-      }, 0) || baseValue;
-
-      const portfolioDayPnl = activePositions.reduce((sum, p) => {
-        const series = marketData[p.symbol];
-        if (!series || series.length === 0) return sum;
-        const latest = series[series.length - 1].close;
-        const prev = series.length > 1 ? series[series.length - 2].close : latest;
-        return sum + (latest - prev) * p.shares;
-      }, 0);
-
-      let cart = 0;
-      const ibovDailySeries = getIbovSeriesFromMarketData(marketData);
-      const ibovSymbol =
-        marketData["^BVSP"]?.length
-          ? "^BVSP"
-          : marketData["IBOV"]?.length
-            ? "IBOV"
-            : marketData["BVSP"]?.length
-              ? "BVSP"
-              : marketData["IBOVESPA"]?.length
-                ? "IBOVESPA"
-                : null;
-      const ibovIntraday = ibovSymbol ? getFilteredPriceHistory(ibovSymbol, "1D") : [];
-
-      const normalizeIntraday = (rows: { price: number }[]) => {
-        if (rows.length < 2) return [] as number[];
-        const first = rows[0].price;
-        const safeFirst = first > 0 ? first : rows[1].price || 1;
-        return rows.map((r) => 1000 * (r.price / safeFirst));
-      };
-      const ibovNormIntraday = normalizeIntraday(ibovIntraday);
-
-      const endReturnFromTwoPoints = (series: SeriesPoint[]) => {
-        if (!series || series.length < 2) return 0;
-        const prev = series[series.length - 2].value;
-        const last = series[series.length - 1].value;
-        if (!Number.isFinite(prev) || prev <= 0 || !Number.isFinite(last)) return 0;
-        return last / prev - 1;
-      };
-
-      const ibovFallbackDayReturn = (() => {
-        if (ibovDailySeries.length < 2) return 0;
-        const prev = ibovDailySeries[ibovDailySeries.length - 2].value;
-        const last = ibovDailySeries[ibovDailySeries.length - 1].value;
-        if (!Number.isFinite(prev) || prev <= 0 || !Number.isFinite(last)) return 0;
-        return last / prev - 1;
-      })();
-      const latestDate = now.toISOString().slice(0, 10);
-      const cdiDayReturnRaw = endReturnFromTwoPoints(benchmarkData.CDI || []);
-      const ipcaDayReturnRaw = endReturnFromTwoPoints(benchmarkData.IPCA || []);
-      const cdiDayReturn =
-        Math.abs(cdiDayReturnRaw) < 1e-8 ? getDailyMacroRateForDate("CDI", latestDate) : cdiDayReturnRaw;
-      const ipcaDayReturn =
-        Math.abs(ipcaDayReturnRaw) < 1e-8 ? getDailyMacroRateForDate("IPCA", latestDate) : ipcaDayReturnRaw;
-
-      const startMin = 10 * 60;
-      const endMin = 17 * 60 + 50;
-      const stepMin = 10;
-      const totalPoints = Math.floor((endMin - startMin) / stepMin) + 1;
-      const sampleAt = (arr: number[], idx: number, count: number) => {
-        if (arr.length === 0) return null;
-        if (arr.length === 1) return arr[0];
-        const pos = (idx / Math.max(1, count - 1)) * (arr.length - 1);
-        const lo = Math.floor(pos);
-        const hi = Math.min(arr.length - 1, lo + 1);
-        const t = pos - lo;
-        return arr[lo] * (1 - t) + arr[hi] * t;
-      };
-
-      for (let i = 0; i < totalPoints; i++) {
-        const min = startMin + i * stepMin;
-        const h = Math.floor(min / 60);
-        const m = min % 60;
-        const label = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        const t = i / Math.max(1, totalPoints - 1);
-        const targetAtT = portfolioDayPnl * t;
-        cart += (targetAtT - cart) * 0.28 + (rand() - 0.5) * Math.max(6, Math.abs(portfolioDayPnl) * 0.02);
-
-        const ibovNorm = sampleAt(ibovNormIntraday, i, totalPoints);
-        const ibovRet = ibovNorm != null ? (ibovNorm - 1000) / 1000 : ibovFallbackDayReturn * t;
-        const cdiRet = cdiDayReturn * t;
-        const ipcaRet = ipcaDayReturn * t;
-
-        points.push({
-          month: label,
-          carteira: Number(cart.toFixed(2)),
-          ibovespa: Number((investedReference * ibovRet).toFixed(2)),
-          cdi: Number((investedReference * cdiRet).toFixed(2)),
-          ipca: Number((investedReference * ipcaRet).toFixed(2)),
-        });
-      }
-      if (points.length > 0) points[points.length - 1].carteira = Number(portfolioDayPnl.toFixed(2));
-      return points;
-    }
+    case "1 DIA": startDate = new Date(now); startDate.setDate(now.getDate() - 1); break;
     case "7 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 7); break;
     case "30 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 30); break;
     case "6 MESES": startDate = new Date(now); startDate.setMonth(now.getMonth() - 6); break;
@@ -882,7 +720,7 @@ export function getFilteredBenchmarks(
   }
   
   const startStrFromPeriod = startDate.toISOString().slice(0, 10);
-  // Unified rule for every period (except 1 DIA handled above):
+  // Unified rule for every period:
   // effectiveStart = max(periodStart, portfolioStart)
   let startStr = startStrFromPeriod;
   if (minStartDate && minStartDate > startStr) {
@@ -891,9 +729,13 @@ export function getFilteredBenchmarks(
   
   const ibovFromMarket = getIbovSeriesFromMarketData(getMarketHistory());
   const ibovSource = ibovFromMarket.length > 0 ? ibovFromMarket : benchmarks.IBOV;
-  const ibovData = ibovSource.filter(d => d.date >= startStr);
-  const cdiData = benchmarks.CDI.filter(d => d.date >= startStr);
-  const ipcaData = benchmarks.IPCA.filter(d => d.date >= startStr);
+  let ibovData = ibovSource.filter(d => d.date >= startStr);
+  if (minStartDate) {
+    ibovData = ibovData.filter((d) => d.date >= minStartDate);
+  }
+  const benchmarkStart = ibovData[0]?.date ?? startStr;
+  const cdiData = benchmarks.CDI.filter(d => d.date >= benchmarkStart);
+  const ipcaData = benchmarks.IPCA.filter(d => d.date >= benchmarkStart);
   
   if (ibovData.length === 0) return [];
   
@@ -915,6 +757,92 @@ export function getFilteredBenchmarks(
     return sum + Math.max(0, avg * p.shares);
   }, 0);
   const referenceBase = investedTotal > 0 ? investedTotal : baseValue;
+
+  if (period === "1 DIA") {
+    const safeNum = (v: number, fb: number) => (Number.isFinite(v) ? v : fb);
+    const safeRatioNorm = (value: number, base: number) => {
+      const safeBase = Number.isFinite(base) && base > 0 ? base : 1;
+      return referenceBase * (value / safeBase);
+    };
+
+    const ibovSeries = ibovSource.slice().sort((a, b) => a.date.localeCompare(b.date));
+    const ibLast = ibovSeries[ibovSeries.length - 1];
+    const ibPrev = ibovSeries.length > 1 ? ibovSeries[ibovSeries.length - 2] : ibLast;
+    if (!ibLast || !ibPrev) return [];
+
+    const cdiSeries = benchmarks.CDI.slice().sort((a, b) => a.date.localeCompare(b.date));
+    const ipcaSeries = benchmarks.IPCA.slice().sort((a, b) => a.date.localeCompare(b.date));
+    const cdiLast = cdiSeries[cdiSeries.length - 1]?.value ?? 1;
+    const cdiPrev = cdiSeries.length > 1 ? cdiSeries[cdiSeries.length - 2].value : cdiLast;
+    const ipcaLast = ipcaSeries[ipcaSeries.length - 1]?.value ?? 1;
+    const ipcaPrev = ipcaSeries.length > 1 ? ipcaSeries[ipcaSeries.length - 2].value : ipcaLast;
+
+    const ibovOhlc = (getMarketHistory()["^BVSP"] || getMarketHistory()["IBOV"] || getMarketHistory()["BVSP"] || getMarketHistory()["IBOVESPA"] || [])
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const ibovOhlcLast = ibovOhlc[ibovOhlc.length - 1];
+    const ibovOhlcPrev = ibovOhlc.length > 1 ? ibovOhlc[ibovOhlc.length - 2] : ibovOhlcLast;
+
+    const ibClose = safeNum(ibovOhlcLast?.close ?? ibLast.value, ibLast.value);
+    const ibOpen = safeNum(ibovOhlcLast?.open ?? ibClose, ibClose);
+    const ibLow = safeNum(ibovOhlcLast?.low ?? Math.min(ibOpen, ibClose), Math.min(ibOpen, ibClose));
+    const ibHigh = safeNum(ibovOhlcLast?.high ?? Math.max(ibOpen, ibClose), Math.max(ibOpen, ibClose));
+    const ibPrevClose = safeNum(ibovOhlcPrev?.close ?? ibPrev.value, ibPrev.value);
+
+    let portfolioPrev = 0;
+    let portfolioOpen = 0;
+    let portfolioLow = 0;
+    let portfolioHigh = 0;
+    let portfolioClose = 0;
+
+    const marketHistory = getMarketHistory();
+    const todayDate = ibovOhlcLast?.date ?? ibLast.date;
+    const positionsAtDate = activePositions.filter((p) => {
+      const buyDate = p.firstBuyDate ? p.firstBuyDate.slice(0, 10) : null;
+      return !buyDate || todayDate >= buyDate;
+    });
+
+    for (const p of positionsAtDate) {
+      const rows = (marketHistory[p.symbol] || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+      if (!rows.length) continue;
+      const last = rows[rows.length - 1];
+      const prev = rows.length > 1 ? rows[rows.length - 2] : last;
+
+      const close = safeNum(last.close, 0);
+      const open = safeNum(last.open, close);
+      const low = safeNum(last.low, Math.min(open, close));
+      const high = safeNum(last.high, Math.max(open, close));
+      const prevClose = safeNum(prev.close, close);
+
+      portfolioPrev += prevClose * p.shares;
+      portfolioOpen += open * p.shares;
+      portfolioLow += low * p.shares;
+      portfolioHigh += high * p.shares;
+      portfolioClose += close * p.shares;
+    }
+
+    if (positionsAtDate.length === 0 || portfolioPrev <= 0 || portfolioClose <= 0) {
+      portfolioPrev = referenceBase;
+      portfolioOpen = referenceBase;
+      portfolioLow = referenceBase;
+      portfolioHigh = referenceBase;
+      portfolioClose = referenceBase;
+    }
+
+    const labels = ["Fech. ant.", "Abertura", "Minima", "Maxima", "Fechamento"];
+    const portfolioValues = [portfolioPrev, portfolioOpen, portfolioLow, portfolioHigh, portfolioClose];
+    const ibovValues = [ibPrevClose, ibOpen, ibLow, ibHigh, ibClose];
+    const cdiValues = [cdiPrev, cdiPrev, cdiPrev, cdiPrev, cdiLast];
+    const ipcaValues = [ipcaPrev, ipcaPrev, ipcaPrev, ipcaPrev, ipcaLast];
+
+    return labels.map((label, i) => ({
+      month: label,
+      carteira: Number((safeRatioNorm(portfolioValues[i], portfolioPrev) - referenceBase).toFixed(2)),
+      ibovespa: Number((safeRatioNorm(ibovValues[i], ibPrevClose) - referenceBase).toFixed(2)),
+      cdi: Number((safeRatioNorm(cdiValues[i], cdiPrev) - referenceBase).toFixed(2)),
+      ipca: Number((safeRatioNorm(ipcaValues[i], ipcaPrev) - referenceBase).toFixed(2)),
+    }));
+  }
   
   return ibovData
     .filter((_, i) => i % step === 0 || i === ibovData.length - 1)
@@ -964,7 +892,7 @@ export function getFilteredBenchmarks(
       const monthNames = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
       
       let label: string;
-      if (period === "7 DIAS" || period === "30 DIAS") {
+      if (period === "1 DIA" || period === "7 DIAS" || period === "30 DIAS") {
         label = `${day}/${month}`;
       } else if (period === "6 MESES" || period === "YTD") {
         label = `${day}/${monthNames[parseInt(month)]}`;
@@ -1373,7 +1301,7 @@ export async function getInvestmentComparisonData(symbol: string, period: string
   const p = parsePeriodToken(period);
   const now = getLatestMarketDate();
   const startDate = getPeriodStartDate(now, p);
-  const startStr = startDate.toISOString().slice(0, 10);
+  let startStr = startDate.toISOString().slice(0, 10);
   const endStr = now.toISOString().slice(0, 10);
   const marketData = getMarketHistory();
 
@@ -1415,6 +1343,12 @@ export async function getInvestmentComparisonData(symbol: string, period: string
       return buildNeverEmptyFallback(DEFAULT_COMPARISON_META);
     }
 
+    if (p === "1D") {
+      startStr = assetRaw[Math.max(0, assetRaw.length - 2)].date;
+    } else if (p === "7D") {
+      startStr = assetRaw[Math.max(0, assetRaw.length - 7)].date;
+    }
+
     let apiData: { meta: InvestmentComparisonMeta; series: { ibov: SeriesPoint[]; cdi: SeriesPoint[]; ipca: SeriesPoint[] } };
     try {
       apiData = await fetchBenchmarksFromApi(startStr, endStr, marketData);
@@ -1437,6 +1371,87 @@ export async function getInvestmentComparisonData(symbol: string, period: string
       [...apiData.series.ipca].sort((a, b) => a.date.localeCompare(b.date)),
       fallbackDates
     );
+
+    if (p === "1D") {
+      const assetSeries = (marketData[symbol] || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+      const assetLast = assetSeries[assetSeries.length - 1];
+      const assetPrev = assetSeries.length > 1 ? assetSeries[assetSeries.length - 2] : assetLast;
+      if (!assetLast || !assetPrev) {
+        return buildNeverEmptyFallback(apiData.meta);
+      }
+
+      const ibovKey =
+        marketData["^BVSP"]?.length
+          ? "^BVSP"
+          : marketData["IBOV"]?.length
+            ? "IBOV"
+            : marketData["BVSP"]?.length
+              ? "BVSP"
+              : marketData["IBOVESPA"]?.length
+                ? "IBOVESPA"
+                : null;
+      const ibovOhlc = ibovKey ? [...(marketData[ibovKey] || [])].sort((a, b) => a.date.localeCompare(b.date)) : [];
+      const ibovLastOhlc = ibovOhlc[ibovOhlc.length - 1];
+      const ibovPrevOhlc = ibovOhlc.length > 1 ? ibovOhlc[ibovOhlc.length - 2] : ibovLastOhlc;
+
+      const getPrevLast = (series: SeriesPoint[]): [number, number] => {
+        if (!series || series.length === 0) return [1000, 1000];
+        const last = series[series.length - 1].value;
+        const prev = series.length > 1 ? series[series.length - 2].value : last;
+        return [prev, last];
+      };
+
+      const normalize = (value: number, base: number) => {
+        const safeBase = Number.isFinite(base) && base > 0 ? base : 1;
+        return Number((1000 * (value / safeBase)).toFixed(2));
+      };
+
+      const safeNum = (value: number, fallback: number) =>
+        Number.isFinite(value) ? value : fallback;
+
+      const assetClose = safeNum(assetLast.close, 1);
+      const assetOpen = safeNum(assetLast.open, assetClose);
+      const assetLow = safeNum(assetLast.low, Math.min(assetOpen, assetClose));
+      const assetHigh = safeNum(assetLast.high, Math.max(assetOpen, assetClose));
+      const assetPrevClose = safeNum(assetPrev.close, assetClose);
+      const assetBase = assetPrevClose > 0 ? assetPrevClose : assetClose;
+      const assetValues = [assetPrevClose, assetOpen, assetLow, assetHigh, assetClose];
+      const assetNorm = assetValues.map((v) => normalize(v, assetBase));
+
+      let ibovNorm: number[];
+      if (ibovLastOhlc && ibovPrevOhlc) {
+        const ibovClose = safeNum(ibovLastOhlc.close, 1);
+        const ibovOpen = safeNum(ibovLastOhlc.open, ibovClose);
+        const ibovLow = safeNum(ibovLastOhlc.low, Math.min(ibovOpen, ibovClose));
+        const ibovHigh = safeNum(ibovLastOhlc.high, Math.max(ibovOpen, ibovClose));
+        const ibovPrevClose = safeNum(ibovPrevOhlc.close, ibovClose);
+        const ibovBase = ibovPrevClose > 0 ? ibovPrevClose : ibovClose;
+        ibovNorm = [ibovPrevClose, ibovOpen, ibovLow, ibovHigh, ibovClose].map((v) => normalize(v, ibovBase));
+      } else {
+        const [ibPrev, ibLast] = getPrevLast(ibovRaw);
+        const ibStart = normalize(ibPrev, ibPrev);
+        ibovNorm = [ibStart, ibStart, ibStart, ibStart, normalize(ibLast, ibPrev)];
+      }
+
+      const [cdiPrev, cdiLast] = getPrevLast(cdiRaw);
+      const [ipcaPrev, ipcaLast] = getPrevLast(ipcaRaw);
+      const cdiStart = normalize(cdiPrev, cdiPrev);
+      const ipcaStart = normalize(ipcaPrev, ipcaPrev);
+      const cdiNorm = [cdiStart, cdiStart, cdiStart, cdiStart, normalize(cdiLast, cdiPrev)];
+      const ipcaNorm = [ipcaStart, ipcaStart, ipcaStart, ipcaStart, normalize(ipcaLast, ipcaPrev)];
+
+      const labels = ["Fech. ant.", "Abertura", "Minima", "Maxima", "Fechamento"];
+      const points: InvestmentComparisonPoint[] = labels.map((label, i) => ({
+        date: `${endStr}T0${i}:00:00`,
+        month: label,
+        [symbol]: assetNorm[i],
+        IBOV: ibovNorm[i],
+        CDI: cdiNorm[i],
+        IPCA: ipcaNorm[i],
+      }));
+
+      return { points, meta: apiData.meta };
+    }
 
     const commonStart = [assetRaw[0].date, ibovRaw[0].date, cdiRaw[0].date, ipcaRaw[0].date, startStr]
       .sort()
@@ -1488,74 +1503,6 @@ export async function getInvestmentComparisonData(symbol: string, period: string
       CDI: Number(cdiFilled[i].value.toFixed(2)),
       IPCA: Number(ipcaFilled[i].value.toFixed(2)),
     }));
-
-    // 1D frequently has only one daily point on end-of-day datasets.
-    // Build an intraday comparison path so the chart never appears empty/flat.
-    if (p === "1D" && points.length < 12) {
-      const intradayAsset = getFilteredPriceHistory(symbol, "1D");
-      if (intradayAsset.length >= 2) {
-        const assetStart = intradayAsset[0].price;
-        const assetSafeStart = assetStart > 0 ? assetStart : intradayAsset[1].price || 1;
-        const assetIntradayNorm = intradayAsset.map((row) => Number((1000 * (row.price / assetSafeStart)).toFixed(2)));
-
-        const intradayMarketData = getMarketHistory();
-        const ibovSymbol =
-          intradayMarketData["^BVSP"]?.length
-            ? "^BVSP"
-            : intradayMarketData["IBOV"]?.length
-              ? "IBOV"
-              : intradayMarketData["BVSP"]?.length
-                ? "BVSP"
-                : null;
-        const intradayIbov = ibovSymbol ? getFilteredPriceHistory(ibovSymbol, "1D") : [];
-        const ibovIntradayNorm =
-          intradayIbov.length >= 2
-            ? (() => {
-                const start = intradayIbov[0].price;
-                const safeStart = start > 0 ? start : intradayIbov[1].price || 1;
-                return intradayIbov.map((row) => Number((1000 * (row.price / safeStart)).toFixed(2)));
-              })()
-            : null;
-
-        const endFromLastTwo = (series: SeriesPoint[]) => {
-          if (!series || series.length < 2) return 1000;
-          const prev = series[series.length - 2].value;
-          const last = series[series.length - 1].value;
-          if (!Number.isFinite(prev) || prev <= 0 || !Number.isFinite(last)) return 1000;
-          return Number((1000 * (last / prev)).toFixed(2));
-        };
-
-        const ibovEnd = endFromLastTwo(ibovRaw);
-        const cdiEndRaw = endFromLastTwo(cdiRaw);
-        const ipcaEndRaw = endFromLastTwo(ipcaRaw);
-        const latestDate = now.toISOString().slice(0, 10);
-        const cdiEnd =
-          Math.abs(cdiEndRaw - 1000) < 1e-8
-            ? Number((1000 * (1 + getDailyMacroRateForDate("CDI", latestDate))).toFixed(2))
-            : cdiEndRaw;
-        const ipcaEnd =
-          Math.abs(ipcaEndRaw - 1000) < 1e-8
-            ? Number((1000 * (1 + getDailyMacroRateForDate("IPCA", latestDate))).toFixed(2))
-            : ipcaEndRaw;
-        const n = intradayAsset.length;
-
-        const interpolate = (target: number, idx: number) => {
-          const t = n <= 1 ? 1 : idx / (n - 1);
-          return 1000 + (target - 1000) * t;
-        };
-
-        points = intradayAsset.map((row, idx) => ({
-          date: `${now.toISOString().slice(0, 10)}T${row.month}:00`,
-          month: row.month,
-          [symbol]: assetIntradayNorm[idx],
-          IBOV: ibovIntradayNorm && ibovIntradayNorm[idx] !== undefined
-            ? ibovIntradayNorm[idx]
-            : Number(interpolate(ibovEnd, idx).toFixed(2)),
-          CDI: Number(interpolate(cdiEnd, idx).toFixed(2)),
-          IPCA: Number(interpolate(ipcaEnd, idx).toFixed(2)),
-        }));
-      }
-    }
 
     const metaBase: InvestmentComparisonMeta = {
       ...apiData.meta,

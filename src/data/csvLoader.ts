@@ -293,15 +293,28 @@ async function fetchFromLocal(): Promise<Record<string, OHLCVDay[]>> {
   return data;
 }
 
-function mergeMissingTickersFromLocal(
+function pickRicherSeries(a: OHLCVDay[] | undefined, b: OHLCVDay[] | undefined): OHLCVDay[] {
+  const aRows = a ?? [];
+  const bRows = b ?? [];
+  if (aRows.length === 0) return bRows;
+  if (bRows.length === 0) return aRows;
+
+  const aLast = aRows[aRows.length - 1]?.date ?? "";
+  const bLast = bRows[bRows.length - 1]?.date ?? "";
+
+  if (bLast > aLast) return bRows;
+  if (aLast > bLast) return aRows;
+  if (bRows.length > aRows.length) return bRows;
+  return aRows;
+}
+
+function mergePreferRicherSeries(
   primary: Record<string, OHLCVDay[]>,
   fallback: Record<string, OHLCVDay[]>
 ): Record<string, OHLCVDay[]> {
   const merged: Record<string, OHLCVDay[]> = { ...primary };
   for (const [ticker, rows] of Object.entries(fallback)) {
-    if (!merged[ticker] || merged[ticker].length === 0) {
-      merged[ticker] = rows;
-    }
+    merged[ticker] = pickRicherSeries(merged[ticker], rows);
   }
   return merged;
 }
@@ -314,17 +327,19 @@ async function resolveLatestPrices(
   const latestVersion = await fetchLatestVersionDate();
 
   if (latestVersion && latestVersion === currentVersion && currentCachedData) {
+    const localFallback = await fetchFromLocal().catch(() => null);
+    const reconciled = localFallback ? mergePreferRicherSeries(currentCachedData, localFallback) : currentCachedData;
     _source = "local";
-    _realPricesCache = currentCachedData;
+    _realPricesCache = reconciled;
     _loaded = true;
-    return currentCachedData;
+    return reconciled;
   }
 
   if (latestVersion) {
     const storageData = await fetchFromStorage(latestVersion);
     if (storageData) {
       const localFallback = await fetchFromLocal().catch(() => null);
-      const mergedData = localFallback ? mergeMissingTickersFromLocal(storageData, localFallback) : storageData;
+      const mergedData = localFallback ? mergePreferRicherSeries(storageData, localFallback) : storageData;
       await saveCachedPrices(latestVersion, mergedData);
       _realPricesCache = mergedData;
       _loaded = true;

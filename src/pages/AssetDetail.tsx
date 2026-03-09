@@ -102,6 +102,20 @@ const AssetDetail = () => {
     if (!Y_DOMAIN_ADJUST_PERIODS.has(selectedPeriod)) return undefined;
     if (!priceHistory.length) return undefined;
 
+    if (selectedPeriod === "7 DIAS") {
+      const values = priceHistory.map((p) => Number(p.price)).filter((v) => Number.isFinite(v));
+      if (!values.length) return undefined;
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      if (min === max) {
+        const delta = Math.max(0.01, Math.abs(min) * 0.001);
+        return [min - delta, max + delta] as [number, number];
+      }
+      const range = max - min;
+      const pad = Math.max(0.03, range * 0.06);
+      return [min - pad, max + pad] as [number, number];
+    }
+
     return computeVisualDomain(
       priceHistory.map((p) => Number(p.price)),
       {
@@ -373,7 +387,11 @@ const AssetDetail = () => {
                       domain={priceHistoryYAxisDomain}
                       allowDataOverflow={false}
                     />
-                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }} formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Preco"]} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }}
+                      formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Preco"]}
+                      labelFormatter={(label: string) => label}
+                    />
                     <Area
                       type="monotone"
                       dataKey="price"
@@ -438,6 +456,7 @@ const AssetDetail = () => {
                         color: "hsl(var(--foreground))",
                       }}
                       formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`]}
+                      labelFormatter={(label: string) => label}
                     />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
                     <Area
