@@ -4,6 +4,7 @@ import { fetchDataStatus } from "./dataStatus";
 let _realPricesCache: Record<string, OHLCVDay[]> | null = null;
 let _loadingPromise: Promise<Record<string, OHLCVDay[]>> | null = null;
 let _backgroundVersionCheckPromise: Promise<void> | null = null;
+let _lastBackgroundCheckAt = 0;
 let _loaded = false;
 let _source: "storage" | "local" | null = null;
 
@@ -21,6 +22,7 @@ const IDB_DB_NAME = "ii-market-cache-v2";
 const IDB_STORE_NAME = "datasets";
 const PRICES_CURRENT_VERSION_KEY = "ii_prices_current_version_v2";
 const PRICES_KEY_PREFIX = "prices:";
+const BACKGROUND_CHECK_MIN_INTERVAL_MS = 5 * 60 * 1000; // 5 min
 
 if (!SUPABASE_URL) {
   console.warn("[csvLoader] No Supabase URL found, will use local CSV only.");
@@ -226,7 +228,14 @@ function parsePricesCSV(text: string): Record<string, OHLCVDay[]> {
   return result;
 }
 
-async function fetchLatestVersionDate(): Promise<string | null> {
+function normalizeVersionToken(raw: unknown): string | null {
+  const value = String(raw ?? "").trim();
+  if (!value) return null;
+  // Keep cache keys/query params safe and deterministic.
+  return value.replace(/\s+/g, "_");
+}
+
+async function fetchLatestVersionToken(): Promise<string | null> {
   if (STORAGE_STATUS_PATH) {
     try {
       const resp = await fetch(STORAGE_STATUS_PATH, {
@@ -234,9 +243,11 @@ async function fetchLatestVersionDate(): Promise<string | null> {
         cache: "no-store",
       });
       if (resp.ok) {
-        const payload = (await resp.json()) as { last_version_date?: string };
-        const version = String(payload?.last_version_date ?? "").trim();
-        if (/^\d{4}-\d{2}-\d{2}$/.test(version)) return version;
+        const payload = (await resp.json()) as { last_success_at?: string; last_version_date?: string };
+        const timestampToken = normalizeVersionToken(payload?.last_success_at);
+        if (timestampToken) return timestampToken;
+        const dateToken = normalizeVersionToken(payload?.last_version_date);
+        if (dateToken) return dateToken;
       }
     } catch (e) {
       console.warn("[csvLoader] status json fetch failed, using fallback:", e);
@@ -245,8 +256,10 @@ async function fetchLatestVersionDate(): Promise<string | null> {
 
   try {
     const status = await fetchDataStatus(true);
-    const version = String(status.last_version_date ?? "").trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(version)) return version;
+    const timestampToken = normalizeVersionToken(status.last_success_at);
+    if (timestampToken) return timestampToken;
+    const dateToken = normalizeVersionToken(status.last_version_date);
+    if (dateToken) return dateToken;
   } catch (e) {
     console.warn("[csvLoader] data-status fallback failed:", e);
   }
@@ -326,7 +339,7 @@ async function resolveLatestPrices(
   currentCachedData: Record<string, OHLCVDay[]> | null,
   emitUpdateEvent = false
 ): Promise<Record<string, OHLCVDay[]>> {
-  const latestVersion = await fetchLatestVersionDate();
+  const latestVersion = await fetchLatestVersionToken();
 
   if (latestVersion && latestVersion === currentVersion && currentCachedData) {
     const localFallback = await fetchFromLocal().catch(() => null);
@@ -397,9 +410,16 @@ async function checkForUpdatedVersionInBackground(): Promise<void> {
   }
 }
 
+function shouldRunBackgroundCheck(): boolean {
+  const now = Date.now();
+  if (now - _lastBackgroundCheckAt < BACKGROUND_CHECK_MIN_INTERVAL_MS) return false;
+  _lastBackgroundCheckAt = now;
+  return true;
+}
+
 export async function loadRealPriceData(forceRefresh = false): Promise<Record<string, OHLCVDay[]>> {
   if (!forceRefresh && _realPricesCache) {
-    if (!_backgroundVersionCheckPromise) {
+    if (!_backgroundVersionCheckPromise && shouldRunBackgroundCheck()) {
       _backgroundVersionCheckPromise = checkForUpdatedVersionInBackground().finally(() => {
         _backgroundVersionCheckPromise = null;
       });
@@ -419,7 +439,7 @@ export async function loadRealPriceData(forceRefresh = false): Promise<Record<st
         _loaded = true;
         _source = "local";
 
-        if (!_backgroundVersionCheckPromise) {
+        if (!_backgroundVersionCheckPromise && shouldRunBackgroundCheck()) {
           _backgroundVersionCheckPromise = checkForUpdatedVersionInBackground().finally(() => {
             _backgroundVersionCheckPromise = null;
           });
