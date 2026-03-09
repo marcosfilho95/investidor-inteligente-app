@@ -342,21 +342,21 @@ async function resolveLatestPrices(
   const latestVersion = await fetchLatestVersionToken();
 
   if (latestVersion && latestVersion === currentVersion && currentCachedData) {
-    const localFallback = await fetchFromLocal().catch(() => null);
-    const reconciled = localFallback ? mergePreferRicherSeries(currentCachedData, localFallback) : currentCachedData;
-    _source = "local";
-    _realPricesCache = reconciled;
+    // Versao igual: mantenha o cache atual sem mesclar com CSV local.
+    // Isso evita que fallback local (potencialmente antigo) sobrescreva dados do Storage.
+    _source = "storage";
+    _realPricesCache = currentCachedData;
     _loaded = true;
-    return reconciled;
+    return currentCachedData;
   }
 
   if (latestVersion) {
     const storageData = await fetchFromStorage(latestVersion);
     if (storageData) {
-      const localFallback = await fetchFromLocal().catch(() => null);
-      const mergedData = localFallback ? mergePreferRicherSeries(storageData, localFallback) : storageData;
-      await saveCachedPrices(latestVersion, mergedData);
-      _realPricesCache = mergedData;
+      // Storage e a fonte primaria de mercado em producao.
+      // Fallback local so deve ser usado se Storage falhar.
+      await saveCachedPrices(latestVersion, storageData);
+      _realPricesCache = storageData;
       _loaded = true;
 
       if (emitUpdateEvent) {
@@ -366,7 +366,7 @@ async function resolveLatestPrices(
           })
         );
       }
-      return mergedData;
+      return storageData;
     }
 
     // If a newer version exists but Storage fetch fails, prefer local CSV
