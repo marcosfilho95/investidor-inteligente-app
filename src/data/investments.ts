@@ -2258,7 +2258,7 @@ export function runModelSanityTest(): RecommendationBreakdown[] {
 
 export function printModelSanityReport(): RecommendationBreakdown[] {
   const rows = runModelSanityTest();
-  console.log("Ticker | Base | Ajuste | Final | Recomendacao");
+  console.log("Ticker | Base | Ajuste | Final | Classificacao do Score");
   for (const row of rows) {
     console.log(
       `${row.ticker.padEnd(6)} | ${String(row.score_base).padStart(4)} | ${String(row.sector_adjustment).padStart(6)} | ${String(row.score_final).padStart(5)} | ${row.recommendation}`
@@ -2287,7 +2287,7 @@ function buildScoreMethodologyContext(): string {
     "- Commodities: menor sensibilidade a P/L isolado, maior atencao a divida e margens.",
     "",
     "Prioridade de valuation ativo: Graham valido > Preco Justo Estimado (fallback).",
-    "Observacao: o card Recomendacao e multifatorial; Metodo Graham permanece separado como estimativa de valor."
+    "Observacao: o card Score Fundamentalista e multifatorial; Metodo Graham permanece separado como estimativa de valor."
   ].join("\n");
 }
 
@@ -2388,7 +2388,7 @@ export function buildAssetContext(symbol: string): string {
   const activeValuation = resolveActiveValuation(h);
 
   const grahamVsScore =
-    "Observação: A recomendação final considera outros fatores (rentabilidade, dívida, crescimento e dividendos).";
+    "Classificação do Score: o score final considera também rentabilidade, endividamento, crescimento, dividendos e ajustes estruturais.";
   const scoreMethodology = buildScoreMethodologyContext();
 
   // Calculate 12-month benchmark returns for comparison
@@ -2432,7 +2432,7 @@ Margem Bruta: ${h.margemBruta ?? 'N/A'}% | Margem EBIT: ${h.margemEbit ?? 'N/A'}
 Cresc. Receita 5A: ${h.cReceita5a ?? 'N/A'}% | Cresc. Lucro 5A: ${h.cLucro5a ?? 'N/A'}%
 Giro Ativos: ${h.giroAtivos ?? 'N/A'} | Liq. Corrente: ${h.liqCorrente ?? 'N/A'}
 Dív.Líq/PL: ${h.divLiqPl ?? 'N/A'} | Dív.Líq/EBITDA: ${h.divLiqEbitda ?? 'N/A'} | PL/Ativos: ${h.plAtivos ?? 'N/A'}
-Score de Recomendação: ${rec.score}/100 (${rec.label})
+Score Fundamentalista: ${rec.score}/100 (${rec.label})
 Valuation Ativo: ${activeValuation.label ?? 'N/A'}
 Preço de Referência: R$ ${activeValuation.price ?? 'N/A'}
 Upside da Referência: ${activeValuation.upside !== null ? `${activeValuation.upside.toFixed(1)}%` : 'N/A'}

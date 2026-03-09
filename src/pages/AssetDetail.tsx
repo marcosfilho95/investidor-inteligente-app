@@ -101,7 +101,7 @@ const AssetDetail = () => {
   const activeValuationLabel = activeValuation.label;
   const activeUpsideFormatted = activeUpside !== null ? activeUpside.toFixed(1) : null;
   const recommendationDisclaimer =
-    "Observação: A recomendação final considera outros fatores (rentabilidade, dívida, crescimento e dividendos).";
+    "Observação: O score fundamentalista combina valuation, rentabilidade, endividamento, crescimento, dividendos e ajustes estruturais, como risco setorial e risco estatal quando aplicável.";
 
   const priceHistory = useMemo(
     () => (chartsReady ? getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]) : []),
@@ -317,12 +317,16 @@ const AssetDetail = () => {
             </div>
           </div>
 
-          {/* Recommendation + Valuation ativo (Graham > Preço Justo Estimado fallback) */}
+          {/* Score Fundamentalista + Valuation ativo (Graham > Preço Justo Estimado fallback) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <AnimatedCard delay={0.1}>
               <div className="glass-card p-5 flex flex-col items-center justify-center">
-                <h3 className="text-base font-semibold mb-3 self-start">Recomendação</h3>
+                <h3 className="text-base font-semibold mb-3 self-start">Score Fundamentalista</h3>
                 <RecommendationGauge score={recommendation.score} label={recommendation.label} color={recommendation.color} />
+                <p className="text-xs text-muted-foreground mt-4 text-left self-start">{recommendationDisclaimer}</p>
+                <p className="text-[11px] text-muted-foreground/90 mt-2 text-left self-start">
+                  Conteúdo educacional e informativo. Não constitui recomendação individual de investimento.
+                </p>
               </div>
             </AnimatedCard>
             <AnimatedCard delay={0.2}>
