@@ -111,7 +111,6 @@ const mobileSteps: TourStep[] = [
       "Use este botão para abrir o menu e navegar pelas páginas principais do sistema.",
     position: "bottom",
     route: "/dashboard",
-    keepMobileMenuOpen: true,
   },
   {
     selector: '[data-tour="nav-dashboard"]',
@@ -218,8 +217,6 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
 
   useEffect(() => {
     if (!isMobile) return;
-    sessionStorage.setItem("ii_tour_keep_mobile_menu_open", "1");
-    window.dispatchEvent(new CustomEvent("ii:tour-open-mobile-menu"));
     return () => {
       sessionStorage.removeItem("ii_tour_keep_mobile_menu_open");
       window.dispatchEvent(new CustomEvent("ii:tour-close-mobile-menu"));
@@ -249,16 +246,15 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
 
   const openOrCloseMobileMenu = useCallback(() => {
     if (!isMobile) return;
-    const isMenuLockedOpen = sessionStorage.getItem("ii_tour_keep_mobile_menu_open") === "1";
-    if (isMenuLockedOpen) {
-      window.dispatchEvent(new CustomEvent("ii:tour-open-mobile-menu"));
-      return;
-    }
+
     if (step.keepMobileMenuOpen) {
       sessionStorage.setItem("ii_tour_keep_mobile_menu_open", "1");
       window.dispatchEvent(new CustomEvent("ii:tour-open-mobile-menu"));
       return;
     }
+
+    // Outside the nav walkthrough steps, unlock and close the menu.
+    sessionStorage.removeItem("ii_tour_keep_mobile_menu_open");
     if (step.requiresMobileMenu) {
       window.dispatchEvent(new CustomEvent("ii:tour-open-mobile-menu"));
     } else {

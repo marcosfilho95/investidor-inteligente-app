@@ -135,7 +135,9 @@ export function AppHeader({ activePage }: AppHeaderProps) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.96 }}
                   transition={{ duration: 0.18, ease: "easeOut" }}
-                  className="absolute right-0 top-10 w-56 rounded-2xl border border-border bg-card p-2 shadow-xl z-50"
+                  className={`absolute right-0 top-10 w-56 rounded-2xl border border-border p-2 shadow-xl z-50 ${
+                    isTourMenuLocked ? "bg-card/85 backdrop-blur-md" : "bg-card"
+                  }`}
                 >
                   {navItems.map((item) => (
                     <Link
