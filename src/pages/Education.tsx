@@ -229,6 +229,19 @@ const fixMojibake = (text: string): string =>
     .replace(/ðŸ“š/g, "📚")
     .replace(/ðŸ“ˆ/g, "📈");
 
+const withAlpha = (color: string, alpha: number): string => {
+  const varHsl = color.match(/^hsl\(var\((--[^)]+)\)\)$/i);
+  if (varHsl) return `hsl(var(${varHsl[1]}) / ${alpha})`;
+
+  const plainHsl = color.match(/^hsl\(\s*([\d.]+)\s*,\s*([\d.]+%)\s*,\s*([\d.]+%)\s*\)$/i);
+  if (plainHsl) {
+    const [, h, s, l] = plainHsl;
+    return `hsla(${h}, ${s}, ${l}, ${alpha})`;
+  }
+
+  return color;
+};
+
 const Education = () => {
   const [openTrail, setOpenTrail] = useState<string | null>("fundamentos");
   const [openModule, setOpenModule] = useState<string | null>(null);
@@ -258,7 +271,7 @@ const Education = () => {
                     >
                       <motion.div
                         className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: trail.color + "22", color: trail.color }}
+                        style={{ backgroundColor: withAlpha(trail.color, 0.13), color: trail.color }}
                         whileHover={{ scale: 1.04 }}
                         transition={{ type: "spring", stiffness: 260, damping: 22 }}
                       >
@@ -307,7 +320,7 @@ const Education = () => {
                               >
                                 <div
                                   className="h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                                  style={{ backgroundColor: trail.color + "22", color: trail.color }}
+                                  style={{ backgroundColor: withAlpha(trail.color, 0.13), color: trail.color }}
                                 >
                                   {idx + 1}
                                 </div>

@@ -69,10 +69,17 @@ const CUSTOM_BG_LOGOS: Record<string, string> = {
   CPFE3: "p-1",
   SUZB3: "p-1",
   MRVE3: "bg-white p-1",
+  ISAE4: "bg-white p-1",
+  ABEV3: "p-1",
 };
 const CUSTOM_BG_STYLES: Record<string, { backgroundColor: string }> = {
   CPFE3: { backgroundColor: "#1D9DCB" },
   SUZB3: { backgroundColor: "#0B2A8A" },
+  ABEV3: { backgroundColor: "#0057B8" },
+};
+const MOBILE_SYMBOL_TWEAKS: Record<string, string> = {
+  ISAE4: "max-md:scale-[1.42]",
+  ABEV3: "max-md:scale-[1.6]",
 };
 
 interface AssetLogoProps {
@@ -88,6 +95,7 @@ export function AssetLogo({ symbol, size = 28, className = "" }: AssetLogoProps)
   const whiteBgClass = WHITE_BG_LOGOS.has(symbol) ? "bg-white p-1" : "";
   const customBgClass = CUSTOM_BG_LOGOS[symbol] ?? "";
   const customBgStyle = CUSTOM_BG_STYLES[symbol];
+  const mobileTweakClass = MOBILE_SYMBOL_TWEAKS[symbol] ?? "";
 
   if (src) {
     return (
@@ -96,7 +104,7 @@ export function AssetLogo({ symbol, size = 28, className = "" }: AssetLogoProps)
         alt={symbol}
         width={size}
         height={size}
-        className={`rounded-lg object-cover ${whiteBgClass} ${customBgClass} ${className}`}
+        className={`rounded-lg object-cover transform-gpu ${whiteBgClass} ${customBgClass} ${mobileTweakClass} ${className}`}
         style={customBgStyle}
         onError={(e) => {
           const target = e.currentTarget;
@@ -125,6 +133,7 @@ export function AssetLogoWithFallback({ symbol, size = 28, className = "" }: Ass
   const whiteBgClass = WHITE_BG_LOGOS.has(symbol) ? "bg-white p-1" : "";
   const customBgClass = CUSTOM_BG_LOGOS[symbol] ?? "";
   const customBgStyle = CUSTOM_BG_STYLES[symbol];
+  const mobileTweakClass = MOBILE_SYMBOL_TWEAKS[symbol] ?? "";
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -134,7 +143,7 @@ export function AssetLogoWithFallback({ symbol, size = 28, className = "" }: Ass
           alt={symbol}
           width={size}
           height={size}
-          className={`rounded-lg object-cover ${whiteBgClass} ${customBgClass} ${className}`}
+          className={`rounded-lg object-cover transform-gpu ${whiteBgClass} ${customBgClass} ${mobileTweakClass} ${className}`}
           style={customBgStyle}
           onError={(e) => {
             (e.currentTarget as HTMLElement).style.display = "none";
