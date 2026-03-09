@@ -22,6 +22,8 @@ const LOCAL_LOGOS: Record<string, string> = {
   TIMS3: "/logos/tim.png",
   KLBN11: "/logos/klabin.png",
   MGLU3: "/logos/magalu.png",
+  LREN3: "/logos/lrener.png",
+  RADL3: "/logos/raia.png",
   B3SA3: "/logos/b3.png",
   VIVT3: "/logos/vivo.png",
 };
@@ -59,7 +61,7 @@ const LOGO_DOMAINS: Record<string, string> = {
   RADL3: "ri.rdsaude.com.br",
 };
 
-const WHITE_BG_LOGOS = new Set(["VIVT3", "TOTS3", "HAPV3", "ITUB4"]);
+const WHITE_BG_LOGOS = new Set(["VIVT3", "TOTS3", "HAPV3", "ITUB4", "LREN3", "RADL3"]);
 const CUSTOM_BG_LOGOS: Record<string, string> = {
   CPFE3: "p-1",
   SUZB3: "p-1",
