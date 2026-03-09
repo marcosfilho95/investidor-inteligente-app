@@ -246,8 +246,9 @@ async function fetchLatestVersionToken(): Promise<string | null> {
         const payload = (await resp.json()) as { last_success_at?: string; last_version_date?: string };
         const timestampToken = normalizeVersionToken(payload?.last_success_at);
         if (timestampToken) return timestampToken;
-        const dateToken = normalizeVersionToken(payload?.last_version_date);
-        if (dateToken) return dateToken;
+        // Nao retornar apenas last_version_date daqui.
+        // O data-status.json de Storage pode ter so a data (YYYY-MM-DD),
+        // o que nao distingue multiplos refreshes no mesmo dia.
       }
     } catch (e) {
       console.warn("[csvLoader] status json fetch failed, using fallback:", e);
