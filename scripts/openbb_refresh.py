@@ -99,9 +99,14 @@ def _parse_ptbr_number(raw: str | float | int | None) -> float | None:
     s = str(raw).strip().replace('"', "")
     if not s:
         return None
+    if s.lower() in {"nan", "none", "null", "-", "--"}:
+        return None
     s = s.replace(".", "").replace(",", ".")
     try:
-        return float(s)
+        value = float(s)
+        if np.isnan(value) or np.isinf(value):
+            return None
+        return value
     except Exception:
         return None
 
@@ -123,7 +128,13 @@ def _parse_ptbr_volume(raw: str | float | int | None) -> int | None:
     value = _parse_ptbr_number(s)
     if value is None:
         return None
-    return int(round(value * mult))
+    scaled = value * mult
+    if not np.isfinite(scaled):
+        return None
+    try:
+        return int(round(scaled))
+    except Exception:
+        return None
 
 
 def _parse_manual_date(raw: str | None) -> str | None:
