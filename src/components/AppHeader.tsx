@@ -33,6 +33,10 @@ export function AppHeader({ activePage }: AppHeaderProps) {
   const tourRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const isTourMenuLocked = sessionStorage.getItem("ii_tour_keep_mobile_menu_open") === "1";
+  const lastVersionDateLabel =
+    dataStatus?.last_version_date && !Number.isNaN(new Date(dataStatus.last_version_date).getTime())
+      ? new Date(dataStatus.last_version_date).toLocaleDateString("pt-BR")
+      : null;
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -167,7 +171,7 @@ export function AppHeader({ activePage }: AppHeaderProps) {
           {dataStatus && (
             <div className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] text-muted-foreground" title={
               dataStatus.health === "ok"
-                ? `Dados atualizados em ${new Date(dataStatus.last_version_date || "").toLocaleDateString("pt-BR")}`
+                ? (lastVersionDateLabel ? `Dados atualizados em ${lastVersionDateLabel}` : "Dados atualizados")
                 : dataStatus.health === "no_data"
                   ? "Usando dados locais (fallback)"
                   : "Pipeline degradado - usando último dataset válido"
