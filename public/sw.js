@@ -1,4 +1,4 @@
-const CACHE_NAME = "investidor-inteligente-v1";
+const CACHE_NAME = "investidor-inteligente-v2";
 const APP_SHELL = ["/", "/index.html", "/favicon.png", "/manifest.webmanifest"];
 
 function isCacheableHttpUrl(url) {

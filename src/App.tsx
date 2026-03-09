@@ -36,6 +36,7 @@ function AppContent() {
   const [showTour, setShowTour] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const location = useLocation();
+  const isPublicRoute = location.pathname === "/" || location.pathname === "/login";
 
   useEffect(() => {
     let mounted = true;
@@ -56,10 +57,13 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    const startTour = () => setShowTour(true);
+    const startTour = () => {
+      if (isPublicRoute || !currentUserId) return;
+      setShowTour(true);
+    };
     window.addEventListener("ii:start-tour", startTour as EventListener);
     return () => window.removeEventListener("ii:start-tour", startTour as EventListener);
-  }, []);
+  }, [isPublicRoute, currentUserId]);
 
   useEffect(() => {
     const refreshAllData = async (forceRefresh = false) => {
@@ -106,7 +110,6 @@ function AppContent() {
 
   useEffect(() => {
     const forceTour = sessionStorage.getItem("force_onboarding_tour") === "1";
-    const isPublicRoute = location.pathname === "/" || location.pathname === "/login";
 
     if (!currentUserId || isPublicRoute) {
       setShowTour(false);
@@ -140,7 +143,7 @@ function AppContent() {
 
   return (
     <>
-      <AnimatePresence>{showTour && <OnboardingTour onComplete={handleTourComplete} />}</AnimatePresence>
+      <AnimatePresence>{showTour && currentUserId && !isPublicRoute && <OnboardingTour onComplete={handleTourComplete} />}</AnimatePresence>
       <Toaster />
       <Sonner />
       <ScrollToTop />
