@@ -10,6 +10,7 @@ const LOCAL_LOGOS: Record<string, string> = {
   GGBR4: "/logos/gerdau.png",
   AXIA6: "/logos/axia.jpg",
   CPFE3: "/logos/cpfe3.png",
+  ISAE4: "/logos/isa.png",
   BBAS3: "/logos/bb.png",
   SAPR11: "/logos/sanepar.png",
   BBSE3: "/logos/BBSE.jpg",
