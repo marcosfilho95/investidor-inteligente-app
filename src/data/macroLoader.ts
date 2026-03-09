@@ -128,21 +128,45 @@ function parseMacroCsv(text: string): MacroRow[] {
   const lines = text.trim().split("\n");
   if (lines.length <= 1) return [];
 
+  const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+  const idxDate = headers.indexOf("date");
+  const idxYear = headers.indexOf("year");
+  const idxMonth = headers.indexOf("month");
+  const idxIpca = headers.indexOf("ipca");
+  const idxCdiMonth = headers.indexOf("cdi_month");
+  const idxCdiAnnual = headers.indexOf("cdi_annual");
+  const idxIsProjected = headers.indexOf("is_projected");
+
+  if (idxDate < 0 || idxYear < 0 || idxMonth < 0 || idxIpca < 0 || (idxCdiMonth < 0 && idxCdiAnnual < 0)) {
+    return [];
+  }
+
   const rows: MacroRow[] = [];
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
     const parts = line.split(",");
-    if (parts.length < 6) continue;
+    const date = parts[idxDate];
+    const year = parts[idxYear];
+    const month = parts[idxMonth];
+    const ipca = parts[idxIpca];
+    const cdiMonthRaw = idxCdiMonth >= 0 ? parts[idxCdiMonth] : "";
+    const cdiAnnualRaw = idxCdiAnnual >= 0 ? parts[idxCdiAnnual] : "";
+    const isProjectedRaw = idxIsProjected >= 0 ? parts[idxIsProjected] : "false";
+    const cdiMonth =
+      cdiMonthRaw !== undefined && cdiMonthRaw !== ""
+        ? Number(cdiMonthRaw)
+        : cdiAnnualRaw !== undefined && cdiAnnualRaw !== ""
+          ? (Math.pow(1 + Number(cdiAnnualRaw) / 100, 1 / 12) - 1) * 100
+          : NaN;
 
-    const [date, year, month, cdiMonth, ipca, isProjected] = parts;
     rows.push({
       date,
       year: Number(year),
       month: Number(month),
-      cdi_month: Number(cdiMonth),
+      cdi_month: cdiMonth,
       ipca: Number(ipca),
-      is_projected: String(isProjected).trim().toLowerCase() === "true",
+      is_projected: String(isProjectedRaw).trim().toLowerCase() === "true",
     });
   }
 

@@ -373,6 +373,17 @@ function getBusinessDaysInMonth(year: number, monthZeroBased: number): number {
   return Math.max(1, businessDays);
 }
 
+function getDailyMacroRateForDate(key: "CDI" | "IPCA", dateStr: string): number {
+  const year = Number.parseInt(dateStr.slice(0, 4), 10);
+  const month = Number.parseInt(dateStr.slice(5, 7), 10) - 1; // 0-indexed
+  const monthlyByYear = key === "CDI" ? CDI_MONTHLY : IPCA_MONTHLY;
+  const fallbackMonthlyRate = key === "CDI" ? 0.8 : 0.3;
+  const monthlyRates = monthlyByYear[year];
+  const monthlyRate = monthlyRates ? (monthlyRates[month] ?? fallbackMonthlyRate) : fallbackMonthlyRate;
+  const businessDays = getBusinessDaysInMonth(year, month);
+  return Math.pow(1 + monthlyRate / 100, 1 / businessDays) - 1;
+}
+
 function generateBenchmarkSeries(key: string): { date: string; value: number }[] {
   const rand = seededRandom(hashStr(key) + 99);
   let value = 100000;
@@ -443,6 +454,7 @@ const ASSET_5Y_CAGR: Record<string, number> = {
 // Lazy-computed cache
 let _marketHistoryCache: Record<string, OHLCVDay[]> | null = null;
 let _benchmarkCache: Record<string, { date: string; value: number }[]> | null = null;
+let _realMarketLatestDate: Date | null = null;
 
 /**
  * Inject real CSV data into the market history cache.
@@ -464,6 +476,15 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
       _marketHistoryCache[ticker] = cleanOHLCVOutliers(ohlcv);
     }
   }
+
+  // Anchor period calculations to the latest date that actually came from real CSV.
+  let latestRealDate: Date | null = null;
+  for (const rows of Object.values(data)) {
+    if (!rows || rows.length === 0) continue;
+    const candidate = toDateAtNoon(rows[rows.length - 1].date);
+    if (!latestRealDate || candidate > latestRealDate) latestRealDate = candidate;
+  }
+  _realMarketLatestDate = latestRealDate;
 
   // Keep asset cards in sync with latest real close from the loaded series.
   for (const h of holdings) {
@@ -574,8 +595,9 @@ function getLatestDateFromSeries(series: { date: string }[]): Date | null {
 }
 
 function getLatestMarketDate(): Date {
+  if (_realMarketLatestDate) return new Date(_realMarketLatestDate);
+
   const marketHistory = getMarketHistory();
-  const benchmarkHistory = getBenchmarkHistory();
 
   let latest: Date | null = null;
 
@@ -583,9 +605,6 @@ function getLatestMarketDate(): Date {
     const d = getLatestDateFromSeries(rows);
     if (d && (!latest || d > latest)) latest = d;
   }
-
-  const ibovLatest = getLatestDateFromSeries(benchmarkHistory.IBOV);
-  if (ibovLatest && (!latest || ibovLatest > latest)) latest = ibovLatest;
 
   return latest ?? new Date();
 }
@@ -806,8 +825,13 @@ export function getFilteredBenchmarks(
         if (!Number.isFinite(prev) || prev <= 0 || !Number.isFinite(last)) return 0;
         return last / prev - 1;
       })();
-      const cdiDayReturn = endReturnFromTwoPoints(benchmarkData.CDI || []);
-      const ipcaDayReturn = endReturnFromTwoPoints(benchmarkData.IPCA || []);
+      const latestDate = now.toISOString().slice(0, 10);
+      const cdiDayReturnRaw = endReturnFromTwoPoints(benchmarkData.CDI || []);
+      const ipcaDayReturnRaw = endReturnFromTwoPoints(benchmarkData.IPCA || []);
+      const cdiDayReturn =
+        Math.abs(cdiDayReturnRaw) < 1e-8 ? getDailyMacroRateForDate("CDI", latestDate) : cdiDayReturnRaw;
+      const ipcaDayReturn =
+        Math.abs(ipcaDayReturnRaw) < 1e-8 ? getDailyMacroRateForDate("IPCA", latestDate) : ipcaDayReturnRaw;
 
       const startMin = 10 * 60;
       const endMin = 17 * 60 + 50;
@@ -1502,8 +1526,17 @@ export async function getInvestmentComparisonData(symbol: string, period: string
         };
 
         const ibovEnd = endFromLastTwo(ibovRaw);
-        const cdiEnd = endFromLastTwo(cdiRaw);
-        const ipcaEnd = endFromLastTwo(ipcaRaw);
+        const cdiEndRaw = endFromLastTwo(cdiRaw);
+        const ipcaEndRaw = endFromLastTwo(ipcaRaw);
+        const latestDate = now.toISOString().slice(0, 10);
+        const cdiEnd =
+          Math.abs(cdiEndRaw - 1000) < 1e-8
+            ? Number((1000 * (1 + getDailyMacroRateForDate("CDI", latestDate))).toFixed(2))
+            : cdiEndRaw;
+        const ipcaEnd =
+          Math.abs(ipcaEndRaw - 1000) < 1e-8
+            ? Number((1000 * (1 + getDailyMacroRateForDate("IPCA", latestDate))).toFixed(2))
+            : ipcaEndRaw;
         const n = intradayAsset.length;
 
         const interpolate = (target: number, idx: number) => {

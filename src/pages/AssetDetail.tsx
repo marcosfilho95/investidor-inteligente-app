@@ -2,7 +2,7 @@
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getFilteredPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, calcGrahamPrice, calcGrahamSafetyPrice } from "@/data/investments";
+import { holdings, getFilteredPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, calcGrahamPrice } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
@@ -91,7 +91,6 @@ const AssetDetail = () => {
   const isPositive = asset.changePercent >= 0;
   const recommendation = useMemo(() => calcRecommendationScore(asset), [asset]);
   const grahamPrice = useMemo(() => calcGrahamPrice(asset), [asset]);
-  const grahamSafety = useMemo(() => calcGrahamSafetyPrice(asset), [asset]);
   const grahamUpside = grahamPrice ? ((grahamPrice / asset.price - 1) * 100).toFixed(1) : null;
 
   const priceHistory = useMemo(
@@ -330,27 +329,9 @@ const AssetDetail = () => {
                         <p className="text-xs text-loss font-medium">Preço esticado: acima do valor estimado por Graham</p>
                       </div>
                     )}
-                    {grahamSafety.price ? (
-                      <div className="bg-primary/5 border border-primary/15 rounded-xl px-4 py-3 flex items-center justify-between gap-2">
-                        <p className="text-xs text-primary font-medium">
-                          Preço de segurança ({grahamSafety.basis === "graham" ? "30% abaixo do Graham" : "base patrimonial"})
-                        </p>
-                        <p className="text-sm font-mono font-semibold text-primary">
-                          R$ {grahamSafety.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                        </p>
-                      </div>
-                    ) : null}
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {grahamSafety.price ? (
-                      <div className="bg-primary/5 border border-primary/15 rounded-xl p-4 text-center">
-                        <p className="text-xs text-primary/90 font-medium mb-1">Preço de segurança (fallback patrimonial)</p>
-                        <p className="text-xl font-mono font-bold text-primary">
-                          R$ {grahamSafety.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                        </p>
-                      </div>
-                    ) : null}
                     <div className="bg-muted/30 rounded-xl p-6 text-center">
                       <p className="text-sm text-muted-foreground">Graham clássico indisponível (LPA deve ser positivo).</p>
                     </div>
