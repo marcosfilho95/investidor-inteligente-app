@@ -129,9 +129,12 @@ function AppContent() {
       return;
     }
 
+    // Keep the tour open while navigating through guided steps.
+    if (showTour) return;
+
     const userSeen = localStorage.getItem(userSeenKey) === "true";
     setShowTour(!userSeen);
-  }, [currentUserId, location.pathname]);
+  }, [currentUserId, isPublicRoute, showTour]);
 
   const handleTourComplete = () => {
     if (currentUserId) {
