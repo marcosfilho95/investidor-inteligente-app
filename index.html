@@ -2,24 +2,52 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Investidor Inteligente</title>
-    <meta name="description" content="Plataforma inteligente de investimentos">
+    <meta name="description" content="Plataforma inteligente de análise de investimentos na B3" />
     <meta name="author" content="Investidor Inteligente" />
+    <meta name="keywords" content="investimentos, B3, ações, carteira, análise" />
 
+    <!-- PWA / Manifest -->
     <link rel="icon" href="/favicon.png" type="image/png" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#10b981" />
 
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="InvestInteli" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icon-192.png" />
+
+    <!-- Android / Chrome -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="InvestInteli" />
+
+    <!-- Prevent phone number detection -->
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Safe area for notch/dynamic island -->
+    <style>
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-right: env(safe-area-inset-right);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+      }
+    </style>
+
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Investidor Inteligente" />
-    <meta property="og:description" content="Plataforma inteligente de investimentos" />
-    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/77414652-8d15-446b-bf57-f2cb956f2d1b/id-preview-ab6e908e--a5c29bbf-7cc9-4633-a6ea-6868c6639914.lovable.app-1772082832339.png">
+    <meta property="og:description" content="Plataforma inteligente de análise de investimentos na B3" />
+    <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/77414652-8d15-446b-bf57-f2cb956f2d1b/id-preview-ab6e908e--a5c29bbf-7cc9-4633-a6ea-6868c6639914.lovable.app-1772082832339.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Investidor Inteligente" />
-    <meta name="twitter:description" content="Plataforma inteligente de investimentos" />
-    <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/77414652-8d15-446b-bf57-f2cb956f2d1b/id-preview-ab6e908e--a5c29bbf-7cc9-4633-a6ea-6868c6639914.lovable.app-1772082832339.png">
+    <meta name="twitter:description" content="Plataforma inteligente de análise de investimentos na B3" />
+    <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/77414652-8d15-446b-bf57-f2cb956f2d1b/id-preview-ab6e908e--a5c29bbf-7cc9-4633-a6ea-6868c6639914.lovable.app-1772082832339.png" />
   </head>
 
   <body>
