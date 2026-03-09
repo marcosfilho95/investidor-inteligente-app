@@ -67,7 +67,6 @@ const CUSTOM_BG_LOGOS: Record<string, string> = {
   CPFE3: "p-1",
   SUZB3: "p-1",
   MRVE3: "bg-white p-1",
-  VALE3: "bg-white p-1",
 };
 const CUSTOM_BG_STYLES: Record<string, { backgroundColor: string }> = {
   CPFE3: { backgroundColor: "#1D9DCB" },
