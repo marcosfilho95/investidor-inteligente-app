@@ -15,6 +15,7 @@ from pathlib import Path
 import json
 import urllib.parse
 import urllib.request
+import numpy as np
 
 import pandas as pd
 
@@ -196,7 +197,12 @@ def load_manual_csvs() -> dict[str, pd.DataFrame]:
         out = out.dropna(subset=["date", "open", "high", "low", "close", "volume"])
         if out.empty:
             continue
-        out["volume"] = pd.to_numeric(out["volume"], errors="coerce").fillna(0).astype("int64")
+        out["volume"] = (
+            pd.to_numeric(out["volume"], errors="coerce")
+            .replace([np.inf, -np.inf], np.nan)
+            .fillna(0)
+            .astype("int64")
+        )
         out = out.sort_values("date")
         result[ticker] = out[["date", "open", "high", "low", "close", "volume", "ticker"]]
         log(f"Loaded manual {ticker} rows={len(out)} file={file.name}")
@@ -268,7 +274,12 @@ def fetch_prices_for_ticker(ticker: str) -> pd.DataFrame | None:
         print(f"[openbb_refresh] WARN filtered dataset empty for {ticker}", file=sys.stderr)
         return None
 
-    out["volume"] = out["volume"].astype("int64")
+    out["volume"] = (
+        pd.to_numeric(out["volume"], errors="coerce")
+        .replace([np.inf, -np.inf], np.nan)
+        .fillna(0)
+        .astype("int64")
+    )
     return out[["date", "open", "high", "low", "close", "volume", "ticker"]]
 
 
@@ -297,7 +308,12 @@ def fallback_from_source_csv(ticker: str) -> pd.DataFrame | None:
     out = out.dropna(subset=required)
     if out.empty:
         return None
-    out["volume"] = out["volume"].astype("int64")
+    out["volume"] = (
+        pd.to_numeric(out["volume"], errors="coerce")
+        .replace([np.inf, -np.inf], np.nan)
+        .fillna(0)
+        .astype("int64")
+    )
     out["ticker"] = ticker
     return out[["date", "open", "high", "low", "close", "volume", "ticker"]]
 
@@ -351,7 +367,12 @@ def fallback_from_brapi(ticker: str) -> pd.DataFrame | None:
     out = out.dropna(subset=["date", "open", "high", "low", "close", "volume"])
     if out.empty:
         return None
-    out["volume"] = out["volume"].astype("int64")
+    out["volume"] = (
+        pd.to_numeric(out["volume"], errors="coerce")
+        .replace([np.inf, -np.inf], np.nan)
+        .fillna(0)
+        .astype("int64")
+    )
     return out[["date", "open", "high", "low", "close", "volume", "ticker"]]
 
 
@@ -406,6 +427,12 @@ def main() -> int:
 
         combined = pd.concat(frames, ignore_index=True)
         combined = combined[~combined["ticker"].isin(EXCLUDED_TICKERS)]
+        combined["volume"] = (
+            pd.to_numeric(combined["volume"], errors="coerce")
+            .replace([np.inf, -np.inf], np.nan)
+            .fillna(0)
+            .astype("int64")
+        )
         combined = combined.sort_values(["ticker", "date"])
         combined.to_csv(OUTPUT_LATEST, index=False, encoding="utf-8")
         combined.to_csv(OUTPUT_VERSIONED, index=False, encoding="utf-8")
