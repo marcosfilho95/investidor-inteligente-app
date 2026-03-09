@@ -5,16 +5,23 @@ const LOCAL_LOGOS: Record<string, string> = {
   RDOR3: "/logos/rdor3.avif",
   TOTS3: "/logos/totvs.png",
   ABEV3: "/logos/abev3.png",
-  TUPY3: "/logos/tupy.jpg",
+  TUPY3: "/logos/tupy.png",
   EMBJ3: "/logos/embr3.png",
   GGBR4: "/logos/gerdau.png",
   AXIA6: "/logos/axia.jpg",
-  CPFE3: "/logos/cpfe3.png",
+  CPFE3: "/logos/cpfl.png",
+  ITUB4: "/logos/itau.png",
+  BBDC4: "/logos/bradesco.png",
+  PETR4: "/logos/petrobras.png",
   ISAE4: "/logos/isa.png",
   BBAS3: "/logos/bb.png",
   SAPR11: "/logos/sanepar.png",
   BBSE3: "/logos/BBSE.jpg",
   NTCO3: "/logos/natura.png",
+  HAPV3: "/logos/HAPV3.SA-92fa555b.png",
+  TIMS3: "/logos/tim.png",
+  KLBN11: "/logos/klabin.png",
+  MGLU3: "/logos/magalu.png",
   B3SA3: "/logos/b3.png",
   VIVT3: "/logos/vivo.png",
 };
@@ -52,7 +59,17 @@ const LOGO_DOMAINS: Record<string, string> = {
   RADL3: "ri.rdsaude.com.br",
 };
 
-const WHITE_BG_LOGOS = new Set(["VIVT3", "TOTS3"]);
+const WHITE_BG_LOGOS = new Set(["VIVT3", "TOTS3", "HAPV3", "ITUB4"]);
+const CUSTOM_BG_LOGOS: Record<string, string> = {
+  CPFE3: "p-1",
+  SUZB3: "p-1",
+  MRVE3: "bg-white p-1",
+  VALE3: "bg-white p-1",
+};
+const CUSTOM_BG_STYLES: Record<string, { backgroundColor: string }> = {
+  CPFE3: { backgroundColor: "#1D9DCB" },
+  SUZB3: { backgroundColor: "#0B2A8A" },
+};
 
 interface AssetLogoProps {
   symbol: string;
@@ -65,6 +82,8 @@ export function AssetLogo({ symbol, size = 28, className = "" }: AssetLogoProps)
   const domain = LOGO_DOMAINS[symbol];
   const src = localSrc || (domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : null);
   const whiteBgClass = WHITE_BG_LOGOS.has(symbol) ? "bg-white p-1" : "";
+  const customBgClass = CUSTOM_BG_LOGOS[symbol] ?? "";
+  const customBgStyle = CUSTOM_BG_STYLES[symbol];
 
   if (src) {
     return (
@@ -73,7 +92,8 @@ export function AssetLogo({ symbol, size = 28, className = "" }: AssetLogoProps)
         alt={symbol}
         width={size}
         height={size}
-        className={`rounded-lg object-cover ${whiteBgClass} ${className}`}
+        className={`rounded-lg object-cover ${whiteBgClass} ${customBgClass} ${className}`}
+        style={customBgStyle}
         onError={(e) => {
           const target = e.currentTarget;
           target.style.display = "none";
@@ -99,6 +119,8 @@ export function AssetLogoWithFallback({ symbol, size = 28, className = "" }: Ass
   const domain = LOGO_DOMAINS[symbol];
   const src = localSrc || (domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : null);
   const whiteBgClass = WHITE_BG_LOGOS.has(symbol) ? "bg-white p-1" : "";
+  const customBgClass = CUSTOM_BG_LOGOS[symbol] ?? "";
+  const customBgStyle = CUSTOM_BG_STYLES[symbol];
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -108,7 +130,8 @@ export function AssetLogoWithFallback({ symbol, size = 28, className = "" }: Ass
           alt={symbol}
           width={size}
           height={size}
-          className={`rounded-lg object-cover ${whiteBgClass} ${className}`}
+          className={`rounded-lg object-cover ${whiteBgClass} ${customBgClass} ${className}`}
+          style={customBgStyle}
           onError={(e) => {
             (e.currentTarget as HTMLElement).style.display = "none";
             const fallback = e.currentTarget.nextElementSibling as HTMLElement;
