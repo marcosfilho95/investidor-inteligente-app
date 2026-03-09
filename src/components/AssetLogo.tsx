@@ -69,13 +69,10 @@ const CUSTOM_BG_LOGOS: Record<string, string> = {
   CPFE3: "p-1",
   SUZB3: "p-1",
   MRVE3: "bg-white p-1",
-  ISAE4: "bg-white p-1",
-  ABEV3: "p-1",
 };
 const CUSTOM_BG_STYLES: Record<string, { backgroundColor: string }> = {
   CPFE3: { backgroundColor: "#1D9DCB" },
   SUZB3: { backgroundColor: "#0B2A8A" },
-  ABEV3: { backgroundColor: "#0057B8" },
 };
 const MOBILE_SYMBOL_TWEAKS: Record<string, string> = {
   ISAE4: "max-md:scale-[1.42]",

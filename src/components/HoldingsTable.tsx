@@ -136,12 +136,14 @@ export function HoldingsTable({ holdings: userHoldings }: HoldingsTableProps) {
               <tr key={holding.symbol} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
                 <td className="px-5 py-3.5">
                   <Link to={`/ativos/${holding.symbol}`} className="flex items-center gap-3 hover:underline">
-                    <div className="h-8 w-8 rounded-lg flex items-center justify-center">
+                    <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0">
                       <AssetLogoWithFallback symbol={holding.symbol} size={32} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-medium">{holding.symbol}</p>
-                      <p className="text-xs text-muted-foreground">{holding.name}</p>
+                      <p className="text-xs text-muted-foreground truncate max-w-[120px] md:max-w-none">
+                        {holding.name}
+                      </p>
                     </div>
                   </Link>
                 </td>
