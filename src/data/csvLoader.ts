@@ -272,6 +272,23 @@ async function resolveLatestPrices(
       }
       return mergedData;
     }
+
+    // If a newer version exists but Storage fetch fails, prefer local CSV
+    // over stale IndexedDB cache.
+    const localData = await fetchFromLocal().catch(() => null);
+    if (localData) {
+      _realPricesCache = localData;
+      _loaded = true;
+      _source = "local";
+      if (emitUpdateEvent) {
+        window.dispatchEvent(
+          new CustomEvent("ii:prices-data-updated", {
+            detail: { version: latestVersion, source: "local" },
+          })
+        );
+      }
+      return localData;
+    }
   }
 
   if (currentCachedData) {

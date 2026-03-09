@@ -487,6 +487,8 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
  */
 function cleanOHLCVOutliers(data: OHLCVDay[]): OHLCVDay[] {
   if (data.length < 3) return data;
+  const sourceLast = data[data.length - 1];
+  const sourcePrev = data.length > 1 ? data[data.length - 2] : sourceLast;
   const result = data.map(d => ({ ...d }));
 
   // Multi-pass cleaning with progressively tighter thresholds
@@ -585,6 +587,27 @@ function cleanOHLCVOutliers(data: OHLCVDay[]): OHLCVDay[] {
       }
     }
   }
+
+  // Never rewrite the latest market candles: these are used by cards/details
+  // and daily variation (% vs previous close).
+  if (result.length > 1) {
+    result[result.length - 2] = {
+      ...result[result.length - 2],
+      open: sourcePrev.open,
+      high: sourcePrev.high,
+      low: sourcePrev.low,
+      close: sourcePrev.close,
+      volume: sourcePrev.volume,
+    };
+  }
+  result[result.length - 1] = {
+    ...result[result.length - 1],
+    open: sourceLast.open,
+    high: sourceLast.high,
+    low: sourceLast.low,
+    close: sourceLast.close,
+    volume: sourceLast.volume,
+  };
 
   return result;
 }

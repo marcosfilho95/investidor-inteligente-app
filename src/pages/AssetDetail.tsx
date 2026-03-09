@@ -221,16 +221,21 @@ const AssetDetail = () => {
 
   useEffect(() => {
     if (chartsReady) return;
-    const timeoutId = window.setTimeout(() => setChartsReady(true), 1200);
     const pollId = window.setInterval(() => {
       if (isRealDataLoaded()) {
         setChartsReady(true);
         window.clearInterval(pollId);
       }
-    }, 120);
+    }, 150);
+    const onPricesUpdated = () => {
+      setChartsReady(true);
+      setChartAnimKey((k) => k + 1);
+      setCompareAnimKey((k) => k + 1);
+    };
+    window.addEventListener("ii:prices-data-updated", onPricesUpdated as EventListener);
     return () => {
-      window.clearTimeout(timeoutId);
       window.clearInterval(pollId);
+      window.removeEventListener("ii:prices-data-updated", onPricesUpdated as EventListener);
     };
   }, [chartsReady]);
 
