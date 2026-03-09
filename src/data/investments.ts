@@ -186,7 +186,7 @@ export interface ActiveValuation {
   type: ActiveValuationType;
   price: number | null;
   upside: number | null;
-  label: "Método Graham" | "Preço Justo Estimado" | null;
+  label: "Valor Intrínseco" | "Preço Justo Estimado" | null;
 }
 
 const isValidPositiveNumber = (value: number | null | undefined): value is number =>
@@ -215,7 +215,7 @@ export function resolveActiveValuation(asset: Holding): ActiveValuation {
       type: "graham",
       price: grahamPrice,
       upside: ((grahamPrice / asset.price) - 1) * 100,
-      label: "Método Graham",
+      label: "Valor Intrínseco",
     };
   }
 
@@ -2287,7 +2287,7 @@ function buildScoreMethodologyContext(): string {
     "- Commodities: menor sensibilidade a P/L isolado, maior atencao a divida e margens.",
     "",
     "Prioridade de valuation ativo: Graham valido > Preco Justo Estimado (fallback).",
-    "Observacao: o card Score Fundamentalista e multifatorial; Metodo Graham permanece separado como estimativa de valor."
+    "Observacao: o card Score Fundamentalista e multifatorial; Valor Intrinseco permanece separado como estimativa de valor."
   ].join("\n");
 }
 

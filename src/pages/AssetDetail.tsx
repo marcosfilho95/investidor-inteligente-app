@@ -323,8 +323,7 @@ const AssetDetail = () => {
               <div className="glass-card p-5 flex flex-col items-center justify-center">
                 <h3 className="text-base font-semibold mb-3 self-start">Score Fundamentalista</h3>
                 <RecommendationGauge score={recommendation.score} label={recommendation.label} color={recommendation.color} />
-                <p className="text-xs text-muted-foreground mt-4 text-left self-start">{recommendationDisclaimer}</p>
-                <p className="text-[11px] text-muted-foreground/90 mt-2 text-left self-start">
+                <p className="text-[11px] text-muted-foreground/90 mt-2 text-center self-center">
                   Conteúdo educacional e informativo. Não constitui recomendação individual de investimento.
                 </p>
               </div>
@@ -332,7 +331,7 @@ const AssetDetail = () => {
             <AnimatedCard delay={0.2}>
               <div className="glass-card p-5">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-base font-semibold">{activeValuationType === "graham" ? "Método Graham" : activeValuationType === "preco_justo" ? "Preço Justo Estimado" : "Valuation"}</h3>
+                  <h3 className="text-base font-semibold">{activeValuationType === "graham" ? "Valor Intrínseco" : activeValuationType === "preco_justo" ? "Preço Justo Estimado" : "Valuation"}</h3>
                 </div>
                 {activeValuationType === "preco_justo" && (
                   <p className="text-[11px] text-muted-foreground -mt-1 mb-2">
@@ -354,7 +353,7 @@ const AssetDetail = () => {
                         <p className="text-lg font-mono font-bold mt-1.5">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                       </div>
                       <div className="bg-primary/10 rounded-xl p-4 text-center border border-primary/20">
-                        <p className="text-[10px] text-primary uppercase tracking-wider font-medium">Preco Graham</p>
+                        <p className="text-[10px] text-primary uppercase tracking-wider font-medium">Valor Intrínseco</p>
                         <p className="text-lg font-mono font-bold text-primary mt-1.5">R$ {activeFairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                       </div>
                       <div className={`rounded-xl p-4 text-center ${Number(activeUpsideFormatted) > 15 ? "bg-gain/10 border border-gain/20" : Number(activeUpsideFormatted) >= -15 ? "bg-warning/10 border border-warning/20" : "bg-loss/10 border border-loss/20"}`}>
@@ -394,7 +393,7 @@ const AssetDetail = () => {
                     </div>
                     <div className="bg-warning/5 border border-warning/15 rounded-xl px-4 py-3">
                       <p className="text-xs text-warning font-medium">
-                        Método Graham indisponível no momento. Exibindo estimativa alternativa.
+                        Valor Intrínseco indisponível no momento. Exibindo estimativa alternativa.
                       </p>
                     </div>
                     {Number(activeUpsideFormatted) > 15 ? (
