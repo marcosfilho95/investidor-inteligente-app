@@ -10,13 +10,13 @@ const features = [
   { icon: Bot, title: "Hodl - Assistente IA", description: "Tire dúvidas sobre investimentos a qualquer momento. O Hodl explica conceitos de forma simples e te ajuda a tomar decisões." },
   { icon: BookOpen, title: "Conteúdo Educativo", description: "Trilhas de aprendizado para você entender o mercado financeiro do zero ao avançado." },
   { icon: TrendingUp, title: "Dashboard Intuitivo", description: "Acompanhe seu portfólio com gráficos claros, comparações com IBOVESPA, CDI e IPCA." },
-  { icon: BarChart3, title: "25 Ativos Reais", description: "Analise indicadores fundamentalistas de 25 ações da B3 com dados completos." },
+  { icon: BarChart3, title: "30 Ativos Reais", description: "Analise indicadores fundamentalistas de 30 ações da B3 com dados completos." },
   { icon: Shield, title: "Ambiente Seguro", description: "Pratique com simulações antes de investir de verdade. Aprenda sem riscos financeiros." },
   { icon: Sparkles, title: "Personalizado para Você", description: "Recomendações e conteúdos adaptados ao seu perfil de investidor e objetivos." },
 ];
 
 const heroStats = [
-  { value: 25, suffix: "+", label: "Ativos B3" },
+  { value: 30, suffix: "+", label: "Ativos B3" },
   { value: 100, suffix: "%", label: "Gratuito" },
   { suffix: "IA", label: "sem limites de mensagens" },
 ];

@@ -47,7 +47,7 @@ const Login = () => {
   ][strengthScore];
 
   const highlights = [
-    { icon: TrendingUp, text: "25 ativos da B3 com dados reais" },
+    { icon: TrendingUp, text: "30 ativos da B3 com dados reais" },
     { icon: Bot, text: "Hodl: IA que te ajuda a investir" },
     { icon: Shield, text: "Ambiente seguro para aprender" },
   ];

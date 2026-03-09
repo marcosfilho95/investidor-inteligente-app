@@ -28,7 +28,7 @@ const KNOWLEDGE_BASE = [
   "Curiosidade sobre o nome HODL:",
   "O termo HODL nasceu em 18 de dezembro de 2013, no forum Bitcointalk. Um usuario chamado GameKyuubi criou um post com o titulo I AM HODLING. Ele queria escrever HOLDING (segurando), mas digitou errado. No texto, ele dizia que era um pessimo trader e que ia apenas segurar o Bitcoin, mesmo com a volatilidade. Ele tambem mencionou que estava bebendo whisky. A comunidade abracou o erro como simbolo de mentalidade de longo prazo: paciencia, disciplina e foco em estrategia. Com o tempo, o meme virou um mantra do mercado cripto, e muita gente passou a interpretar HODL como Hold On for Dear Life.",
   "",
-  "ATIVOS COBERTOS: ITUB4, BBAS3, BBDC4, B3SA3, AXIA6, CPFE3, ISAE4, SAPR11, PETR4, VALE3, GGBR4, WEGE3, EMBR3, TUPY3, LREN3, MGLU3, MRVE3, ABEV3, JBSS3, VIVT3, TIMS3, TOTS3, RDOR3, HAPV3, FLRY3.",
+  "ATIVOS COBERTOS: ITUB4, BBAS3, BBDC4, B3SA3, AXIA6, CPFE3, ISAE4, SAPR11, PETR4, VALE3, GGBR4, WEGE3, EMBJ3, TUPY3, LREN3, MGLU3, MRVE3, ABEV3, JBSS3, VIVT3, TIMS3, TOTS3, RDOR3, HAPV3, FLRY3, KLBN11, NATU3, RADL3, RENT3, SUZB3.",
   "=== FIM DA BASE DE CONHECIMENTO ==="
 ].join("\n");
 

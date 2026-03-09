@@ -10,7 +10,9 @@ const LOCAL_LOGOS: Record<string, string> = {
   GGBR4: "/logos/gerdau.png",
   AXIA6: "/logos/axia.jpg",
   CPFE3: "/logos/cpfe3.png",
-  BBSE3: "/logos/BB-SEGURIDADE.webp",
+  BBAS3: "/logos/bb.png",
+  SAPR11: "/logos/sanepar.png",
+  BBSE3: "/logos/BBSE.jpg",
   NTCO3: "/logos/natura.png",
   B3SA3: "/logos/b3.png",
   VIVT3: "/logos/vivo.png",
@@ -49,7 +51,7 @@ const LOGO_DOMAINS: Record<string, string> = {
   RADL3: "ri.rdsaude.com.br",
 };
 
-const WHITE_BG_LOGOS = new Set(["BBSE3", "VIVT3", "TOTS3"]);
+const WHITE_BG_LOGOS = new Set(["VIVT3", "TOTS3"]);
 
 interface AssetLogoProps {
   symbol: string;

@@ -24,7 +24,7 @@ const Assets = () => {
         <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
           <div>
             <h1 className="text-xl font-semibold">Ativos</h1>
-            <p className="text-sm text-muted-foreground">Explore os 25 ativos da B3 disponíveis na plataforma</p>
+            <p className="text-sm text-muted-foreground">Explore os 30 ativos da B3 disponíveis na plataforma</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
