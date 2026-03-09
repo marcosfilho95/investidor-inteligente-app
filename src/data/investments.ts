@@ -50,6 +50,7 @@ export const holdings: Holding[] = [
   { symbol: "BBAS3", name: "Banco do Brasil", shares: 150, price: 27.58, change: 0.46, changePercent: 1.70, value: 4137, allocation: 1.52, category: "Financeiro", description: "Maior banco público do Brasil com forte presença no agronegócio. Dividendos consistentes e papel relevante no crédito rural.", marketCap: "162B", pe: 5.1, dividend: 8.2, sector: "Financeiro", subsetor: "Bancos", pvp: 0.92, lpa: 5.67, vpa: 31.43, psr: 1.8, pEbit: 4.2, evEbit: 5.8, evEbitda: 4.5, roe: 18.5, roic: 13.8, margemBruta: 62.2, margemEbit: 28.8, margemLiquida: 21.8, cReceita5a: 10.5, cLucro5a: 15.2, giroAtivos: 0.06, liqCorrente: 1.52, divLiqPl: 1.85, divLiqEbitda: 3.25, plAtivos: 0.06 },
   { symbol: "BBDC4", name: "Bradesco", shares: 300, price: 21.17, change: -0.23, changePercent: -1.07, value: 6351, allocation: 1.61, category: "Financeiro", description: "Um dos maiores bancos do Brasil, com forte atuação em seguros (Bradesco Seguros) e presença nacional em todas as faixas de renda.", marketCap: "158B", pe: 9.5, dividend: 4.2, sector: "Financeiro", subsetor: "Bancos", pvp: 1.05, lpa: 1.61, vpa: 14.55, psr: 2.4, pEbit: 7.8, evEbit: 9.8, evEbitda: 7.5, roe: 11.2, roic: 8.5, margemBruta: 58.5, margemEbit: 22.8, margemLiquida: 15.8, cReceita5a: 5.8, cLucro5a: 3.2, giroAtivos: 0.07, liqCorrente: 1.42, divLiqPl: 2.35, divLiqEbitda: 4.15, plAtivos: 0.07 },
   { symbol: "B3SA3", name: "B3 S.A.", shares: 400, price: 18.14, change: -0.08, changePercent: -0.44, value: 7256, allocation: 1.80, category: "Financeiro", description: "Única bolsa de valores do Brasil, responsável por toda a infraestrutura do mercado de capitais nacional. Modelo de negócio com receita recorrente.", marketCap: "68B", pe: 15.8, dividend: 3.5, sector: "Financeiro", subsetor: "Mercado de Capitais", pvp: 3.45, lpa: 0.81, vpa: 3.72, psr: 8.2, pEbit: 12.1, evEbit: 13.5, evEbitda: 11.2, roe: 22.5, roic: 18.3, margemBruta: 72.5, margemEbit: 62.8, margemLiquida: 48.2, cReceita5a: 12.8, cLucro5a: 8.5, giroAtivos: 0.28, liqCorrente: 1.85, divLiqPl: 1.12, divLiqEbitda: 1.45, plAtivos: 0.32 },
+  { symbol: "BBSE3", name: "BB Seguridade", shares: 120, price: 34.20, change: 0.48, changePercent: 1.42, value: 4104, allocation: 0.0, category: "Financeiro", description: "Seguradora e empresa de previdência ligada ao Banco do Brasil, com forte geração de caixa e pagamento recorrente de dividendos.", marketCap: "68B", pe: 8.9, dividend: 8.1, sector: "Financeiro", subsetor: "Seguros", pvp: 4.7, lpa: 3.84, vpa: 7.28, psr: 4.1, pEbit: 7.2, evEbit: 7.5, evEbitda: 0, roe: 65.2, roic: 0, margemBruta: 0, margemEbit: 0, margemLiquida: 83.5, cReceita5a: 10.2, cLucro5a: 10.8, giroAtivos: 0.0, liqCorrente: 0.0, divLiqPl: 0.0, divLiqEbitda: 0.0, plAtivos: 0.0 },
 
   // ⚡ Utilidades Públicas (4)
   { symbol: "AXIA6", name: "Eletrobras", shares: 120, price: 67.70, change: 0.56, changePercent: 0.83, value: 8124, allocation: 1.77, category: "Utilidades Públicas", description: "Maior empresa de energia elétrica da América Latina. Privatizada em 2022, gera e transmite energia em todo o território nacional. Ticker migrado de ELET3 para AXIA6.", marketCap: "95B", pe: 6.8, dividend: 4.5, sector: "Utilidades Públicas", subsetor: "Energia Elétrica", pvp: 0.78, lpa: 6.20, vpa: 54.08, psr: 2.1, pEbit: 5.2, evEbit: 7.8, evEbitda: 5.5, roe: 12.5, roic: 8.8, margemBruta: 55.2, margemEbit: 38.5, margemLiquida: 28.2, cReceita5a: 6.5, cLucro5a: 18.5, giroAtivos: 0.15, liqCorrente: 1.42, divLiqPl: 0.58, divLiqEbitda: 2.85, plAtivos: 0.42 },
@@ -60,21 +61,24 @@ export const holdings: Holding[] = [
   // 🛢️ Commodities Cíclicas (3) — Preços reais CSV 2026-02-25
   { symbol: "PETR4", name: "Petrobras", shares: 250, price: 39.57, change: 0.00, changePercent: 0.00, value: 9892.50, allocation: 3.23, category: "Commodities", description: "Maior empresa de petróleo e gás do Brasil. Líder em exploração de águas profundas (pré-sal), com forte geração de caixa e dividendos expressivos.", marketCap: "480B", pe: 4.5, dividend: 12.5, sector: "Commodities", subsetor: "Petróleo", pvp: 1.25, lpa: 8.18, vpa: 29.46, psr: 1.2, pEbit: 3.2, evEbit: 3.8, evEbitda: 2.5, roe: 28.5, roic: 18.2, margemBruta: 52.8, margemEbit: 38.5, margemLiquida: 25.2, cReceita5a: 15.8, cLucro5a: 32.5, giroAtivos: 0.35, liqCorrente: 1.18, divLiqPl: 0.62, divLiqEbitda: 1.05, plAtivos: 0.42 },
   { symbol: "VALE3", name: "Vale S.A.", shares: 180, price: 89.97, change: 2.24, changePercent: 2.55, value: 16194.60, allocation: 3.94, category: "Commodities", description: "Uma das maiores mineradoras do mundo, líder na produção de minério de ferro. Presença global e dividendos expressivos.", marketCap: "380B", pe: 6.2, dividend: 8.5, sector: "Commodities", subsetor: "Mineração", pvp: 1.55, lpa: 14.51, vpa: 58.05, psr: 2.5, pEbit: 5.0, evEbit: 5.8, evEbitda: 4.2, roe: 25.0, roic: 17.5, margemBruta: 48.5, margemEbit: 35.8, margemLiquida: 22.5, cReceita5a: 12.5, cLucro5a: 18.2, giroAtivos: 0.38, liqCorrente: 1.52, divLiqPl: 0.45, divLiqEbitda: 0.85, plAtivos: 0.48 },
+  { symbol: "SUZB3", name: "Suzano", shares: 120, price: 54.92, change: -0.88, changePercent: -1.58, value: 6590.4, allocation: 0.0, category: "Commodities", description: "Maior produtora mundial de celulose de eucalipto, com receita exposta ao dólar e ciclo global de papel e celulose.", marketCap: "73B", pe: 7.6, dividend: 4.8, sector: "Commodities", subsetor: "Papel e Celulose", pvp: 1.65, lpa: 7.22, vpa: 33.3, psr: 2.2, pEbit: 5.8, evEbit: 7.9, evEbitda: 4.8, roe: 18.4, roic: 11.2, margemBruta: 46.7, margemEbit: 28.1, margemLiquida: 20.3, cReceita5a: 9.8, cLucro5a: 14.4, giroAtivos: 0.45, liqCorrente: 1.9, divLiqPl: 1.02, divLiqEbitda: 2.35, plAtivos: 0.4 },
+  { symbol: "KLBN11", name: "Klabin Unit", shares: 150, price: 19.53, change: -0.16, changePercent: -0.81, value: 2929.5, allocation: 0.0, category: "Commodities", description: "Companhia integrada de papel e celulose com forte presença em embalagens, florestas e exportação.", marketCap: "27B", pe: 9.4, dividend: 4.2, sector: "Commodities", subsetor: "Papel e Celulose", pvp: 1.4, lpa: 2.08, vpa: 13.95, psr: 1.9, pEbit: 6.9, evEbit: 8.8, evEbitda: 5.4, roe: 15.1, roic: 9.3, margemBruta: 38.2, margemEbit: 22.7, margemLiquida: 16.4, cReceita5a: 8.7, cLucro5a: 11.5, giroAtivos: 0.53, liqCorrente: 1.55, divLiqPl: 1.18, divLiqEbitda: 2.74, plAtivos: 0.36 },
   { symbol: "GGBR4", name: "Gerdau", shares: 200, price: 21.41, change: 0.28, changePercent: 1.33, value: 4282, allocation: 1.57, category: "Commodities", description: "Maior produtora de aço do Brasil e uma das maiores das Américas. Atua com aços longos e especiais em diversos mercados.", marketCap: "36B", pe: 5.2, dividend: 6.5, sector: "Commodities", subsetor: "Siderurgia", pvp: 0.85, lpa: 4.12, vpa: 25.19, psr: 0.8, pEbit: 3.8, evEbit: 4.5, evEbitda: 3.2, roe: 17.2, roic: 12.5, margemBruta: 28.5, margemEbit: 15.8, margemLiquida: 10.5, cReceita5a: 14.2, cLucro5a: 22.8, giroAtivos: 0.62, liqCorrente: 2.15, divLiqPl: 0.25, divLiqEbitda: 0.65, plAtivos: 0.52 },
 
   // 🏭 Indústria e Bens de Capital (3) — Preços reais CSV 2026-02-25
   { symbol: "WEGE3", name: "WEG S.A.", shares: 150, price: 50.28, change: -1.13, changePercent: -2.20, value: 7542, allocation: 2.25, category: "Indústria", description: "Multinacional brasileira líder em motores elétricos, automação industrial e equipamentos para energia. Referência em crescimento consistente.", marketCap: "252B", pe: 38.5, dividend: 1.1, sector: "Indústria", subsetor: "Bens de Capital", pvp: 12.2, lpa: 1.31, vpa: 4.12, psr: 7.5, pEbit: 30.2, evEbit: 31.0, evEbitda: 27.5, roe: 31.5, roic: 26.0, margemBruta: 36.5, margemEbit: 23.0, margemLiquida: 17.2, cReceita5a: 24.5, cLucro5a: 30.2, giroAtivos: 0.82, liqCorrente: 2.85, divLiqPl: -0.15, divLiqEbitda: -0.42, plAtivos: 0.55 },
-  { symbol: "EMBR3", name: "Embraer", shares: 100, price: 92.48, change: -1.82, changePercent: -1.93, value: 9248, allocation: 1.83, category: "Indústria", description: "Terceira maior fabricante de aviões do mundo, líder no segmento de jatos regionais. Atua também em defesa e aviação executiva.", marketCap: "68B", pe: 28.5, dividend: 0.3, sector: "Indústria", subsetor: "Aeroespacial", pvp: 8.2, lpa: 3.25, vpa: 11.28, psr: 3.2, pEbit: 22.5, evEbit: 24.8, evEbitda: 19.5, roe: 28.8, roic: 17.5, margemBruta: 24.5, margemEbit: 14.2, margemLiquida: 9.8, cReceita5a: 10.5, cLucro5a: 52.0, giroAtivos: 0.55, liqCorrente: 1.65, divLiqPl: 0.85, divLiqEbitda: 1.52, plAtivos: 0.35 },
+  { symbol: "EMBJ3", name: "Embraer", shares: 100, price: 80.14, change: -7.02, changePercent: -8.05, value: 8014, allocation: 1.83, category: "Indústria", description: "Terceira maior fabricante de aviões do mundo, líder no segmento de jatos regionais. Atua também em defesa e aviação executiva.", marketCap: "68B", pe: 28.5, dividend: 0.3, sector: "Indústria", subsetor: "Aeroespacial", pvp: 8.2, lpa: 3.25, vpa: 11.28, psr: 3.2, pEbit: 22.5, evEbit: 24.8, evEbitda: 19.5, roe: 28.8, roic: 17.5, margemBruta: 24.5, margemEbit: 14.2, margemLiquida: 9.8, cReceita5a: 10.5, cLucro5a: 52.0, giroAtivos: 0.55, liqCorrente: 1.65, divLiqPl: 0.85, divLiqEbitda: 1.52, plAtivos: 0.35 },
   { symbol: "TUPY3", name: "Tupy S.A.", shares: 150, price: 13.12, change: -0.32, changePercent: -2.38, value: 1968, allocation: 1.20, category: "Indústria", description: "Líder global em componentes estruturais de ferro fundido para veículos comerciais e máquinas pesadas.", marketCap: "1.9B", pe: 4.5, dividend: 4.8, sector: "Indústria", subsetor: "Autopeças", pvp: 0.52, lpa: 2.92, vpa: 25.23, psr: 0.3, pEbit: 3.2, evEbit: 4.5, evEbitda: 3.2, roe: 11.5, roic: 7.8, margemBruta: 24.8, margemEbit: 9.8, margemLiquida: 5.8, cReceita5a: 18.5, cLucro5a: 15.2, giroAtivos: 0.72, liqCorrente: 1.45, divLiqPl: 0.82, divLiqEbitda: 2.15, plAtivos: 0.38 },
 
   // 🛒 Consumo Cíclico (3) — Preços reais CSV 2026-02-25
   { symbol: "LREN3", name: "Lojas Renner", shares: 200, price: 15.78, change: -0.10, changePercent: -0.63, value: 3156, allocation: 1.28, category: "Consumo Cíclico", description: "Maior varejista de moda do Brasil, com operação omnichannel e serviços financeiros (Realize). Referência em gestão no varejo.", marketCap: "15B", pe: 12.5, dividend: 3.2, sector: "Consumo Cíclico", subsetor: "Varejo", pvp: 3.35, lpa: 1.26, vpa: 4.71, psr: 1.3, pEbit: 9.2, evEbit: 10.5, evEbitda: 7.8, roe: 26.5, roic: 15.8, margemBruta: 55.2, margemEbit: 15.8, margemLiquida: 10.2, cReceita5a: 6.5, cLucro5a: -2.5, giroAtivos: 0.65, liqCorrente: 1.55, divLiqPl: 0.42, divLiqEbitda: 1.25, plAtivos: 0.45 },
   { symbol: "MGLU3", name: "Magazine Luiza", shares: 500, price: 9.49, change: -0.64, changePercent: -6.32, value: 4745, allocation: 0.38, category: "Consumo Cíclico", description: "Uma das maiores varejistas do Brasil, com forte plataforma de e-commerce e marketplace. Passou por grande transformação digital.", marketCap: "14B", pe: 35.0, dividend: 0.2, sector: "Consumo Cíclico", subsetor: "Varejo", pvp: 5.8, lpa: 0.27, vpa: 1.64, psr: 0.4, pEbit: 28.0, evEbit: 32.0, evEbitda: 18.5, roe: 16.5, roic: 5.2, margemBruta: 30.5, margemEbit: 3.2, margemLiquida: 1.5, cReceita5a: 18.2, cLucro5a: null, giroAtivos: 1.85, liqCorrente: 1.12, divLiqPl: 2.85, divLiqEbitda: 4.52, plAtivos: 0.15 },
   { symbol: "MRVE3", name: "MRV Engenharia", shares: 200, price: 10.34, change: -0.01, changePercent: -0.10, value: 2068, allocation: 0.59, category: "Consumo Cíclico", description: "Maior construtora de habitação popular do Brasil. Atua no programa Minha Casa Minha Vida e na AHS nos EUA.", marketCap: "7.2B", pe: 15.2, dividend: 1.2, sector: "Consumo Cíclico", subsetor: "Construção", pvp: 0.88, lpa: 0.68, vpa: 11.75, psr: 0.6, pEbit: 10.5, evEbit: 14.2, evEbitda: 10.2, roe: 5.8, roic: 4.2, margemBruta: 28.2, margemEbit: 5.8, margemLiquida: 3.2, cReceita5a: 12.5, cLucro5a: -8.5, giroAtivos: 0.25, liqCorrente: 2.45, divLiqPl: 0.85, divLiqEbitda: 5.25, plAtivos: 0.22 },
+  { symbol: "RENT3", name: "Localiza", shares: 120, price: 45.83, change: -1.07, changePercent: -2.28, value: 5499.6, allocation: 0.0, category: "Consumo Cíclico", description: "Líder em aluguel de carros e gestão de frotas no Brasil, com operação nacional e ganhos de escala relevantes.", marketCap: "49B", pe: 18.3, dividend: 1.6, sector: "Consumo Cíclico", subsetor: "Locação de Veículos", pvp: 2.4, lpa: 2.5, vpa: 19.1, psr: 2.7, pEbit: 11.6, evEbit: 16.4, evEbitda: 8.7, roe: 13.6, roic: 7.4, margemBruta: 29.3, margemEbit: 18.8, margemLiquida: 10.4, cReceita5a: 22.0, cLucro5a: 16.9, giroAtivos: 0.34, liqCorrente: 1.28, divLiqPl: 2.1, divLiqEbitda: 3.7, plAtivos: 0.16 },
 
   // 🍺 Consumo Não Cíclico (2) — Preços reais CSV 2026-02-25
   { symbol: "ABEV3", name: "Ambev S.A.", shares: 500, price: 16.44, change: -0.14, changePercent: -0.84, value: 8220, allocation: 2.60, category: "Consumo Não Cíclico", description: "Maior cervejaria do Brasil e uma das maiores do mundo. Marcas icônicas como Brahma, Skol e Budweiser. Liderança absoluta no mercado.", marketCap: "258B", pe: 15.8, dividend: 4.2, sector: "Consumo Não Cíclico", subsetor: "Bebidas", pvp: 3.92, lpa: 1.04, vpa: 4.19, psr: 3.5, pEbit: 11.5, evEbit: 11.8, evEbitda: 9.0, roe: 24.8, roic: 18.0, margemBruta: 53.2, margemEbit: 28.0, margemLiquida: 17.8, cReceita5a: 8.5, cLucro5a: 5.2, giroAtivos: 0.48, liqCorrente: 0.92, divLiqPl: 0.15, divLiqEbitda: 0.35, plAtivos: 0.42 },
-  { symbol: "JBSS3", name: "JBS S.A.", shares: 150, price: 32.50, change: 0.72, changePercent: 2.26, value: 4875, allocation: 1.71, category: "Consumo Não Cíclico", description: "Maior processadora de proteína animal do mundo, com operações globais em carne bovina, suína e de frango.", marketCap: "72B", pe: 6.8, dividend: 3.8, sector: "Consumo Não Cíclico", subsetor: "Alimentos", pvp: 1.42, lpa: 4.78, vpa: 22.89, psr: 0.2, pEbit: 4.5, evEbit: 5.8, evEbitda: 4.2, roe: 21.5, roic: 12.8, margemBruta: 18.5, margemEbit: 6.2, margemLiquida: 3.8, cReceita5a: 22.5, cLucro5a: 35.8, giroAtivos: 1.45, liqCorrente: 1.65, divLiqPl: 1.52, divLiqEbitda: 2.25, plAtivos: 0.28 },
+  { symbol: "NTCO3", name: "Natura", shares: 250, price: 8.73, change: 0.04, changePercent: 0.46, value: 2182.5, allocation: 0.0, category: "Consumo Não Cíclico", description: "Multinacional brasileira de cosméticos e higiene pessoal, com marcas como Natura e Avon e forte presença na América Latina.", marketCap: "12B", pe: null, dividend: 0.0, sector: "Consumo Não Cíclico", subsetor: "Higiene e Beleza", pvp: 1.1, lpa: null, vpa: 7.9, psr: 0.6, pEbit: null, evEbit: null, evEbitda: 7.8, roe: null, roic: null, margemBruta: 65.2, margemEbit: 6.4, margemLiquida: -0.8, cReceita5a: 4.3, cLucro5a: null, giroAtivos: 0.74, liqCorrente: 1.05, divLiqPl: 1.3, divLiqEbitda: 3.6, plAtivos: 0.21 },
 
   // 📡 Telecom e Tecnologia (3) — Preços reais CSV 2026-02-25
   { symbol: "VIVT3", name: "Telefônica Vivo", shares: 100, price: 42.07, change: -0.45, changePercent: -1.06, value: 4207, allocation: 1.85, category: "Telecom", description: "Maior operadora de telecomunicações do Brasil, com forte presença em fibra óptica e serviços móveis de alta qualidade.", marketCap: "70B", pe: 12.1, dividend: 6.5, sector: "Telecom", subsetor: "Telefonia", pvp: 1.48, lpa: 3.47, vpa: 28.43, psr: 1.4, pEbit: 6.8, evEbit: 8.2, evEbitda: 4.8, roe: 12.5, roic: 8.8, margemBruta: 48.5, margemEbit: 18.5, margemLiquida: 12.5, cReceita5a: 4.5, cLucro5a: 8.2, giroAtivos: 0.38, liqCorrente: 0.85, divLiqPl: 0.42, divLiqEbitda: 1.15, plAtivos: 0.35 },
@@ -83,6 +87,7 @@ export const holdings: Holding[] = [
 
   // 🏥 Saúde (3) — Preços reais CSV 2026-02-25
   { symbol: "RDOR3", name: "Rede D'Or", shares: 100, price: 43.52, change: 0.05, changePercent: 0.12, value: 4352, allocation: 1.00, category: "Saúde", description: "Maior rede de hospitais privados do Brasil e da América Latina. Opera mais de 70 hospitais com alto padrão de qualidade.", marketCap: "95B", pe: 28.5, dividend: 0.6, sector: "Saúde", subsetor: "Hospitais", pvp: 5.9, lpa: 1.53, vpa: 7.38, psr: 3.5, pEbit: 22.0, evEbit: 26.5, evEbitda: 17.5, roe: 20.5, roic: 10.2, margemBruta: 28.5, margemEbit: 14.5, margemLiquida: 9.2, cReceita5a: 28.5, cLucro5a: 22.5, giroAtivos: 0.42, liqCorrente: 1.25, divLiqPl: 1.52, divLiqEbitda: 2.85, plAtivos: 0.25 },
+  { symbol: "RADL3", name: "Raia Drogasil", shares: 120, price: 23.73, change: -0.26, changePercent: -1.08, value: 2847.6, allocation: 0.0, category: "Saúde", description: "Maior rede de farmácias do Brasil, com foco em expansão orgânica, eficiência operacional e digitalização do varejo farmacêutico.", marketCap: "41B", pe: 24.5, dividend: 1.1, sector: "Saúde", subsetor: "Varejo Farmacêutico", pvp: 3.7, lpa: 0.97, vpa: 6.41, psr: 1.4, pEbit: 17.1, evEbit: 19.3, evEbitda: 10.2, roe: 15.8, roic: 12.1, margemBruta: 28.4, margemEbit: 6.9, margemLiquida: 4.5, cReceita5a: 17.9, cLucro5a: 16.2, giroAtivos: 1.58, liqCorrente: 1.26, divLiqPl: 0.54, divLiqEbitda: 1.35, plAtivos: 0.33 },
   { symbol: "HAPV3", name: "Hapvida", shares: 300, price: 10.26, change: -0.23, changePercent: -2.19, value: 3078, allocation: 0.45, category: "Saúde", description: "Maior operadora de planos de saúde do Brasil (após fusão com NotreDame Intermédica), com modelo verticalizado e foco em preços acessíveis.", marketCap: "76B", pe: 25.5, dividend: 0.2, sector: "Saúde", subsetor: "Planos de Saúde", pvp: 4.5, lpa: 0.40, vpa: 2.28, psr: 2.8, pEbit: 20.5, evEbit: 24.0, evEbitda: 16.5, roe: 17.8, roic: 8.5, margemBruta: 34.5, margemEbit: 10.5, margemLiquida: 5.8, cReceita5a: 35.2, cLucro5a: 8.5, giroAtivos: 0.52, liqCorrente: 0.92, divLiqPl: 0.85, divLiqEbitda: 2.52, plAtivos: 0.28 },
   { symbol: "FLRY3", name: "Fleury S.A.", shares: 150, price: 16.80, change: 0.22, changePercent: 1.33, value: 2520, allocation: 0.88, category: "Saúde", description: "Líder em medicina diagnóstica no Brasil, com mais de 500 unidades de atendimento e forte presença digital.", marketCap: "11B", pe: 15.8, dividend: 3.5, sector: "Saúde", subsetor: "Diagnósticos", pvp: 2.25, lpa: 1.06, vpa: 7.47, psr: 1.5, pEbit: 10.8, evEbit: 12.5, evEbitda: 8.5, roe: 14.5, roic: 10.2, margemBruta: 35.2, margemEbit: 15.2, margemLiquida: 10.5, cReceita5a: 12.5, cLucro5a: 8.5, giroAtivos: 0.55, liqCorrente: 1.35, divLiqPl: 0.62, divLiqEbitda: 1.52, plAtivos: 0.38 },
 ];
@@ -99,13 +104,18 @@ const indicatorSnapshots: Record<string, Partial<Holding>> = {
   VALE3: { dividend: 9.06, pe: 27.63, pvp: 2.02, lpa: 3.04, vpa: 41.62, psr: 1.79, pEbit: 11.94, evEbit: 13.87, evEbitda: 5.76, cReceita5a: 0.72, cLucro5a: -12.36, roe: 13, roic: 0.5, giroAtivos: 0.45, margemBruta: 34.98, margemEbit: 14.97, margemLiquida: 14, liqCorrente: 1.15, divLiqPl: 0.33, divLiqEbitda: 0.8, plAtivos: 0.4 },
   GGBR4: { dividend: 3.12, pe: 28.54, pvp: 0.74, lpa: 0.7, vpa: 26.99, psr: 0.57, pEbit: 10.59, evEbit: 12.19, evEbitda: 5.91, cReceita5a: 9.78, cLucro5a: -10.13, roe: 6, roic: 3.73, giroAtivos: 0.86, margemBruta: 11.41, margemEbit: 5.35, margemLiquida: 4, liqCorrente: 2.89, divLiqPl: 0.15, divLiqEbitda: 1.01, plAtivos: 0.66 },
   WEGE3: { dividend: 4.54, pe: 31.16, pvp: 10.71, lpa: 1.52, vpa: 4.42, psr: 4.87, pEbit: 24.84, evEbit: 24.51, evEbitda: 21.74, cReceita5a: 18.49, cLucro5a: 22.19, roe: 29, roic: 28.61, giroAtivos: 0.96, margemBruta: 33.53, margemEbit: 19.6, margemLiquida: 17, liqCorrente: 1.55, divLiqPl: -0.14, divLiqEbitda: -0.3, plAtivos: 0.44 },
-  EMBR3: { dividend: 0.31, pe: 38.68, pvp: 3.59, lpa: 2.39, vpa: 25.75, psr: 1.66, pEbit: 18.43, evEbit: 19.16, evEbitda: 0, cReceita5a: 27.61, cLucro5a: 0, roe: 11, roic: 7.38, giroAtivos: 0.62, margemBruta: 18.2, margemEbit: 9, margemLiquida: 6, liqCorrente: 1.43, divLiqPl: 0.14, divLiqEbitda: 0, plAtivos: 0.29 },
+  EMBJ3: { dividend: 0.33, pe: 36.48, pvp: 3.38, lpa: 2.39, vpa: 25.75, psr: 1.56, pEbit: 17.38, evEbit: 18.11, evEbitda: 0, cReceita5a: 27.61, cLucro5a: 0, roe: 11, roic: 7.38, giroAtivos: 0.62, margemBruta: 18.2, margemEbit: 9, margemLiquida: 6, liqCorrente: 1.43, divLiqPl: 0.14, divLiqEbitda: 0, plAtivos: 0.29 },
   TUPY3: { dividend: 0, pe: -13.34, pvp: 0.55, lpa: -0.96, vpa: 23.27, psr: 0.17, pEbit: 13.65, evEbit: 32.06, evEbitda: 6.47, cReceita5a: 15.61, cLucro5a: 0, roe: -4, roic: 1.35, giroAtivos: 1.01, margemBruta: 14.71, margemEbit: 1.24, margemLiquida: -1, liqCorrente: 2.45, divLiqPl: 0.74, divLiqEbitda: 3.71, plAtivos: 0.31 },
   LREN3: { dividend: 5.53, pe: 10.96, pvp: 1.5, lpa: 1.38, vpa: 10.07, psr: 0.98, pEbit: 9.17, evEbit: 8.41, evEbitda: 3.89, cReceita5a: 8.53, cLucro5a: 4.84, roe: 14, roic: 14.06, giroAtivos: 0.85, margemBruta: 61.41, margemEbit: 10.67, margemLiquida: 9, liqCorrente: 1.76, divLiqPl: -0.12, divLiqEbitda: -0.35, plAtivos: 0.55 },
   MGLU3: { dividend: 3.2, pe: 20.1, pvp: 0.66, lpa: 0.47, vpa: 14.38, psr: 0.19, pEbit: 4.09, evEbit: 6.5, evEbitda: 3.27, cReceita5a: 13.85, cLucro5a: -16.79, roe: 3, roic: 6.85, giroAtivos: 1.03, margemBruta: 30.65, margemEbit: 4.72, margemLiquida: 1, liqCorrente: 1.26, divLiqPl: 0.39, divLiqEbitda: 1.21, plAtivos: 0.3 },
   MRVE3: { dividend: 0, pe: -4.09, pvp: 1.04, lpa: -2.37, vpa: 9.35, psr: 0.53, pEbit: -32.46, evEbit: -80.23, evEbitda: 35.46, cReceita5a: 8.27, cLucro5a: 0, roe: -22, roic: -3.04, giroAtivos: 0.36, margemBruta: 28.66, margemEbit: -1.64, margemLiquida: -13, liqCorrente: 1.87, divLiqPl: 1.53, divLiqEbitda: 21.11, plAtivos: 0.18 },
   ABEV3: { dividend: 7.14, pe: 15.86, pvp: 2.77, lpa: 0.98, vpa: 5.63, psr: 2.79, pEbit: 10.5, evEbit: 9.77, evEbitda: 6.66, cReceita5a: 8.61, cLucro5a: 6.38, roe: 18, roic: 21.37, giroAtivos: 0.61, margemBruta: 51.42, margemEbit: 26.54, margemLiquida: 18, liqCorrente: 0.96, divLiqPl: -0.19, divLiqEbitda: -0.49, plAtivos: 0.61 },
-  JBSS3: { dividend: 4.18, pe: 5.41, pvp: 1.35, lpa: 13.28, vpa: 53.06, psr: 0.13, pEbit: 2.62, evEbit: 6.35, evEbitda: 4.1, cReceita5a: 15.31, cLucro5a: 13.7, roe: 26, roic: 12.87, giroAtivos: 2.01, margemBruta: 13.74, margemEbit: 5.04, margemLiquida: 3, liqCorrente: 1.6, divLiqPl: 1.93, divLiqEbitda: 2.41, plAtivos: 0.2 },
+  BBSE3: { dividend: 8.1, pe: 8.9, pvp: 4.7, lpa: 3.84, vpa: 7.28, psr: 4.1, pEbit: 7.2, evEbit: 7.5, evEbitda: 0, cReceita5a: 10.2, cLucro5a: 10.8, roe: 65, roic: 0, giroAtivos: 0, margemBruta: 0, margemEbit: 0, margemLiquida: 83, liqCorrente: 0, divLiqPl: 0, divLiqEbitda: 0, plAtivos: 0 },
+  SUZB3: { dividend: 2, pe: 5.26, pvp: 1.6, lpa: 10.61, vpa: 34.77, psr: 1.41, pEbit: 6.62, evEbit: 13.17, evEbitda: 3.51, cReceita5a: 10.47, cLucro5a: 0, roe: 15, roic: -2.11, giroAtivos: 0.3, margemBruta: 32.38, margemEbit: 21.25, margemLiquida: 13, liqCorrente: 3.19, divLiqPl: 1.59, divLiqEbitda: 1.75, plAtivos: 0.26 },
+  KLBN11: { dividend: 7.23, pe: 14.65, pvp: 1.71, lpa: 1.34, vpa: 11.54, psr: 1.19, pEbit: 5.49, evEbit: 11.25, evEbitda: 5.81, cReceita5a: 11.61, cLucro5a: 0, roe: 14, roic: 6.79, giroAtivos: 0.32, margemBruta: 35.39, margemEbit: 21.65, margemLiquida: 10, liqCorrente: 2.06, divLiqPl: 1.79, divLiqEbitda: 2.98, plAtivos: 0.23 },
+  RENT3: { dividend: 4.25, pe: 28.11, pvp: 2.06, lpa: 1.67, vpa: 22.72, psr: 1.26, pEbit: 6.75, evEbit: 10.97, evEbitda: 5.13, cReceita5a: 32.3, cLucro5a: 12.34, roe: 7, roic: 10.13, giroAtivos: 0.49, margemBruta: 26.64, margemEbit: 18.7, margemLiquida: 4, liqCorrente: 1.2, divLiqPl: 1.29, divLiqEbitda: 1.97, plAtivos: 0.3 },
+  NTCO3: { dividend: 0, pe: -2.14, pvp: 1.01, lpa: -5.16, vpa: 10.94, psr: 0.71, pEbit: 11.11, evEbit: 14.05, evEbitda: -3.43, cReceita5a: 10.77, cLucro5a: 0, roe: -54, roic: 5.69, giroAtivos: 0.62, margemBruta: 66.36, margemEbit: 6.37, margemLiquida: -33, liqCorrente: 1.68, divLiqPl: 0.27, divLiqEbitda: -0.72, plAtivos: 0.43 },
+  RADL3: { dividend: 1.87, pe: 31.32, pvp: 6.01, lpa: 0.77, vpa: 3.99, psr: 1, pEbit: 16.55, evEbit: 17.63, evEbitda: 7.46, cReceita5a: 17.22, cLucro5a: 11.69, roe: 19, roic: 22.56, giroAtivos: 1.77, margemBruta: 29.34, margemEbit: 6.01, margemLiquida: 3, liqCorrente: 1.39, divLiqPl: 0.39, divLiqEbitda: 0.46, plAtivos: 0.29 },
   VIVT3: { dividend: 2.71, pe: 22.29, pvp: 1.99, lpa: 1.91, vpa: 21.39, psr: 2.31, pEbit: 13.94, evEbit: 15.28, evEbitda: 3.7, cReceita5a: 6.68, cLucro5a: 5.27, roe: 9, roic: 8.63, giroAtivos: 0.47, margemBruta: 44.75, margemEbit: 16.54, margemLiquida: 10, liqCorrente: 1, divLiqPl: 0.19, divLiqEbitda: 0.32, plAtivos: 0.54 },
   TIMS3: { dividend: 8.86, pe: 32.82, pvp: 3.36, lpa: 0.84, vpa: 8.17, psr: 2.46, pEbit: 10.35, evEbit: 9.21, evEbitda: 4.31, cReceita5a: 9.05, cLucro5a: 1.63, roe: 16, roic: 30.94, giroAtivos: 0.46, margemBruta: 53.93, margemEbit: 23.82, margemLiquida: 15, liqCorrente: 0.93, divLiqPl: -0.37, divLiqEbitda: -0.53, plAtivos: 0.33 },
   TOTS3: { dividend: 1.64, pe: 24.94, pvp: 4.09, lpa: 1.49, vpa: 9.08, psr: 3.85, pEbit: 19.81, evEbit: 19.85, evEbitda: 12.29, cReceita5a: 17.33, cLucro5a: 24.77, roe: 15, roic: 12, giroAtivos: 0.61, margemBruta: 70.26, margemEbit: 19.45, margemLiquida: 14, liqCorrente: 1.96, divLiqPl: 0.01, divLiqEbitda: 0.03, plAtivos: 0.58 },
@@ -166,6 +176,22 @@ export const indicatorTooltips: Record<string, { title: string; description: str
 export function calcGrahamPrice(asset: Holding): number | null {
   if (!asset.lpa || !asset.vpa || asset.lpa <= 0 || asset.vpa <= 0) return null;
   return Math.round(Math.sqrt(22.5 * asset.lpa * asset.vpa) * 100) / 100;
+}
+
+export function calcGrahamSafetyPrice(
+  asset: Holding
+): { price: number | null; basis: "graham" | "vpa" | "none" } {
+  const graham = calcGrahamPrice(asset);
+  if (graham && Number.isFinite(graham) && graham > 0) {
+    return { price: Math.round(graham * 0.7 * 100) / 100, basis: "graham" };
+  }
+
+  if (asset.vpa && Number.isFinite(asset.vpa) && asset.vpa > 0) {
+    // Fallback conservador patrimonial quando LPA nao permite Graham classico.
+    return { price: Math.round(asset.vpa * 0.67 * 100) / 100, basis: "vpa" };
+  }
+
+  return { price: null, basis: "none" };
 }
 
 export const allocationData = (() => {
@@ -406,11 +432,12 @@ const ASSET_5Y_CAGR: Record<string, number> = {
   ITUB4: 0.08, BBAS3: 0.12, BBDC4: -0.02, B3SA3: 0.05,
   AXIA6: 0.15, CPFE3: 0.10, ISAE4: 0.09, SAPR11: 0.07,
   PETR4: 0.18, VALE3: 0.10, GGBR4: 0.12,
-  WEGE3: 0.22, EMBR3: 0.35, TUPY3: 0.06,
+  WEGE3: 0.22, EMBJ3: 0.35, TUPY3: 0.06,
   LREN3: -0.05, MGLU3: -0.40, MRVE3: -0.08,
-  ABEV3: 0.03, JBSS3: 0.15,
+  ABEV3: 0.03, NTCO3: 0.02,
   VIVT3: 0.06, TIMS3: 0.10, TOTS3: 0.12,
   RDOR3: 0.08, HAPV3: -0.10, FLRY3: 0.05,
+  BBSE3: 0.10, SUZB3: 0.11, KLBN11: 0.09, RENT3: 0.14, RADL3: 0.12,
 };
 
 // Lazy-computed cache
@@ -425,8 +452,10 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
   if (!_marketHistoryCache) {
     _marketHistoryCache = {};
     for (const h of holdings) {
-      // Safe base series: avoid synthetic volatility when a ticker is missing in loaded CSV.
-      _marketHistoryCache[h.symbol] = generateFlatOHLCV(h.price);
+      // Fallback base series for tickers missing in loaded CSV.
+      // Use deterministic synthetic history (not flat) to avoid broken straight-line charts.
+      const cagr = ASSET_5Y_CAGR[h.symbol] ?? 0.06;
+      _marketHistoryCache[h.symbol] = generateAssetOHLCV(h.symbol, h.price, cagr);
     }
   }
   // Override with real data where available — clean outliers first
@@ -454,7 +483,7 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
     .map((h) => h.symbol)
     .filter((s) => !data[s] || data[s].length === 0);
   if (missing.length > 0) {
-    console.warn(`[investments] Missing real series for ${missing.length} tickers (using flat fallback):`, missing);
+    console.warn(`[investments] Missing real series for ${missing.length} tickers (using synthetic fallback):`, missing);
   }
 
   // Also rebuild benchmark cache using real IBOV data if available
@@ -481,142 +510,45 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
 }
 
 /**
- * Clean OHLCV data by detecting and fixing outliers.
- * CSV has corrupted values (missing digits) causing extreme spikes/dips.
- * Strategy: if close deviates >40% from neighbors, interpolate.
+ * Conservative cleanup:
+ * keep raw market shape, only fixing clearly broken points.
  */
 function cleanOHLCVOutliers(data: OHLCVDay[]): OHLCVDay[] {
-  if (data.length < 3) return data;
-  const sourceLast = data[data.length - 1];
-  const sourcePrev = data.length > 1 ? data[data.length - 2] : sourceLast;
-  const result = data.map(d => ({ ...d }));
+  if (data.length === 0) return data;
 
-  // Multi-pass cleaning with progressively tighter thresholds
-  // Pass 1: fix extreme outliers (>25% deviation from neighbors)
-  // Pass 2: fix moderate outliers (>12% deviation)
-  // Pass 3: fix subtle outliers (>7% deviation from 5-day moving average)
-  const thresholds = [0.25, 0.12, 0.07];
+  const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date)).map((d) => ({ ...d }));
+  if (sorted.length < 3) return sorted;
 
-  for (const threshold of thresholds) {
-    for (let i = 1; i < result.length - 1; i++) {
-      const prev = result[i - 1].close;
-      const curr = result[i].close;
-      const next = result[i + 1].close;
-      const avg = (prev + next) / 2;
+  for (let i = 1; i < sorted.length - 1; i++) {
+    const prev = sorted[i - 1].close;
+    const curr = sorted[i].close;
+    const next = sorted[i + 1].close;
+    const base = (prev + next) / 2;
+    if (!Number.isFinite(base) || base <= 0) continue;
 
-      if (avg > 0 && Math.abs(curr - avg) / avg > threshold) {
-        const interpolated = Math.round(avg * 100) / 100;
-        result[i] = {
-          ...result[i],
-          open: interpolated,
-          high: Math.max(prev, next) * 1.002,
-          low: Math.min(prev, next) * 0.998,
-          close: interpolated,
-        };
-      }
-    }
-  }
+    // Only fix implausible jumps (likely corrupt values).
+    const deviation = Math.abs(curr - base) / base;
+    if (deviation <= 0.7 && curr > 0) continue;
 
-  // Pass 4: 5-day moving average pass to catch remaining spikes
-  for (let i = 2; i < result.length - 2; i++) {
-    const window = [result[i - 2].close, result[i - 1].close, result[i + 1].close, result[i + 2].close];
-    const ma = window.reduce((a, b) => a + b, 0) / window.length;
-    const curr = result[i].close;
-    if (ma > 0 && Math.abs(curr - ma) / ma > 0.06) {
-      const interpolated = Math.round(((result[i - 1].close + result[i + 1].close) / 2) * 100) / 100;
-      result[i] = {
-        ...result[i],
-        open: interpolated,
-        high: Math.max(result[i - 1].close, result[i + 1].close) * 1.002,
-        low: Math.min(result[i - 1].close, result[i + 1].close) * 0.998,
-        close: interpolated,
-      };
-    }
-  }
-
-  // Pass 5: Final EMA smoothing — stronger smoothing to eliminate jaggedness
-  const alpha = 0.3; // lower = more smoothing (was 0.4)
-  let ema = result[0].close;
-  for (let i = 1; i < result.length; i++) {
-    ema = alpha * result[i].close + (1 - alpha) * ema;
-    const smoothed = Math.round(ema * 100) / 100;
-    result[i] = {
-      ...result[i],
-      close: smoothed,
-      open: Math.round((alpha * result[i].open + (1 - alpha) * result[i - 1].close) * 100) / 100,
-      high: Math.max(smoothed, result[i].open) * 1.001,
-      low: Math.min(smoothed, result[i].open) * 0.999,
-    };
-  }
-  // Pass 6: Reverse EMA to eliminate lag bias from forward-only smoothing
-  let rEma = result[result.length - 1].close;
-  for (let i = result.length - 2; i >= 0; i--) {
-    rEma = 0.35 * result[i].close + 0.65 * rEma;
-    const blended = Math.round(((result[i].close + rEma) / 2) * 100) / 100;
-    result[i] = {
-      ...result[i],
-      close: blended,
-      open: blended,
-      high: blended * 1.001,
-      low: blended * 0.999,
+    const repaired = Math.round(base * 100) / 100;
+    sorted[i] = {
+      ...sorted[i],
+      open: repaired,
+      high: Math.round(Math.max(prev, next, repaired) * 100) / 100,
+      low: Math.round(Math.min(prev, next, repaired) * 100) / 100,
+      close: repaired,
     };
   }
 
-  // Fix first/last — more aggressive to avoid abrupt edges
-  if (result.length > 3) {
-    // Fix first 3 points
-    const earlyRef = result[3].close;
-    for (let i = 0; i < 3; i++) {
-      const ref = i === 0 ? earlyRef : result[i + 1].close;
-      if (ref > 0 && Math.abs(result[i].close - ref) / ref > 0.05) {
-        const smooth = i === 0 ? result[1].close : (result[i - 1].close + result[i + 1].close) / 2;
-        result[i] = { ...result[i], open: smooth, high: smooth * 1.002, low: smooth * 0.998, close: Math.round(smooth * 100) / 100 };
-      }
-    }
-    // Fix last 5 points — critical for avoiding abrupt drops/spikes at the end
-    for (let i = result.length - 1; i >= Math.max(0, result.length - 5); i--) {
-      const neighbors: number[] = [];
-      if (i > 0) neighbors.push(result[i - 1].close);
-      if (i > 1) neighbors.push(result[i - 2].close);
-      if (i < result.length - 1) neighbors.push(result[i + 1].close);
-      if (neighbors.length === 0) continue;
-      const avg = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
-      if (avg > 0 && Math.abs(result[i].close - avg) / avg > 0.04) {
-        const smooth = Math.round(avg * 100) / 100;
-        result[i] = { ...result[i], open: smooth, high: smooth * 1.002, low: smooth * 0.998, close: smooth };
-      }
-    }
-  }
-
-  // Never rewrite the latest market candles: these are used by cards/details
-  // and daily variation (% vs previous close).
-  if (result.length > 1) {
-    result[result.length - 2] = {
-      ...result[result.length - 2],
-      open: sourcePrev.open,
-      high: sourcePrev.high,
-      low: sourcePrev.low,
-      close: sourcePrev.close,
-      volume: sourcePrev.volume,
-    };
-  }
-  result[result.length - 1] = {
-    ...result[result.length - 1],
-    open: sourceLast.open,
-    high: sourceLast.high,
-    low: sourceLast.low,
-    close: sourceLast.close,
-    volume: sourceLast.volume,
-  };
-
-  return result;
+  return sorted;
 }
 
 export function getMarketHistory(): Record<string, OHLCVDay[]> {
   if (_marketHistoryCache) return _marketHistoryCache;
   const result: Record<string, OHLCVDay[]> = {};
   for (const h of holdings) {
-    result[h.symbol] = generateFlatOHLCV(h.price);
+    const cagr = ASSET_5Y_CAGR[h.symbol] ?? 0.06;
+    result[h.symbol] = generateAssetOHLCV(h.symbol, h.price, cagr);
   }
   _marketHistoryCache = result;
   return result;
@@ -668,12 +600,17 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
   
   switch (period) {
     case "1D": {
-      // Simulate intraday from last trading day (15-min updates)
+      // Simulate intraday from last trading day (15-min updates):
+      // first point = session open, last point = session close.
       const lastDay = allData[allData.length - 1];
       const prevDay = allData.length > 1 ? allData[allData.length - 2] : lastDay;
       const rand = seededRandom(hashStr(symbol + "1D"));
       const points: { month: string; price: number }[] = [];
-      let p = prevDay.close;
+      const openStart =
+        Number.isFinite(lastDay.open) && lastDay.open > 0
+          ? lastDay.open
+          : (Number.isFinite(prevDay.close) && prevDay.close > 0 ? prevDay.close : lastDay.close);
+      let p = openStart;
       const target = lastDay.close;
       const startMin = 10 * 60;
       const endMin = 17 * 60 + 45;
@@ -684,6 +621,10 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
         const h = Math.floor(min / 60);
         const m = min % 60;
         const label = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        if (i === 0) {
+          points.push({ month: label, price: Math.round(openStart * 100) / 100 });
+          continue;
+        }
         const drift = (target - p) / Math.max(1, (totalPoints - i)) * 0.30;
         p += drift + (rand() - 0.5) * lastDay.close * 0.0012;
         points.push({ month: label, price: Math.round(p * 100) / 100 });
@@ -783,10 +724,15 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
   // Extra smoothing on 30D to reduce visual amplitude/noise.
   const alpha = 0.28;
   let ema = mapped[0]?.price ?? 0;
-  return mapped.map((point) => {
+  const smoothed = mapped.map((point) => {
     ema = alpha * point.price + (1 - alpha) * ema;
     return { ...point, price: Math.round(ema * 100) / 100 };
   });
+  if (smoothed.length > 0) {
+    smoothed[0].price = mapped[0].price;
+    smoothed[smoothed.length - 1].price = mapped[mapped.length - 1].price;
+  }
+  return smoothed;
 }
 
 // Get benchmark data filtered by period for PerformanceChart
@@ -802,13 +748,18 @@ export function getFilteredBenchmarks(
   
   switch (period) {
     case "1 DIA": {
-      // Intraday simulation in PnL space (starts at 0), 10-minute steps.
+      // Intraday path in PnL space (starts at 0), 10-minute steps.
       const rand = seededRandom(hashStr("portfolio1D"));
       const points: any[] = [];
       const marketData = getMarketHistory();
+      const benchmarkData = getBenchmarkHistory();
       const activePositions = (userPortfolio && userPortfolio.length > 0)
         ? userPortfolio
         : holdings.map((h) => ({ symbol: h.symbol, shares: h.shares }));
+      const investedReference = activePositions.reduce((sum, p) => {
+        const avg = Number((p as { avgPrice?: number }).avgPrice ?? 0);
+        return sum + Math.max(0, avg * p.shares);
+      }, 0) || baseValue;
 
       const portfolioDayPnl = activePositions.reduce((sum, p) => {
         const series = marketData[p.symbol];
@@ -819,13 +770,59 @@ export function getFilteredBenchmarks(
       }, 0);
 
       let cart = 0;
-      let ibov = 0;
-      let cdi = 0;
-      let ipca = 0;
+      const ibovDailySeries = getIbovSeriesFromMarketData(marketData);
+      const ibovSymbol =
+        marketData["^BVSP"]?.length
+          ? "^BVSP"
+          : marketData["IBOV"]?.length
+            ? "IBOV"
+            : marketData["BVSP"]?.length
+              ? "BVSP"
+              : marketData["IBOVESPA"]?.length
+                ? "IBOVESPA"
+                : null;
+      const ibovIntraday = ibovSymbol ? getFilteredPriceHistory(ibovSymbol, "1D") : [];
+
+      const normalizeIntraday = (rows: { price: number }[]) => {
+        if (rows.length < 2) return [] as number[];
+        const first = rows[0].price;
+        const safeFirst = first > 0 ? first : rows[1].price || 1;
+        return rows.map((r) => 1000 * (r.price / safeFirst));
+      };
+      const ibovNormIntraday = normalizeIntraday(ibovIntraday);
+
+      const endReturnFromTwoPoints = (series: SeriesPoint[]) => {
+        if (!series || series.length < 2) return 0;
+        const prev = series[series.length - 2].value;
+        const last = series[series.length - 1].value;
+        if (!Number.isFinite(prev) || prev <= 0 || !Number.isFinite(last)) return 0;
+        return last / prev - 1;
+      };
+
+      const ibovFallbackDayReturn = (() => {
+        if (ibovDailySeries.length < 2) return 0;
+        const prev = ibovDailySeries[ibovDailySeries.length - 2].value;
+        const last = ibovDailySeries[ibovDailySeries.length - 1].value;
+        if (!Number.isFinite(prev) || prev <= 0 || !Number.isFinite(last)) return 0;
+        return last / prev - 1;
+      })();
+      const cdiDayReturn = endReturnFromTwoPoints(benchmarkData.CDI || []);
+      const ipcaDayReturn = endReturnFromTwoPoints(benchmarkData.IPCA || []);
+
       const startMin = 10 * 60;
       const endMin = 17 * 60 + 50;
       const stepMin = 10;
       const totalPoints = Math.floor((endMin - startMin) / stepMin) + 1;
+      const sampleAt = (arr: number[], idx: number, count: number) => {
+        if (arr.length === 0) return null;
+        if (arr.length === 1) return arr[0];
+        const pos = (idx / Math.max(1, count - 1)) * (arr.length - 1);
+        const lo = Math.floor(pos);
+        const hi = Math.min(arr.length - 1, lo + 1);
+        const t = pos - lo;
+        return arr[lo] * (1 - t) + arr[hi] * t;
+      };
+
       for (let i = 0; i < totalPoints; i++) {
         const min = startMin + i * stepMin;
         const h = Math.floor(min / 60);
@@ -834,15 +831,18 @@ export function getFilteredBenchmarks(
         const t = i / Math.max(1, totalPoints - 1);
         const targetAtT = portfolioDayPnl * t;
         cart += (targetAtT - cart) * 0.28 + (rand() - 0.5) * Math.max(6, Math.abs(portfolioDayPnl) * 0.02);
-        ibov += (rand() - 0.48) * baseValue * 0.0012;
-        cdi += baseValue * 0.000425 / totalPoints;
-        ipca += baseValue * 0.000185 / totalPoints;
+
+        const ibovNorm = sampleAt(ibovNormIntraday, i, totalPoints);
+        const ibovRet = ibovNorm != null ? (ibovNorm - 1000) / 1000 : ibovFallbackDayReturn * t;
+        const cdiRet = cdiDayReturn * t;
+        const ipcaRet = ipcaDayReturn * t;
+
         points.push({
           month: label,
           carteira: Number(cart.toFixed(2)),
-          ibovespa: Number(ibov.toFixed(2)),
-          cdi: Number(cdi.toFixed(2)),
-          ipca: Number(ipca.toFixed(2)),
+          ibovespa: Number((investedReference * ibovRet).toFixed(2)),
+          cdi: Number((investedReference * cdiRet).toFixed(2)),
+          ipca: Number((investedReference * ipcaRet).toFixed(2)),
         });
       }
       if (points.length > 0) points[points.length - 1].carteira = Number(portfolioDayPnl.toFixed(2));
@@ -865,7 +865,9 @@ export function getFilteredBenchmarks(
     startStr = minStartDate;
   }
   
-  const ibovData = benchmarks.IBOV.filter(d => d.date >= startStr);
+  const ibovFromMarket = getIbovSeriesFromMarketData(getMarketHistory());
+  const ibovSource = ibovFromMarket.length > 0 ? ibovFromMarket : benchmarks.IBOV;
+  const ibovData = ibovSource.filter(d => d.date >= startStr);
   const cdiData = benchmarks.CDI.filter(d => d.date >= startStr);
   const ipcaData = benchmarks.IPCA.filter(d => d.date >= startStr);
   
@@ -1137,6 +1139,16 @@ function buildFlatSeriesFromDates(dates: string[], value = 1000): SeriesPoint[] 
   return dates.map((date) => ({ date, value }));
 }
 
+function getIbovSeriesFromMarketData(marketData: ReturnType<typeof getMarketHistory>): SeriesPoint[] {
+  const ibovRows =
+    marketData["^BVSP"] || marketData["IBOV"] || marketData["BVSP"] || marketData["IBOVESPA"] || [];
+
+  return ibovRows
+    .map((row) => ({ date: row.date, value: row.close }))
+    .filter((row) => !!row.date && Number.isFinite(row.value))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 function buildLocalBenchmarksFallback(
   from: string,
   to: string,
@@ -1146,13 +1158,10 @@ function buildLocalBenchmarksFallback(
   series: { ibov: SeriesPoint[]; cdi: SeriesPoint[]; ipca: SeriesPoint[] };
 } {
   const benchmarkIbov = getBenchmarkHistory().IBOV || [];
-  const marketIbovSeries =
-    marketData["^BVSP"] || marketData["IBOV"] || marketData["BVSP"] || marketData["IBOVESPA"] || [];
   // Always prefer raw IBOV from loaded market data for consistency with CSV refreshes.
   // getBenchmarkHistory() can be stale/synthetic in some startup paths.
-  const ibovBase = marketIbovSeries.length
-    ? marketIbovSeries.map((row) => ({ date: row.date, value: row.close }))
-    : benchmarkIbov.map((p) => ({ date: p.date, value: p.value }));
+  const ibovFromMarket = getIbovSeriesFromMarketData(marketData);
+  const ibovBase = ibovFromMarket.length ? ibovFromMarket : benchmarkIbov.map((p) => ({ date: p.date, value: p.value }));
   const ibovFiltered = ibovBase
     .filter((row) => row.date >= from && row.date <= to && Number.isFinite(row.value))
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -1391,8 +1400,9 @@ export async function getInvestmentComparisonData(symbol: string, period: string
     }
 
     const fallbackDates = assetRaw.map((p0) => p0.date);
+    const ibovFromMarket = getIbovSeriesFromMarketData(marketData).filter((row) => row.date <= endStr);
     const ibovRaw = ensureNonEmptySeries(
-      [...apiData.series.ibov].sort((a, b) => a.date.localeCompare(b.date)),
+      (ibovFromMarket.length ? ibovFromMarket : [...apiData.series.ibov]).sort((a, b) => a.date.localeCompare(b.date)),
       fallbackDates
     );
     const cdiRaw = ensureNonEmptySeries(
@@ -1464,9 +1474,36 @@ export async function getInvestmentComparisonData(symbol: string, period: string
         const assetSafeStart = assetStart > 0 ? assetStart : intradayAsset[1].price || 1;
         const assetIntradayNorm = intradayAsset.map((row) => Number((1000 * (row.price / assetSafeStart)).toFixed(2)));
 
-        const ibovEnd = points.at(-1)?.IBOV ?? 1000;
-        const cdiEnd = points.at(-1)?.CDI ?? 1000;
-        const ipcaEnd = points.at(-1)?.IPCA ?? 1000;
+        const intradayMarketData = getMarketHistory();
+        const ibovSymbol =
+          intradayMarketData["^BVSP"]?.length
+            ? "^BVSP"
+            : intradayMarketData["IBOV"]?.length
+              ? "IBOV"
+              : intradayMarketData["BVSP"]?.length
+                ? "BVSP"
+                : null;
+        const intradayIbov = ibovSymbol ? getFilteredPriceHistory(ibovSymbol, "1D") : [];
+        const ibovIntradayNorm =
+          intradayIbov.length >= 2
+            ? (() => {
+                const start = intradayIbov[0].price;
+                const safeStart = start > 0 ? start : intradayIbov[1].price || 1;
+                return intradayIbov.map((row) => Number((1000 * (row.price / safeStart)).toFixed(2)));
+              })()
+            : null;
+
+        const endFromLastTwo = (series: SeriesPoint[]) => {
+          if (!series || series.length < 2) return 1000;
+          const prev = series[series.length - 2].value;
+          const last = series[series.length - 1].value;
+          if (!Number.isFinite(prev) || prev <= 0 || !Number.isFinite(last)) return 1000;
+          return Number((1000 * (last / prev)).toFixed(2));
+        };
+
+        const ibovEnd = endFromLastTwo(ibovRaw);
+        const cdiEnd = endFromLastTwo(cdiRaw);
+        const ipcaEnd = endFromLastTwo(ipcaRaw);
         const n = intradayAsset.length;
 
         const interpolate = (target: number, idx: number) => {
@@ -1478,15 +1515,25 @@ export async function getInvestmentComparisonData(symbol: string, period: string
           date: `${now.toISOString().slice(0, 10)}T${row.month}:00`,
           month: row.month,
           [symbol]: assetIntradayNorm[idx],
-          IBOV: Number(interpolate(ibovEnd, idx).toFixed(2)),
+          IBOV: ibovIntradayNorm && ibovIntradayNorm[idx] !== undefined
+            ? ibovIntradayNorm[idx]
+            : Number(interpolate(ibovEnd, idx).toFixed(2)),
           CDI: Number(interpolate(cdiEnd, idx).toFixed(2)),
           IPCA: Number(interpolate(ipcaEnd, idx).toFixed(2)),
         }));
       }
     }
 
+    const metaBase: InvestmentComparisonMeta = {
+      ...apiData.meta,
+      sources: {
+        ...apiData.meta.sources,
+        ibov: ibovFromMarket.length >= 2 ? "ok" : apiData.meta.sources.ibov,
+      },
+    };
+
     const meta = markMetaStale(
-      apiData.meta,
+      metaBase,
       [
         ibovPeriod.length === 0 ? "ibov" : null,
         cdiPeriod.length === 0 ? "cdi" : null,

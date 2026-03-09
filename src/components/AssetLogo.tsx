@@ -3,14 +3,17 @@
 // Local logos in /public/logos/ (uploaded by user)
 const LOCAL_LOGOS: Record<string, string> = {
   RDOR3: "/logos/rdor3.avif",
-  TOTS3: "/logos/tots3.gif",
-  JBSS3: "/logos/jbss3.jpg",
+  TOTS3: "/logos/totvs.png",
   ABEV3: "/logos/abev3.png",
-  TUPY3: "/logos/tupy3.jpg",
-  EMBR3: "/logos/embr3.png",
-  GGBR4: "/logos/ggbr4.jpg",
-  AXIA6: "/logos/axia6.jpeg",
+  TUPY3: "/logos/tupy.jpg",
+  EMBJ3: "/logos/embr3.png",
+  GGBR4: "/logos/gerdau.png",
+  AXIA6: "/logos/axia.jpg",
   CPFE3: "/logos/cpfe3.png",
+  BBSE3: "/logos/BB-SEGURIDADE.webp",
+  NTCO3: "/logos/natura.png",
+  B3SA3: "/logos/b3.png",
+  VIVT3: "/logos/vivo.png",
 };
 
 // External favicon fallback for assets without local logo.
@@ -31,15 +34,22 @@ const LOGO_DOMAINS: Record<string, string> = {
   TIMS3: "tim.com.br",
   HAPV3: "hapvida.com.br",
   FLRY3: "fleury.com.br",
-  JBSS3: "jbs.com.br",
-  EMBR3: "embraer.com",
+  EMBJ3: "embraer.com",
   RDOR3: "rededorsaoluiz.com.br",
   ABEV3: "ambev.com.br",
   TUPY3: "tupy.com.br",
   GGBR4: "gerdau.com",
   AXIA6: "eletrobras.com",
   TOTS3: "totvs.com",
+  BBSE3: "bbseguridaderi.com.br",
+  SUZB3: "suzano.com.br",
+  KLBN11: "klabin.com.br",
+  RENT3: "localiza.com",
+  NTCO3: "naturaeco.com",
+  RADL3: "ri.rdsaude.com.br",
 };
+
+const WHITE_BG_LOGOS = new Set(["BBSE3", "VIVT3", "TOTS3"]);
 
 interface AssetLogoProps {
   symbol: string;
@@ -51,6 +61,7 @@ export function AssetLogo({ symbol, size = 28, className = "" }: AssetLogoProps)
   const localSrc = LOCAL_LOGOS[symbol];
   const domain = LOGO_DOMAINS[symbol];
   const src = localSrc || (domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : null);
+  const whiteBgClass = WHITE_BG_LOGOS.has(symbol) ? "bg-white p-1" : "";
 
   if (src) {
     return (
@@ -59,7 +70,7 @@ export function AssetLogo({ symbol, size = 28, className = "" }: AssetLogoProps)
         alt={symbol}
         width={size}
         height={size}
-        className={`rounded-lg object-cover ${className}`}
+        className={`rounded-lg object-cover ${whiteBgClass} ${className}`}
         onError={(e) => {
           const target = e.currentTarget;
           target.style.display = "none";
@@ -84,6 +95,7 @@ export function AssetLogoWithFallback({ symbol, size = 28, className = "" }: Ass
   const localSrc = LOCAL_LOGOS[symbol];
   const domain = LOGO_DOMAINS[symbol];
   const src = localSrc || (domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : null);
+  const whiteBgClass = WHITE_BG_LOGOS.has(symbol) ? "bg-white p-1" : "";
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -93,7 +105,7 @@ export function AssetLogoWithFallback({ symbol, size = 28, className = "" }: Ass
           alt={symbol}
           width={size}
           height={size}
-          className={`rounded-lg object-cover ${className}`}
+          className={`rounded-lg object-cover ${whiteBgClass} ${className}`}
           onError={(e) => {
             (e.currentTarget as HTMLElement).style.display = "none";
             const fallback = e.currentTarget.nextElementSibling as HTMLElement;

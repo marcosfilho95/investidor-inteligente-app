@@ -17,9 +17,9 @@ const STORAGE_PRICES_PATH = STORAGE_BASE ? `${STORAGE_BASE}/prices/prices_latest
 const STORAGE_STATUS_PATH = STORAGE_BASE ? `${STORAGE_BASE}/data-status.json` : "";
 const LOCAL_PRICES_PATH = "/data/prices_daily_24assets_plus_ibov_5y.csv";
 
-const IDB_DB_NAME = "ii-market-cache-v1";
+const IDB_DB_NAME = "ii-market-cache-v2";
 const IDB_STORE_NAME = "datasets";
-const PRICES_CURRENT_VERSION_KEY = "ii_prices_current_version";
+const PRICES_CURRENT_VERSION_KEY = "ii_prices_current_version_v2";
 const PRICES_KEY_PREFIX = "prices:";
 
 if (!SUPABASE_URL) {
@@ -129,6 +129,63 @@ function getLatestDateFromData(data: Record<string, OHLCVDay[]>): string | null 
   return latest;
 }
 
+function parseCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (ch === "," && !inQuotes) {
+      out.push(current);
+      current = "";
+      continue;
+    }
+
+    current += ch;
+  }
+
+  out.push(current);
+  return out;
+}
+
+function cleanCsvField(value: string): string {
+  return value.trim().replace(/^"(.*)"$/, "$1").trim();
+}
+
+function parseCsvNumber(value: string): number {
+  const raw = cleanCsvField(value);
+  if (!raw) return Number.NaN;
+
+  // Supports both "42.93" and "42,93" (and with thousands separators).
+  const hasComma = raw.includes(",");
+  const hasDot = raw.includes(".");
+  let normalized = raw;
+
+  if (hasComma && hasDot) {
+    if (raw.lastIndexOf(",") > raw.lastIndexOf(".")) {
+      normalized = raw.replace(/\./g, "").replace(/,/g, ".");
+    } else {
+      normalized = raw.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    normalized = raw.replace(/,/g, ".");
+  }
+
+  return Number(normalized);
+}
+
 function parsePricesCSV(text: string): Record<string, OHLCVDay[]> {
   const lines = text.trim().split("\n");
   const result: Record<string, OHLCVDay[]> = {};
@@ -136,20 +193,29 @@ function parsePricesCSV(text: string): Record<string, OHLCVDay[]> {
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
-    const parts = line.split(",");
+    const parts = parseCsvLine(line);
     if (parts.length < 7) continue;
 
-    const [date, openStr, highStr, lowStr, closeStr, volumeStr, ticker] = parts;
-    const tk = ticker.trim();
+    const [dateRaw, openStr, highStr, lowStr, closeStr, volumeStr, tickerRaw] = parts;
+    const date = cleanCsvField(dateRaw);
+    const tk = cleanCsvField(tickerRaw).toUpperCase();
+    const open = parseCsvNumber(openStr);
+    const high = parseCsvNumber(highStr);
+    const low = parseCsvNumber(lowStr);
+    const close = parseCsvNumber(closeStr);
+    const volume = parseCsvNumber(volumeStr);
+
+    if (!date || !tk) continue;
+    if (![open, high, low, close, volume].every(Number.isFinite)) continue;
 
     if (!result[tk]) result[tk] = [];
     result[tk].push({
-      date: date.trim(),
-      open: parseFloat(openStr),
-      high: parseFloat(highStr),
-      low: parseFloat(lowStr),
-      close: parseFloat(closeStr),
-      volume: parseFloat(volumeStr),
+      date,
+      open,
+      high,
+      low,
+      close,
+      volume,
     });
   }
 
