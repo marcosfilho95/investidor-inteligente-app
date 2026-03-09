@@ -60,7 +60,7 @@ const AssetDetail = () => {
   const asset = holdings.find((h) => h.symbol === symbol);
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [orderType, setOrderType] = useState<"buy" | "sell">("buy");
-  const [selectedPeriod, setSelectedPeriod] = useState("1 ANO");
+  const [selectedPeriod, setSelectedPeriod] = useState("YTD");
   const [chartAnimKey, setChartAnimKey] = useState(0);
   const [compareAnimKey, setCompareAnimKey] = useState(0);
   const [chartsReady, setChartsReady] = useState(() => isRealDataLoaded());
