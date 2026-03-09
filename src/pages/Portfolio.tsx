@@ -12,7 +12,7 @@ import { AiChatWidget } from "@/components/AiChatWidget";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 
 const chartColors = [
@@ -49,6 +49,11 @@ const Portfolio = () => {
   const [tradePage, setTradePage] = useState(1);
   const [holdingsPageDir, setHoldingsPageDir] = useState(1);
   const [tradePageDir, setTradePageDir] = useState(1);
+  const [showHoldingsLeftFade, setShowHoldingsLeftFade] = useState(false);
+  const [showHoldingsRightFade, setShowHoldingsRightFade] = useState(false);
+  const [showHoldingsScrollHint, setShowHoldingsScrollHint] = useState(false);
+  const [showHoldingsMobileScrollbar, setShowHoldingsMobileScrollbar] = useState(false);
+  const holdingsScrollRef = useRef<HTMLDivElement | null>(null);
   const { enrichedHoldings, totalValue, loading, userTrades, addHolding, sellHolding } = useUserHoldings();
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
@@ -213,6 +218,62 @@ const Portfolio = () => {
   useEffect(() => {
     if (tradePage > totalTradePages) setTradePage(totalTradePages);
   }, [tradePage, totalTradePages]);
+
+  useEffect(() => {
+    const container = holdingsScrollRef.current;
+    if (!container) return;
+
+    const updateFades = () => {
+      const maxScrollLeft = container.scrollWidth - container.clientWidth;
+      const hasOverflow = maxScrollLeft > 2;
+      setShowHoldingsLeftFade(container.scrollLeft > 2);
+      setShowHoldingsRightFade(hasOverflow && container.scrollLeft < maxScrollLeft - 2);
+    };
+
+    updateFades();
+    container.addEventListener("scroll", updateFades, { passive: true });
+    window.addEventListener("resize", updateFades);
+
+    return () => {
+      container.removeEventListener("scroll", updateFades);
+      window.removeEventListener("resize", updateFades);
+    };
+  }, [holdingsPage, pagedHoldings.length]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth > 768) return;
+    const hintSeen = localStorage.getItem("ii_seen_holdings_scroll_hint") === "1";
+    if (hintSeen) return;
+
+    setShowHoldingsScrollHint(true);
+    localStorage.setItem("ii_seen_holdings_scroll_hint", "1");
+    const t = window.setTimeout(() => setShowHoldingsScrollHint(false), 3200);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth > 768) return;
+    const scrollbarSeen = localStorage.getItem("ii_seen_holdings_scrollbar_once") === "1";
+    setShowHoldingsMobileScrollbar(!scrollbarSeen);
+  }, []);
+
+  useEffect(() => {
+    const container = holdingsScrollRef.current;
+    if (!container || !showHoldingsMobileScrollbar) return;
+
+    const hideScrollbarOnce = () => {
+      setShowHoldingsMobileScrollbar(false);
+      localStorage.setItem("ii_seen_holdings_scrollbar_once", "1");
+    };
+
+    const timer = window.setTimeout(hideScrollbarOnce, 3600);
+    container.addEventListener("scroll", hideScrollbarOnce, { passive: true, once: true });
+
+    return () => {
+      window.clearTimeout(timer);
+      container.removeEventListener("scroll", hideScrollbarOnce);
+    };
+  }, [showHoldingsMobileScrollbar]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -424,7 +485,11 @@ const Portfolio = () => {
                   <div className="p-5 border-b border-border/50">
                     <h3 className="text-base font-semibold">Ativos na Carteira</h3>
                   </div>
-                  <div className="overflow-x-auto no-scrollbar">
+                  <div className="relative">
+                    <div
+                      ref={holdingsScrollRef}
+                      className={`period-selector-scrollbar overflow-x-auto ${showHoldingsMobileScrollbar ? "" : "no-scrollbar"}`}
+                    >
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-border/50">
@@ -532,7 +597,17 @@ const Portfolio = () => {
                         </motion.tbody>
                       </AnimatePresence>
                     </table>
+                    </div>
+                    {showHoldingsLeftFade && (
+                      <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-card to-transparent md:hidden" />
+                    )}
+                    {showHoldingsRightFade && (
+                      <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent md:hidden" />
+                    )}
                   </div>
+                  {showHoldingsScrollHint && (
+                    <p className="px-5 pt-2 text-[10px] text-muted-foreground md:hidden">Arraste para o lado para ver mais colunas</p>
+                  )}
                   <div className="flex items-center justify-between px-5 py-3 border-t border-border/40">
                     <span className="text-xs text-muted-foreground">Página {holdingsPage} de {totalHoldingsPages}</span>
                     <div className="flex items-center gap-2">
