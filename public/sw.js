@@ -1,5 +1,6 @@
-const CACHE_NAME = "investidor-inteligente-v2";
+const CACHE_NAME = "investidor-inteligente-v3";
 const APP_SHELL = ["/", "/index.html", "/favicon.png", "/manifest.webmanifest"];
+const LOGOS_PATH_PREFIX = "/logos/";
 
 function isCacheableHttpUrl(url) {
   try {
@@ -45,6 +46,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   const isHtmlRequest = event.request.mode === "navigate";
+  const isLogoRequest = requestUrl.pathname.startsWith(LOGOS_PATH_PREFIX);
 
   if (isHtmlRequest) {
     event.respondWith(
@@ -60,6 +62,31 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => caches.match("/index.html"))
+    );
+    return;
+  }
+
+  // Keep brand assets fresh in production; fallback to cache only when offline.
+  if (isLogoRequest) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (
+            response &&
+            response.status === 200 &&
+            response.type === "basic" &&
+            isCacheableHttpUrl(event.request.url) &&
+            isCacheableHttpUrl(response.url)
+          ) {
+            const copy = response.clone();
+            caches
+              .open(CACHE_NAME)
+              .then((cache) => cache.put(event.request, copy))
+              .catch(() => undefined);
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }
