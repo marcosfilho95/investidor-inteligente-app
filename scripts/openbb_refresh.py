@@ -84,13 +84,18 @@ def load_existing_tickers() -> list[str]:
     return tickers
 
 
-def to_yf_symbol(ticker: str) -> str:
-    special = {"IBOV": "^BVSP"}
-    if ticker in special:
-        return special[ticker]
+def to_yf_symbols(ticker: str) -> list[str]:
+    if ticker == "IBOV":
+        return ["^BVSP"]
+
+    # Natura changed ticker over time in some providers.
+    # Keep NTCO3 as canonical app ticker, but try both symbols.
+    if ticker == "NTCO3":
+        return ["NTCO3.SA", "NATU3.SA"]
+
     if any(sep in ticker for sep in [".", "=", "^", ":"]):
-        return ticker
-    return f"{ticker}.SA"
+        return [ticker]
+    return [f"{ticker}.SA"]
 
 
 def _parse_ptbr_number(raw: str | float | int | None) -> float | None:
@@ -222,23 +227,31 @@ def load_manual_csvs() -> dict[str, pd.DataFrame]:
 
 
 def fetch_prices_for_ticker(ticker: str) -> pd.DataFrame | None:
-    symbol = to_yf_symbol(ticker)
-    log(f"Downloading {ticker} ({symbol})")
-
-    try:
-        df = yf.download(
-            symbol,
-            start="2015-01-01",
-            auto_adjust=False,
-            progress=False,
-        )
-    except Exception as exc:
-        print(f"[openbb_refresh] ERROR download failed for {ticker}: {exc}", file=sys.stderr)
-        return None
+    symbols = to_yf_symbols(ticker)
+    df = None
+    used_symbol = None
+    for symbol in symbols:
+        log(f"Downloading {ticker} ({symbol})")
+        try:
+            candidate = yf.download(
+                symbol,
+                start="2015-01-01",
+                auto_adjust=False,
+                progress=False,
+            )
+        except Exception as exc:
+            print(f"[openbb_refresh] ERROR download failed for {ticker} ({symbol}): {exc}", file=sys.stderr)
+            continue
+        if candidate is not None and not candidate.empty:
+            df = candidate
+            used_symbol = symbol
+            break
 
     if df is None or df.empty:
         print(f"[openbb_refresh] WARN no data returned for {ticker}", file=sys.stderr)
         return None
+    if used_symbol and used_symbol != symbols[0]:
+        log(f"WARN {ticker} using alternate Yahoo symbol {used_symbol}")
 
     df = df.reset_index()
     if isinstance(df.columns, pd.MultiIndex):
