@@ -26,6 +26,7 @@ const LOCAL_LOGOS: Record<string, string> = {
   RADL3: "/logos/raia.png",
   B3SA3: "/logos/b3.png",
   VIVT3: "/logos/vivo.png",
+  VALE3: "/logos/vale.png",
 };
 
 // External favicon fallback for assets without local logo.
