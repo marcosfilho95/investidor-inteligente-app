@@ -31,6 +31,7 @@ SOURCE_CSV = ROOT_DIR / "public" / "data" / "prices_daily_24assets_plus_ibov_5y.
 OUTPUT_DIR = ROOT_DIR / "output"
 MANUAL_DIR = OUTPUT_DIR / "manual"
 TODAY = datetime.now().strftime("%Y-%m-%d")
+HISTORY_START = "2021-03-01"
 OUTPUT_LATEST = OUTPUT_DIR / "prices_latest.csv"
 OUTPUT_VERSIONED = OUTPUT_DIR / f"prices_{TODAY}.csv"
 
@@ -91,7 +92,8 @@ def to_yf_symbols(ticker: str) -> list[str]:
     # Natura changed ticker over time in some providers.
     # Keep NTCO3 as canonical app ticker, but try both symbols.
     if ticker == "NTCO3":
-        return ["NTCO3.SA", "NATU3.SA"]
+        # Prefer NATU3 history on Yahoo, NTCO3 as fallback.
+        return ["NATU3.SA", "NTCO3.SA"]
 
     if any(sep in ticker for sep in [".", "=", "^", ":"]):
         return [ticker]
@@ -211,6 +213,7 @@ def load_manual_csvs() -> dict[str, pd.DataFrame]:
             )
 
         out = out.dropna(subset=["date", "open", "high", "low", "close", "volume"])
+        out = out[pd.to_datetime(out["date"], errors="coerce") >= pd.to_datetime(HISTORY_START)]
         if out.empty:
             continue
         out["volume"] = (
@@ -235,7 +238,7 @@ def fetch_prices_for_ticker(ticker: str) -> pd.DataFrame | None:
         try:
             candidate = yf.download(
                 symbol,
-                start="2015-01-01",
+                start=HISTORY_START,
                 auto_adjust=False,
                 progress=False,
             )
@@ -294,6 +297,7 @@ def fetch_prices_for_ticker(ticker: str) -> pd.DataFrame | None:
     )
 
     out = out.dropna(subset=["date", "open", "high", "low", "close", "volume"])
+    out = out[pd.to_datetime(out["date"], errors="coerce") >= pd.to_datetime(HISTORY_START)]
     if out.empty:
         print(f"[openbb_refresh] WARN filtered dataset empty for {ticker}", file=sys.stderr)
         return None
@@ -330,6 +334,7 @@ def fallback_from_source_csv(ticker: str) -> pd.DataFrame | None:
     for c in ["open", "high", "low", "close", "volume"]:
         out[c] = pd.to_numeric(out[c], errors="coerce")
     out = out.dropna(subset=required)
+    out = out[pd.to_datetime(out["date"], errors="coerce") >= pd.to_datetime(HISTORY_START)]
     if out.empty:
         return None
     out["volume"] = (
@@ -389,6 +394,7 @@ def fallback_from_brapi(ticker: str) -> pd.DataFrame | None:
     for c in ["open", "high", "low", "close", "volume"]:
         out[c] = pd.to_numeric(out[c], errors="coerce")
     out = out.dropna(subset=["date", "open", "high", "low", "close", "volume"])
+    out = out[pd.to_datetime(out["date"], errors="coerce") >= pd.to_datetime(HISTORY_START)]
     if out.empty:
         return None
     out["volume"] = (
@@ -451,6 +457,7 @@ def main() -> int:
 
         combined = pd.concat(frames, ignore_index=True)
         combined = combined[~combined["ticker"].isin(EXCLUDED_TICKERS)]
+        combined = combined[pd.to_datetime(combined["date"], errors="coerce") >= pd.to_datetime(HISTORY_START)]
         combined["volume"] = (
             pd.to_numeric(combined["volume"], errors="coerce")
             .replace([np.inf, -np.inf], np.nan)
