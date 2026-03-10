@@ -2,7 +2,7 @@
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getFilteredPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation } from "@/data/investments";
+import { holdings, getFilteredPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
@@ -77,6 +77,7 @@ const AssetDetail = () => {
     lastUpdatedAt: null,
     sources: { ibov: "ok", cdi: "ok", ipca: "ok" },
   });
+  const [intradayPriceHistory, setIntradayPriceHistory] = useState<{ month: string; price: number }[]>([]);
   const { addHolding, sellHolding, userHoldings } = useUserHoldings();
 
   if (!asset) {
@@ -103,10 +104,37 @@ const AssetDetail = () => {
   const recommendationDisclaimer =
     "Observação: O score fundamentalista combina valuation, rentabilidade, endividamento, crescimento, dividendos e ajustes estruturais, como risco setorial e risco estatal quando aplicável.";
 
-  const priceHistory = useMemo(
-    () => (chartsReady ? getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]) : []),
-    [asset.symbol, selectedPeriod, chartsReady]
-  );
+  useEffect(() => {
+    let mounted = true;
+    if (!chartsReady || selectedPeriod !== "1 DIA") {
+      setIntradayPriceHistory([]);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    getFilteredIntradayPriceHistory(asset.symbol)
+      .then((rows) => {
+        if (!mounted) return;
+        setIntradayPriceHistory(rows);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setIntradayPriceHistory([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [asset.symbol, selectedPeriod, chartsReady]);
+
+  const priceHistory = useMemo(() => {
+    if (!chartsReady) return [];
+    if (selectedPeriod === "1 DIA" && intradayPriceHistory.length > 0) {
+      return intradayPriceHistory;
+    }
+    return getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]);
+  }, [asset.symbol, selectedPeriod, chartsReady, intradayPriceHistory]);
 
   const priceHistoryYAxisDomain = useMemo(() => {
     if (!Y_DOMAIN_ADJUST_PERIODS.has(selectedPeriod)) return undefined;
