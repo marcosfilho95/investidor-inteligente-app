@@ -509,7 +509,11 @@ const AssetDetail = () => {
               <div className="glass-card p-5">
                 <h3 className="text-base font-semibold mb-1">Se você tivesse investido R$ 1.000</h3>
                 <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <p className="text-xs text-muted-foreground">{displaySymbol} vs IBOV vs CDI vs IPCA</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedPeriod === "1 DIA"
+                      ? `${displaySymbol} vs IBOV vs CDI vs IPCA (Daily)`
+                      : `${displaySymbol} vs IBOV vs CDI vs IPCA`}
+                  </p>
                 </div>
                 <ResponsiveContainer width="100%" height={280}>
                   <ComposedChart key={`compare-${asset.symbol}-${selectedPeriod}-${compareAnimKey}`} data={investmentComparison}>
