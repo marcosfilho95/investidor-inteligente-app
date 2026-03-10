@@ -1538,84 +1538,76 @@ export async function getInvestmentComparisonData(symbol: string, period: string
     );
 
     if (p === "1D") {
-      const assetSeries = (marketData[symbol] || []).slice().sort((a, b) => a.date.localeCompare(b.date));
-      const assetLast = assetSeries[assetSeries.length - 1];
-      const assetPrev = assetSeries.length > 1 ? assetSeries[assetSeries.length - 2] : assetLast;
-      if (!assetLast || !assetPrev) {
+      const toSeries = (rows: IntradayPoint[]): SeriesPoint[] =>
+        rows
+          .map((r) => ({ date: r.datetime, value: r.price }))
+          .filter((r) => !!r.date && Number.isFinite(r.value))
+          .sort((a, b) => a.date.localeCompare(b.date));
+
+      const normalizeIntraday = (series: SeriesPoint[]): SeriesPoint[] => {
+        if (!series.length) return [];
+        const base = Number.isFinite(series[0].value) && series[0].value > 0 ? series[0].value : 1;
+        return series.map((p0) => ({
+          date: p0.date,
+          value: Number((1000 * (p0.value / base)).toFixed(2)),
+        }));
+      };
+
+      const intradayData = await getIntradayHistory();
+      const symbolAliases = normalizeIntradayTicker(symbol);
+      const ibovAliases = normalizeIntradayTicker("IBOV");
+      const assetRows = symbolAliases.map((a) => intradayData[a] || []).find((rows) => rows.length > 0) || [];
+      const ibovRows = ibovAliases.map((a) => intradayData[a] || []).find((rows) => rows.length > 0) || [];
+
+      const onlyDate = (dt: string) => dt.slice(0, 10);
+      const assetDays = Array.from(new Set(assetRows.map((r) => onlyDate(r.datetime)))).sort((a, b) => a.localeCompare(b));
+      const ibovDays = Array.from(new Set(ibovRows.map((r) => onlyDate(r.datetime)))).sort((a, b) => a.localeCompare(b));
+      const commonDays = assetDays.filter((d) => ibovDays.includes(d));
+      const targetDay = commonDays.at(-1) || assetDays.at(-1) || ibovDays.at(-1);
+
+      if (!targetDay) {
         return buildNeverEmptyFallback(apiData.meta);
       }
 
-      const ibovKey =
-        marketData["^BVSP"]?.length
-          ? "^BVSP"
-          : marketData["IBOV"]?.length
-            ? "IBOV"
-            : marketData["BVSP"]?.length
-              ? "BVSP"
-              : marketData["IBOVESPA"]?.length
-                ? "IBOVESPA"
-                : null;
-      const ibovOhlc = ibovKey ? [...(marketData[ibovKey] || [])].sort((a, b) => a.date.localeCompare(b.date)) : [];
-      const ibovLastOhlc = ibovOhlc[ibovOhlc.length - 1];
-      const ibovPrevOhlc = ibovOhlc.length > 1 ? ibovOhlc[ibovOhlc.length - 2] : ibovLastOhlc;
-
-      const getPrevLast = (series: SeriesPoint[]): [number, number] => {
-        if (!series || series.length === 0) return [1000, 1000];
-        const last = series[series.length - 1].value;
-        const prev = series.length > 1 ? series[series.length - 2].value : last;
-        return [prev, last];
-      };
-
-      const normalize = (value: number, base: number) => {
-        const safeBase = Number.isFinite(base) && base > 0 ? base : 1;
-        return Number((1000 * (value / safeBase)).toFixed(2));
-      };
-
-      const safeNum = (value: number, fallback: number) =>
-        Number.isFinite(value) ? value : fallback;
-
-      const assetClose = safeNum(assetLast.close, 1);
-      const assetOpen = safeNum(assetLast.open, assetClose);
-      const assetLow = safeNum(assetLast.low, Math.min(assetOpen, assetClose));
-      const assetHigh = safeNum(assetLast.high, Math.max(assetOpen, assetClose));
-      const assetPrevClose = safeNum(assetPrev.close, assetClose);
-      const assetBase = assetPrevClose > 0 ? assetPrevClose : assetClose;
-      const assetValues = [assetPrevClose, assetOpen, assetLow, assetHigh, assetClose];
-      const assetNorm = assetValues.map((v) => normalize(v, assetBase));
-
-      let ibovNorm: number[];
-      if (ibovLastOhlc && ibovPrevOhlc) {
-        const ibovClose = safeNum(ibovLastOhlc.close, 1);
-        const ibovOpen = safeNum(ibovLastOhlc.open, ibovClose);
-        const ibovLow = safeNum(ibovLastOhlc.low, Math.min(ibovOpen, ibovClose));
-        const ibovHigh = safeNum(ibovLastOhlc.high, Math.max(ibovOpen, ibovClose));
-        const ibovPrevClose = safeNum(ibovPrevOhlc.close, ibovClose);
-        const ibovBase = ibovPrevClose > 0 ? ibovPrevClose : ibovClose;
-        ibovNorm = [ibovPrevClose, ibovOpen, ibovLow, ibovHigh, ibovClose].map((v) => normalize(v, ibovBase));
-      } else {
-        const [ibPrev, ibLast] = getPrevLast(ibovRaw);
-        const ibStart = normalize(ibPrev, ibPrev);
-        ibovNorm = [ibStart, ibStart, ibStart, ibStart, normalize(ibLast, ibPrev)];
+      const assetDay = assetRows.filter((r) => onlyDate(r.datetime) === targetDay);
+      const ibovDay = ibovRows.filter((r) => onlyDate(r.datetime) === targetDay);
+      if (assetDay.length < 2 || ibovDay.length < 2) {
+        return buildNeverEmptyFallback(apiData.meta);
       }
 
-      const [cdiPrev, cdiLast] = getPrevLast(cdiRaw);
-      const [ipcaPrev, ipcaLast] = getPrevLast(ipcaRaw);
-      const cdiStart = normalize(cdiPrev, cdiPrev);
-      const ipcaStart = normalize(ipcaPrev, ipcaPrev);
-      const cdiNorm = [cdiStart, cdiStart, cdiStart, cdiStart, normalize(cdiLast, cdiPrev)];
-      const ipcaNorm = [ipcaStart, ipcaStart, ipcaStart, ipcaStart, normalize(ipcaLast, ipcaPrev)];
+      const assetSeries = toSeries(assetDay);
+      const ibovSeries = toSeries(ibovDay);
+      const calendar = Array.from(new Set([
+        ...assetSeries.map((p0) => p0.date),
+        ...ibovSeries.map((p0) => p0.date),
+      ])).sort((a, b) => a.localeCompare(b));
 
-      const labels = ["Fech. ant.", "Abertura", "Minima", "Maxima", "Fechamento"];
-      const points: InvestmentComparisonPoint[] = labels.map((label, i) => ({
-        date: `${endStr}T0${i}:00:00`,
-        month: label,
-        [symbol]: assetNorm[i],
-        IBOV: ibovNorm[i],
-        CDI: cdiNorm[i],
-        IPCA: ipcaNorm[i],
+      if (calendar.length < 2) {
+        return buildNeverEmptyFallback(apiData.meta);
+      }
+
+      const assetFilled = forwardFillOnCalendar(normalizeIntraday(assetSeries), calendar);
+      const ibovFilled = forwardFillOnCalendar(normalizeIntraday(ibovSeries), calendar);
+
+      const points: InvestmentComparisonPoint[] = calendar.map((dt, i) => ({
+        date: dt,
+        month: dt.split(" ")[1]?.slice(0, 5) || dt.slice(11, 16),
+        [symbol]: Number(assetFilled[i].value.toFixed(2)),
+        IBOV: Number(ibovFilled[i].value.toFixed(2)),
+        CDI: 1000,
+        IPCA: 1000,
       }));
 
-      return { points, meta: apiData.meta };
+      return {
+        points,
+        meta: {
+          ...apiData.meta,
+          sources: {
+            ...apiData.meta.sources,
+            ibov: "ok",
+          },
+        },
+      };
     }
 
     const commonStart = [assetRaw[0].date, ibovRaw[0].date, cdiRaw[0].date, ipcaRaw[0].date, startStr]
