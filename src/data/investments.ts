@@ -289,6 +289,112 @@ export interface OHLCVDay {
   volume: number;
 }
 
+type IntradayPoint = {
+  datetime: string; // YYYY-MM-DD HH:mm:ss
+  price: number;
+};
+
+const INTRADAY_LOCAL_PATH = "/data/intraday_latest.csv";
+const INTRADAY_STORAGE_PATH = (() => {
+  const env = (import.meta as ImportMeta & { env: Record<string, string | undefined> }).env;
+  const projectId = env?.VITE_SUPABASE_PROJECT_ID || env?.SUPABASE_PROJECT_ID || "";
+  const supabaseUrl =
+    env?.VITE_SUPABASE_URL ||
+    env?.SUPABASE_URL ||
+    (projectId ? `https://${projectId}.supabase.co` : "");
+  if (!supabaseUrl) return "";
+  return `${supabaseUrl}/storage/v1/object/public/market-data/intraday/intraday_latest.csv`;
+})();
+
+let _intradayHistoryCache: Record<string, IntradayPoint[]> | null = null;
+let _intradayHistoryInFlight: Promise<Record<string, IntradayPoint[]>> | null = null;
+
+function normalizeIntradayTicker(symbol: string): string[] {
+  const s = String(symbol || "").trim().toUpperCase();
+  if (s === "NATU3" || s === "NTCO3") return ["NATU3", "NTCO3"];
+  if (s === "IBOV" || s === "^BVSP" || s === "BVSP" || s === "IBOVESPA") return ["IBOV", "^BVSP", "BVSP", "IBOVESPA"];
+  return [s];
+}
+
+function parseIntradayCsv(text: string): Record<string, IntradayPoint[]> {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length <= 1) return {};
+
+  const out: Record<string, IntradayPoint[]> = {};
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const parts = line.split(",");
+    if (parts.length < 3) continue;
+    const datetime = parts[0]?.trim();
+    const price = Number(parts[1]);
+    const ticker = parts[2]?.trim().toUpperCase();
+    if (!datetime || !ticker || !Number.isFinite(price)) continue;
+    if (!out[ticker]) out[ticker] = [];
+    out[ticker].push({ datetime, price });
+  }
+
+  for (const tk of Object.keys(out)) {
+    // Remove duplicatas por datetime e mantém a última ocorrência.
+    const dedup = new Map<string, IntradayPoint>();
+    for (const row of out[tk]) dedup.set(row.datetime, row);
+    out[tk] = Array.from(dedup.values()).sort((a, b) => a.datetime.localeCompare(b.datetime));
+  }
+
+  return out;
+}
+
+async function fetchIntradayCsv(url: string): Promise<string | null> {
+  if (!url) return null;
+  try {
+    const resp = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(6000) });
+    if (!resp.ok) return null;
+    const txt = await resp.text();
+    return txt && txt.trim().length > 0 ? txt : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getIntradayHistory(): Promise<Record<string, IntradayPoint[]>> {
+  if (_intradayHistoryCache) return _intradayHistoryCache;
+  if (_intradayHistoryInFlight) return _intradayHistoryInFlight;
+
+  _intradayHistoryInFlight = (async () => {
+    const storageCsv = await fetchIntradayCsv(INTRADAY_STORAGE_PATH);
+    const localCsv = storageCsv ? null : await fetchIntradayCsv(INTRADAY_LOCAL_PATH);
+    const parsed = parseIntradayCsv(storageCsv || localCsv || "");
+    _intradayHistoryCache = parsed;
+    return parsed;
+  })();
+
+  try {
+    return await _intradayHistoryInFlight;
+  } finally {
+    _intradayHistoryInFlight = null;
+  }
+}
+
+export async function getFilteredIntradayPriceHistory(symbol: string): Promise<{ month: string; price: number }[]> {
+  const allIntraday = await getIntradayHistory();
+  const aliases = normalizeIntradayTicker(symbol);
+  const rows =
+    aliases.map((alias) => allIntraday[alias]).find((series) => Array.isArray(series) && series.length > 0) || [];
+
+  if (!rows.length) return [];
+
+  const lastRows = rows.slice(-120);
+  return lastRows
+    .map((row) => {
+      const hm = row.datetime.includes(" ") ? row.datetime.split(" ")[1]?.slice(0, 5) : row.datetime.slice(11, 16);
+      return {
+        month: hm || row.datetime,
+        price: Math.round(row.price * 100) / 100,
+      };
+    })
+    .filter((p) => Number.isFinite(p.price));
+}
+
 // Benchmark parameters for deterministic generation
 // CDI: ~11% a.a. pro-rata die, near-zero volatility
 // IPCA: ~4.7% a.a. with small monthly noise
