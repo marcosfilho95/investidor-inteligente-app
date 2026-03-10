@@ -4,10 +4,12 @@ Upload validated datasets to Supabase Storage and update SQL metadata/cache.
 
 Usage:
   python scripts/upload_to_supabase.py
+  python scripts/upload_to_supabase.py --intraday-only
 """
 
 from __future__ import annotations
 
+import argparse
 import csv
 import hashlib
 import json
@@ -28,6 +30,7 @@ OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "output")
 TODAY = datetime.now().strftime("%Y-%m-%d")
 BUCKET = "market-data"
 PRICES_LATEST_OBJECT = "prices/prices_latest.csv"
+INTRADAY_LATEST_OBJECT = "intraday/intraday_latest.csv"
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
@@ -136,6 +139,36 @@ def upload_file(sb, filepath: str, storage_path: str, content_type: str = "text/
         f"Verification failed for {BUCKET}/{storage_path}: "
         f"local_md5={local_md5} remote_md5={remote_md5}"
     )
+
+
+def get_remote_md5(sb, storage_path: str) -> str | None:
+    try:
+        signed = sb.storage.from_(BUCKET).create_signed_url(storage_path, 60)
+        signed_url = signed.get("signedURL") or signed.get("signed_url")
+        if not signed_url:
+            return None
+        supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+        if not signed_url.startswith("http"):
+            signed_url = f"{supabase_url}/storage/v1{signed_url}"
+        sep = "&" if "?" in signed_url else "?"
+        signed_url = f"{signed_url}{sep}t={int(time.time() * 1000)}"
+        with urllib.request.urlopen(signed_url, timeout=20) as resp:
+            downloaded = resp.read()
+        return hashlib.md5(downloaded).hexdigest()
+    except Exception:
+        return None
+
+
+def upload_if_changed(sb, filepath: str, latest_path: str, versioned_path: str, content_type: str = "text/csv") -> tuple[bool, str]:
+    local_md5 = file_checksum(filepath)
+    remote_md5 = get_remote_md5(sb, latest_path)
+    if remote_md5 and remote_md5 == local_md5:
+        log(f"Upload skipped latest={latest_path}: no changes detected local_md5={local_md5}")
+        return False, local_md5
+
+    upload_file(sb, filepath, versioned_path, content_type=content_type)
+    upload_file(sb, filepath, latest_path, content_type=content_type)
+    return True, local_md5
 
 def upload_data_status(sb, version_date: str) -> None:
     status_path = os.path.join(OUTPUT_DIR, "data-status.json")
@@ -300,9 +333,78 @@ def find_prices_file() -> str | None:
     return os.path.join(OUTPUT_DIR, files[0])
 
 
+def find_intraday_file() -> str | None:
+    latest = os.path.join(OUTPUT_DIR, "intraday_latest.csv")
+    if os.path.exists(latest):
+        return latest
+    return None
+
+
+def parse_cli_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Upload datasets to Supabase")
+    parser.add_argument("--intraday-only", action="store_true", help="Upload only intraday dataset")
+    return parser.parse_args()
+
+
+def validate_intraday_csv(filepath: str) -> tuple[bool, str, dict[str, str | int]]:
+    if not filepath or not os.path.exists(filepath):
+        return False, f"arquivo inexistente: {filepath}", {}
+
+    if os.path.getsize(filepath) == 0:
+        return False, f"arquivo vazio: {filepath}", {}
+
+    with open(filepath, encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+
+    if not rows:
+        return False, "arquivo sem linhas de dados", {}
+
+    headers = set(rows[0].keys())
+    required = {"datetime", "price", "ticker"}
+    if not required.issubset(headers):
+        return False, f"colunas inválidas. esperado={sorted(required)} recebido={sorted(headers)}", {}
+
+    valid_count = 0
+    tickers = set()
+    min_dt = None
+    max_dt = None
+    for row in rows:
+        dt_raw = (row.get("datetime") or "").strip()
+        ticker = (row.get("ticker") or "").strip().upper()
+        price_raw = (row.get("price") or "").strip()
+        if not dt_raw or not ticker or not price_raw:
+            continue
+        try:
+            dt = datetime.fromisoformat(dt_raw.replace("Z", ""))
+            price = float(price_raw.replace(",", "."))
+            if not (price == price):  # NaN check
+                continue
+        except Exception:
+            continue
+        valid_count += 1
+        tickers.add(ticker)
+        if min_dt is None or dt < min_dt:
+            min_dt = dt
+        if max_dt is None or dt > max_dt:
+            max_dt = dt
+
+    if valid_count == 0:
+        return False, "nenhuma linha válida para upload (datetime/price/ticker)", {}
+
+    stats = {
+        "stored_rows": valid_count,
+        "tickers": len(tickers),
+        "min_dt": min_dt.strftime("%Y-%m-%d %H:%M:%S") if min_dt else "n/a",
+        "max_dt": max_dt.strftime("%Y-%m-%d %H:%M:%S") if max_dt else "n/a",
+        "retention_days": os.environ.get("INTRADAY_RETENTION_DAYS", "7"),
+    }
+    return True, "ok", stats
+
+
 def main() -> int:
+    args = parse_cli_args()
     load_env_files()
-    log(f"Start run date={TODAY}")
+    log(f"Start run date={TODAY} intraday_only={args.intraday_only}")
     sb = get_supabase()
     supabase_url = os.environ.get("SUPABASE_URL", "")
     log(f"Supabase project={project_ref_from_url(supabase_url)} url={supabase_url}")
@@ -310,6 +412,52 @@ def main() -> int:
 
     if not os.path.isdir(OUTPUT_DIR):
         raise RuntimeError(f"Output directory not found: {OUTPUT_DIR}")
+
+    if args.intraday_only:
+        intraday_filepath = find_intraday_file()
+        ok, reason, stats = validate_intraday_csv(intraday_filepath or "")
+        if not ok:
+            log(f"Intraday validation failed: {reason}. Upload canceled.")
+            return 0
+
+        changed, checksum = upload_if_changed(
+            sb,
+            intraday_filepath,
+            INTRADAY_LATEST_OBJECT,
+            f"intraday/intraday_{TODAY}.csv",
+        )
+        if changed:
+            update_meta(
+                sb,
+                "intraday",
+                TODAY,
+                f"intraday/intraday_{TODAY}.csv",
+                int(stats.get("stored_rows", 0)),
+                checksum,
+                status="ok",
+            )
+        else:
+            update_meta(
+                sb,
+                "intraday",
+                TODAY,
+                INTRADAY_LATEST_OBJECT,
+                int(stats.get("stored_rows", 0)),
+                checksum,
+                status="skipped",
+                message="intraday upload skipped: no changes detected",
+            )
+
+        log(
+            "Intraday upload summary: "
+            f"stored_rows={stats.get('stored_rows', 0)} "
+            f"tickers={stats.get('tickers', 0)} "
+            f"min_dt={stats.get('min_dt', 'n/a')} "
+            f"max_dt={stats.get('max_dt', 'n/a')} "
+            f"retention_days={stats.get('retention_days', '7')} "
+            f"changed={changed}"
+        )
+        return 0
 
     prices_filepath = find_prices_file()
     if not prices_filepath:

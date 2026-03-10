@@ -185,6 +185,31 @@ def persist(df: pd.DataFrame) -> None:
     export_df.to_csv(OUTPUT_INTRADAY_LATEST, index=False, encoding="utf-8")
     export_df.to_csv(LOCAL_INTRADAY_FALLBACK, index=False, encoding="utf-8")
 
+def build_stats(df: pd.DataFrame) -> dict[str, str | int]:
+    if df.empty:
+        return {
+            "stored_rows": 0,
+            "tickers": 0,
+            "min_dt": "n/a",
+            "max_dt": "n/a",
+        }
+    dt = pd.to_datetime(df["datetime"], errors="coerce")
+    valid = df[dt.notna()].copy()
+    if valid.empty:
+        return {
+            "stored_rows": int(len(df)),
+            "tickers": int(df["ticker"].nunique()) if "ticker" in df.columns else 0,
+            "min_dt": "n/a",
+            "max_dt": "n/a",
+        }
+    min_dt = pd.to_datetime(valid["datetime"], errors="coerce").min()
+    max_dt = pd.to_datetime(valid["datetime"], errors="coerce").max()
+    return {
+        "stored_rows": int(len(valid)),
+        "tickers": int(valid["ticker"].nunique()),
+        "min_dt": min_dt.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(min_dt) else "n/a",
+        "max_dt": max_dt.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(max_dt) else "n/a",
+    }
 
 def main() -> int:
     try:
@@ -209,10 +234,13 @@ def main() -> int:
         merged = apply_retention(merged)
 
         persist(merged)
+        stats = build_stats(merged)
 
         log(
             f"Refresh complete. open_now={open_now} tickers={len(tickers)} incoming_rows={new_rows} "
-            f"stored_rows={len(merged)} retention_days={RETENTION_DAYS} latest={OUTPUT_INTRADAY_LATEST}"
+            f"stored_rows={stats['stored_rows']} tickers_stored={stats['tickers']} "
+            f"min_dt={stats['min_dt']} max_dt={stats['max_dt']} "
+            f"retention_days={RETENTION_DAYS} latest={OUTPUT_INTRADAY_LATEST}"
         )
         return 0
     except Exception as exc:
