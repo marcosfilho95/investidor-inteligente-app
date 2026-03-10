@@ -12,9 +12,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 import { getAssetRouteSymbol, getCanonicalSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
 
-const periods = ["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
-const periodMap: Record<string, string> = { "1 DIA": "1D", "7 DIAS": "7D", "30 DIAS": "30D", "6 MESES": "6M", "YTD": "YTD", "1 ANO": "1A", "5 ANOS": "5A" };
-const Y_DOMAIN_ADJUST_PERIODS = new Set(["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD"]);
+const periods = ["Daily", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
+const periodMap: Record<string, string> = { "Daily": "1D", "7 DIAS": "7D", "30 DIAS": "30D", "6 MESES": "6M", "YTD": "YTD", "1 ANO": "1A", "5 ANOS": "5A" };
+const Y_DOMAIN_ADJUST_PERIODS = new Set(["Daily", "7 DIAS", "30 DIAS", "6 MESES", "YTD"]);
 
 function computeVisualDomain(
   values: number[],
@@ -108,7 +108,7 @@ const AssetDetail = () => {
 
   useEffect(() => {
     let mounted = true;
-    if (!chartsReady || selectedPeriod !== "1 DIA") {
+    if (!chartsReady || selectedPeriod !== "Daily") {
       setIntradayPriceHistory([]);
       setIntradayLastUpdatedLabel(null);
       return () => {
@@ -160,7 +160,7 @@ const AssetDetail = () => {
   }, [asset.symbol, chartsReady]);
 
   useEffect(() => {
-    if (!chartsReady || selectedPeriod !== "1 DIA") return;
+    if (!chartsReady || selectedPeriod !== "Daily") return;
     const id = window.setInterval(() => {
       invalidateIntradayHistoryCache();
       getFilteredIntradayPriceHistory(asset.symbol)
@@ -199,7 +199,7 @@ const AssetDetail = () => {
 
   const priceHistory = useMemo(() => {
     if (!chartsReady) return [];
-    if (selectedPeriod === "1 DIA" && intradayPriceHistory.length > 0) {
+    if (selectedPeriod === "Daily" && intradayPriceHistory.length > 0) {
       return intradayPriceHistory;
     }
     return getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]);
@@ -538,7 +538,7 @@ const AssetDetail = () => {
               <div className="glass-card p-5">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <h3 className="text-base font-semibold">Preço Histórico</h3>
-                  {selectedPeriod === "1 DIA" && intradayLastUpdatedLabel && (
+                  {selectedPeriod === "Daily" && intradayLastUpdatedLabel && (
                     <p className="text-[11px] text-muted-foreground">Última atualização: {intradayLastUpdatedLabel}</p>
                   )}
                 </div>
@@ -584,9 +584,7 @@ const AssetDetail = () => {
                 <h3 className="text-base font-semibold mb-1">Se você tivesse investido R$ 1.000</h3>
                 <div className="mb-4 flex flex-wrap items-center gap-2">
                   <p className="text-xs text-muted-foreground">
-                    {selectedPeriod === "1 DIA"
-                      ? `${displaySymbol} vs IBOV vs CDI vs IPCA (Daily)`
-                      : `${displaySymbol} vs IBOV vs CDI vs IPCA`}
+                    {`${displaySymbol} vs IBOV vs CDI vs IPCA`}
                   </p>
                 </div>
                 <ResponsiveContainer width="100%" height={280}>

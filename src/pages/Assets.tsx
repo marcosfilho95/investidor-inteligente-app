@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, TrendingUp, TrendingDown } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings } from "@/data/investments";
+import { getLatestIntradayPointForCurrentSession, holdings, invalidateIntradayHistoryCache } from "@/data/investments";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
@@ -10,7 +10,43 @@ import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
 const Assets = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("Todos");
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const categories = ["Todos", ...Array.from(new Set(holdings.map((h) => h.sector)))];
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadLivePrices = async () => {
+      const entries = await Promise.all(
+        holdings.map(async (h) => {
+          try {
+            const row = await getLatestIntradayPointForCurrentSession(h.symbol);
+            return [h.symbol, row?.price ?? null] as const;
+          } catch {
+            return [h.symbol, null] as const;
+          }
+        })
+      );
+
+      if (!mounted) return;
+      const next: Record<string, number> = {};
+      for (const [symbol, price] of entries) {
+        if (Number.isFinite(price)) next[symbol] = Number(price);
+      }
+      setLivePrices(next);
+    };
+
+    loadLivePrices();
+    const id = window.setInterval(() => {
+      invalidateIntradayHistoryCache();
+      loadLivePrices();
+    }, 5 * 60 * 1000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(id);
+    };
+  }, []);
 
   const filtered = holdings.filter((h) => {
     const displaySymbol = getDisplaySymbol(h.symbol);
@@ -64,7 +100,9 @@ const Assets = () => {
                   </div>
                   <div className="flex items-end justify-between">
                     <div>
-                      <p className="text-lg font-semibold font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                      <p className="text-lg font-semibold font-mono">
+                        R$ {(livePrices[asset.symbol] ?? asset.price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </p>
                       <p className="text-xs text-muted-foreground mt-0.5">{asset.subsetor}</p>
                     </div>
                     <div className="flex items-center gap-1">
