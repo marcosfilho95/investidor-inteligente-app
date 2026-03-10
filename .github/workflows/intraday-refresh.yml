@@ -9,9 +9,6 @@ on:
 jobs:
   refresh-intraday:
     runs-on: ubuntu-latest
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
     steps:
       - name: Checkout repository
@@ -27,12 +24,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements_openbb.txt
 
-      - name: Refresh intraday and upload
+      - name: Refresh intraday only (safe mode)
         run: |
-          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
-            echo "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not configured."
-            exit 1
-          fi
           python scripts/intraday_refresh.py
-          python scripts/upload_to_supabase.py --intraday-only
 
