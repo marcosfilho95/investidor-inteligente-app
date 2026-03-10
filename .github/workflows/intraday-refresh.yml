@@ -1,0 +1,30 @@
+﻿name: Intraday Refresh (OpenBB -> Supabase)
+
+on:
+  schedule:
+    # 13:00-21:55 UTC = 10:00-18:55 America/Fortaleza (segunda a sexta)
+    - cron: "*/5 13-21 * * 1-5"
+  workflow_dispatch: {}
+
+jobs:
+  refresh-intraday:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements_openbb.txt
+
+      - name: Refresh intraday only (safe mode)
+        run: |
+          python scripts/intraday_refresh.py
+
