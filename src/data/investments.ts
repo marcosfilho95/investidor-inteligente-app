@@ -361,6 +361,33 @@ function getRowsForCurrentSession(rows: IntradayPoint[], now: Date = new Date())
   return rows.filter((r) => r.datetime.slice(0, 10) === todayKey);
 }
 
+function getDailyCloseForDate(symbol: string, dateKey: string): number | null {
+  const aliases = normalizeIntradayTicker(symbol);
+  const market = getMarketHistory();
+  for (const alias of aliases) {
+    const rows = market[alias];
+    if (!rows || !rows.length) continue;
+    const hit = rows.find((r) => r.date === dateKey);
+    if (hit && Number.isFinite(hit.close)) return Number(hit.close);
+  }
+  return null;
+}
+
+function maybeBuildClosingAnchorForDailySession(
+  symbol: string,
+  sessionDate: string,
+  lastDatetime: string | null
+): IntradayPoint | null {
+  const dailyClose = getDailyCloseForDate(symbol, sessionDate);
+  if (!Number.isFinite(dailyClose)) return null;
+  const lastTime = lastDatetime?.split(" ")[1]?.slice(0, 5) || "";
+  if (lastTime >= "18:00") return null;
+  return {
+    datetime: `${sessionDate} 18:00:00`,
+    price: Number(dailyClose),
+  };
+}
+
 function parseIntradayCsv(text: string): Record<string, IntradayPoint[]> {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length <= 1) return {};
@@ -431,7 +458,14 @@ export async function getFilteredIntradayPriceHistory(symbol: string): Promise<I
   const sessionRows = getRowsForCurrentSession(rows);
   if (!sessionRows.length) return [];
 
-  return sessionRows
+  const lastSessionDt = sessionRows[sessionRows.length - 1]?.datetime ?? null;
+  const sessionDate = sessionRows[0]?.datetime?.slice(0, 10);
+  const closeAnchor = sessionDate
+    ? maybeBuildClosingAnchorForDailySession(symbol, sessionDate, lastSessionDt)
+    : null;
+  const chartRows = closeAnchor ? [...sessionRows, closeAnchor] : sessionRows;
+
+  return chartRows
     .map((row) => {
       const hm = row.datetime.includes(" ") ? row.datetime.split(" ")[1]?.slice(0, 5) : row.datetime.slice(11, 16);
       return {
@@ -455,7 +489,12 @@ export async function getLatestIntradayPointForCurrentSession(
   const sessionRows = getRowsForCurrentSession(rows);
   if (!sessionRows.length) return null;
 
-  const last = sessionRows[sessionRows.length - 1];
+  const lastSessionDt = sessionRows[sessionRows.length - 1]?.datetime ?? null;
+  const sessionDate = sessionRows[0]?.datetime?.slice(0, 10);
+  const closeAnchor = sessionDate
+    ? maybeBuildClosingAnchorForDailySession(symbol, sessionDate, lastSessionDt)
+    : null;
+  const last = closeAnchor ?? sessionRows[sessionRows.length - 1];
   if (!last || !Number.isFinite(last.price)) return null;
   const canonical = String(symbol || "").trim().toUpperCase();
   const cacheMap = readIntradayLastPriceCacheMap();
@@ -1657,6 +1696,22 @@ export async function getInvestmentComparisonData(symbol: string, period: string
 
       const assetSeries = toSeries(assetDay);
       const ibovSeries = toSeries(ibovDay);
+      const closeAnchorAsset = maybeBuildClosingAnchorForDailySession(
+        symbol,
+        targetDay,
+        assetSeries[assetSeries.length - 1]?.date ?? null
+      );
+      const closeAnchorIbov = maybeBuildClosingAnchorForDailySession(
+        "IBOV",
+        targetDay,
+        ibovSeries[ibovSeries.length - 1]?.date ?? null
+      );
+      if (closeAnchorAsset) {
+        assetSeries.push({ date: closeAnchorAsset.datetime, value: closeAnchorAsset.price });
+      }
+      if (closeAnchorIbov) {
+        ibovSeries.push({ date: closeAnchorIbov.datetime, value: closeAnchorIbov.price });
+      }
       const calendar = Array.from(new Set([
         ...assetSeries.map((p0) => p0.date),
         ...ibovSeries.map((p0) => p0.date),
