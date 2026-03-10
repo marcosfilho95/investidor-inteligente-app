@@ -412,7 +412,7 @@ const AssetDetail = () => {
                 <div className="flex items-center justify-end gap-1.5 mt-1">
                   {isPositive ? <TrendingUp className="h-3.5 w-3.5 text-gain" /> : <TrendingDown className="h-3.5 w-3.5 text-loss" />}
                   <span className={`text-sm font-mono font-medium ${isPositive ? "text-gain" : "text-loss"}`}>{isPositive ? "+" : ""}{asset.changePercent}%</span>
-                  <span className="text-xs text-muted-foreground">(1 dia)</span>
+                  <span className={`text-sm font-mono font-medium ${isPositive ? "text-gain" : "text-loss"}`}>(1 dia)</span>
                 </div>
               </div>
               <button onClick={() => { setOrderType("buy"); setOrderQtyInput("1"); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"><ShoppingCart className="h-4 w-4" /> Comprar</button>
