@@ -294,6 +294,12 @@ type IntradayPoint = {
   price: number;
 };
 
+type IntradayChartPoint = {
+  month: string;
+  price: number;
+  datetime: string;
+};
+
 const INTRADAY_LOCAL_PATH = "/data/intraday_latest.csv";
 const INTRADAY_STORAGE_PATH = (() => {
   const env = (import.meta as ImportMeta & { env: Record<string, string | undefined> }).env;
@@ -314,6 +320,22 @@ function normalizeIntradayTicker(symbol: string): string[] {
   if (s === "NATU3" || s === "NTCO3") return ["NATU3", "NTCO3"];
   if (s === "IBOV" || s === "^BVSP" || s === "BVSP" || s === "IBOVESPA") return ["IBOV", "^BVSP", "BVSP", "IBOVESPA"];
   return [s];
+}
+
+function getBrtDateKey(date: Date): string {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return fmt.format(date);
+}
+
+function getRowsForCurrentSession(rows: IntradayPoint[], now: Date = new Date()): IntradayPoint[] {
+  if (!rows.length) return [];
+  const todayKey = getBrtDateKey(now);
+  return rows.filter((r) => r.datetime.slice(0, 10) === todayKey);
 }
 
 function parseIntradayCsv(text: string): Record<string, IntradayPoint[]> {
@@ -375,7 +397,7 @@ async function getIntradayHistory(): Promise<Record<string, IntradayPoint[]>> {
   }
 }
 
-export async function getFilteredIntradayPriceHistory(symbol: string): Promise<{ month: string; price: number }[]> {
+export async function getFilteredIntradayPriceHistory(symbol: string): Promise<IntradayChartPoint[]> {
   const allIntraday = await getIntradayHistory();
   const aliases = normalizeIntradayTicker(symbol);
   const rows =
@@ -383,16 +405,40 @@ export async function getFilteredIntradayPriceHistory(symbol: string): Promise<{
 
   if (!rows.length) return [];
 
-  const lastRows = rows.slice(-120);
-  return lastRows
+  const sessionRows = getRowsForCurrentSession(rows);
+  if (!sessionRows.length) return [];
+
+  return sessionRows
     .map((row) => {
       const hm = row.datetime.includes(" ") ? row.datetime.split(" ")[1]?.slice(0, 5) : row.datetime.slice(11, 16);
       return {
         month: hm || row.datetime,
         price: Math.round(row.price * 100) / 100,
+        datetime: row.datetime,
       };
     })
     .filter((p) => Number.isFinite(p.price));
+}
+
+export async function getLatestIntradayPointForCurrentSession(
+  symbol: string
+): Promise<{ datetime: string; price: number } | null> {
+  const allIntraday = await getIntradayHistory();
+  const aliases = normalizeIntradayTicker(symbol);
+  const rows =
+    aliases.map((alias) => allIntraday[alias]).find((series) => Array.isArray(series) && series.length > 0) || [];
+
+  if (!rows.length) return null;
+  const sessionRows = getRowsForCurrentSession(rows);
+  if (!sessionRows.length) return null;
+
+  const last = sessionRows[sessionRows.length - 1];
+  if (!last || !Number.isFinite(last.price)) return null;
+  return { datetime: last.datetime, price: last.price };
+}
+
+export function invalidateIntradayHistoryCache() {
+  _intradayHistoryCache = null;
 }
 
 // Benchmark parameters for deterministic generation
