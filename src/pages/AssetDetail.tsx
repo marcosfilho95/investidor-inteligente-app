@@ -2,7 +2,7 @@
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getFilteredPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation } from "@/data/investments";
+import { holdings, getFilteredPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
@@ -77,7 +77,9 @@ const AssetDetail = () => {
     lastUpdatedAt: null,
     sources: { ibov: "ok", cdi: "ok", ipca: "ok" },
   });
-  const [intradayPriceHistory, setIntradayPriceHistory] = useState<{ month: string; price: number }[]>([]);
+  const [intradayPriceHistory, setIntradayPriceHistory] = useState<{ month: string; price: number; datetime?: string }[]>([]);
+  const [intradayCurrentPrice, setIntradayCurrentPrice] = useState<number | null>(null);
+  const [intradayLastUpdatedLabel, setIntradayLastUpdatedLabel] = useState<string | null>(null);
   const { addHolding, sellHolding, userHoldings } = useUserHoldings();
 
   if (!asset) {
@@ -108,6 +110,7 @@ const AssetDetail = () => {
     let mounted = true;
     if (!chartsReady || selectedPeriod !== "1 DIA") {
       setIntradayPriceHistory([]);
+      setIntradayLastUpdatedLabel(null);
       return () => {
         mounted = false;
       };
@@ -117,16 +120,82 @@ const AssetDetail = () => {
       .then((rows) => {
         if (!mounted) return;
         setIntradayPriceHistory(rows);
+        const last = rows[rows.length - 1];
+        const hhmm = last?.datetime?.split(" ")[1]?.slice(0, 5) || null;
+        setIntradayLastUpdatedLabel(hhmm);
       })
       .catch(() => {
         if (!mounted) return;
         setIntradayPriceHistory([]);
+        setIntradayLastUpdatedLabel(null);
       });
 
     return () => {
       mounted = false;
     };
   }, [asset.symbol, selectedPeriod, chartsReady]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!chartsReady) {
+      setIntradayCurrentPrice(null);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    getLatestIntradayPointForCurrentSession(asset.symbol)
+      .then((last) => {
+        if (!mounted) return;
+        setIntradayCurrentPrice(last?.price ?? null);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setIntradayCurrentPrice(null);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [asset.symbol, chartsReady]);
+
+  useEffect(() => {
+    if (!chartsReady || selectedPeriod !== "1 DIA") return;
+    const id = window.setInterval(() => {
+      invalidateIntradayHistoryCache();
+      getFilteredIntradayPriceHistory(asset.symbol)
+        .then((rows) => {
+          setIntradayPriceHistory(rows);
+          const last = rows[rows.length - 1];
+          const hhmm = last?.datetime?.split(" ")[1]?.slice(0, 5) || null;
+          setIntradayLastUpdatedLabel(hhmm);
+        })
+        .catch(() => {
+          setIntradayPriceHistory([]);
+          setIntradayLastUpdatedLabel(null);
+        });
+      getLatestIntradayPointForCurrentSession(asset.symbol)
+        .then((last) => setIntradayCurrentPrice(last?.price ?? null))
+        .catch(() => setIntradayCurrentPrice(null));
+      getInvestmentComparisonData(asset.symbol, periodMap[selectedPeriod])
+        .then((result) => {
+          setInvestmentComparison(result.points);
+          setComparisonMeta(result.meta);
+          setCompareAnimKey((k) => k + 1);
+        })
+        .catch(() => {
+          setInvestmentComparison([]);
+          setComparisonMeta({
+            lastUpdatedAt: null,
+            sources: { ibov: "stale", cdi: "stale", ipca: "stale" },
+          });
+        });
+      setChartAnimKey((k) => k + 1);
+    }, 5 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, [asset.symbol, selectedPeriod, chartsReady]);
+
+  const displayedPrice = intradayCurrentPrice ?? asset.price;
 
   const priceHistory = useMemo(() => {
     if (!chartsReady) return [];
@@ -334,7 +403,7 @@ const AssetDetail = () => {
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right mr-4">
-                <p className="text-2xl font-semibold font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                <p className="text-2xl font-semibold font-mono">R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                 <div className="flex items-center justify-end gap-1.5 mt-1">
                   {isPositive ? <TrendingUp className="h-3.5 w-3.5 text-gain" /> : <TrendingDown className="h-3.5 w-3.5 text-loss" />}
                   <span className={`text-sm font-mono font-medium ${isPositive ? "text-gain" : "text-loss"}`}>{isPositive ? "+" : ""}{asset.changePercent}%</span>
@@ -378,7 +447,7 @@ const AssetDetail = () => {
                     <div className="grid grid-cols-3 gap-3">
                       <div className="bg-muted/50 rounded-xl p-4 text-center">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preco atual</p>
-                        <p className="text-lg font-mono font-bold mt-1.5">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        <p className="text-lg font-mono font-bold mt-1.5">R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                       </div>
                       <div className="bg-primary/10 rounded-xl p-4 text-center border border-primary/20">
                         <p className="text-[10px] text-primary uppercase tracking-wider font-medium">Valor Intrínseco</p>
@@ -408,7 +477,7 @@ const AssetDetail = () => {
                     <div className="grid grid-cols-3 gap-3">
                       <div className="bg-muted/50 rounded-xl p-4 text-center">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preco atual</p>
-                        <p className="text-lg font-mono font-bold mt-1.5">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        <p className="text-lg font-mono font-bold mt-1.5">R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                       </div>
                       <div className="bg-warning/10 rounded-xl p-4 text-center border border-warning/20">
                         <p className="text-[10px] text-warning uppercase tracking-wider font-medium">Preço Justo Estimado</p>
@@ -467,7 +536,12 @@ const AssetDetail = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <AnimatedCard delay={0.3}>
               <div className="glass-card p-5">
-                <h3 className="text-base font-semibold mb-4">Preço Histórico</h3>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h3 className="text-base font-semibold">Preço Histórico</h3>
+                  {selectedPeriod === "1 DIA" && intradayLastUpdatedLabel && (
+                    <p className="text-[11px] text-muted-foreground">Última atualização: {intradayLastUpdatedLabel}</p>
+                  )}
+                </div>
                 <ResponsiveContainer width="100%" height={280}>
                   <AreaChart key={`price-${asset.symbol}-${chartAnimKey}`} data={priceHistory}>
                     <defs><linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
