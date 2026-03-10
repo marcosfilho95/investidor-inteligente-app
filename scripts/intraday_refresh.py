@@ -44,7 +44,7 @@ TICKER_ALIASES = {
     "SAPR4": "SAPR11",
     "NATU3": "NTCO3",
 }
-EXCLUDED_TICKERS = {"JBSS3", "IBOV"}
+EXCLUDED_TICKERS = {"JBSS3"}
 REQUIRED_FRONTEND_TICKERS = {
     "ITUB4", "BBAS3", "BBDC4", "B3SA3", "BBSE3",
     "AXIA6", "CPFE3", "ISAE4", "SAPR11",
@@ -70,6 +70,8 @@ def to_canonical_ticker(raw: str) -> str:
 
 
 def to_yf_symbol(ticker: str) -> str:
+    if ticker == "IBOV":
+        return "^BVSP"
     if ticker == "NTCO3":
         return "NATU3.SA"
     return f"{ticker}.SA"
@@ -131,6 +133,7 @@ def fetch_intraday_for_ticker(ticker: str) -> pd.DataFrame | None:
         return None
 
     if bars is None or bars.empty:
+        log(f"INFO empty intraday response ticker={ticker} symbol={yf_symbol}")
         return None
 
     bars = bars.reset_index()
@@ -154,6 +157,7 @@ def fetch_intraday_for_ticker(ticker: str) -> pd.DataFrame | None:
     out = pd.DataFrame({"datetime": dt, "price": price})
     out = out.dropna(subset=["datetime", "price"])
     if out.empty:
+        log(f"INFO intraday rows filtered to empty ticker={ticker} symbol={yf_symbol}")
         return None
 
     out["datetime"] = out["datetime"].dt.tz_convert(INTRADAY_MARKET_TZ).dt.tz_localize(None)
