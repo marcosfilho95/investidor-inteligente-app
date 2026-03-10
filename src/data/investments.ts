@@ -301,6 +301,7 @@ type IntradayChartPoint = {
 };
 
 const INTRADAY_LOCAL_PATH = "/data/intraday_latest.csv";
+const INTRADAY_LAST_PRICE_CACHE_KEY = "ii_intraday_last_price_v1";
 const INTRADAY_STORAGE_PATH = (() => {
   const env = (import.meta as ImportMeta & { env: Record<string, string | undefined> }).env;
   const projectId = env?.VITE_SUPABASE_PROJECT_ID || env?.SUPABASE_PROJECT_ID || "";
@@ -314,6 +315,28 @@ const INTRADAY_STORAGE_PATH = (() => {
 
 let _intradayHistoryCache: Record<string, IntradayPoint[]> | null = null;
 let _intradayHistoryInFlight: Promise<Record<string, IntradayPoint[]>> | null = null;
+
+function readIntradayLastPriceCacheMap(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(INTRADAY_LAST_PRICE_CACHE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, number>;
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+function writeIntradayLastPriceCacheMap(data: Record<string, number>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(INTRADAY_LAST_PRICE_CACHE_KEY, JSON.stringify(data));
+  } catch {
+    // ignore cache write errors
+  }
+}
 
 function normalizeIntradayTicker(symbol: string): string[] {
   const s = String(symbol || "").trim().toUpperCase();
@@ -434,11 +457,22 @@ export async function getLatestIntradayPointForCurrentSession(
 
   const last = sessionRows[sessionRows.length - 1];
   if (!last || !Number.isFinite(last.price)) return null;
+  const canonical = String(symbol || "").trim().toUpperCase();
+  const cacheMap = readIntradayLastPriceCacheMap();
+  cacheMap[canonical] = Number(last.price);
+  writeIntradayLastPriceCacheMap(cacheMap);
   return { datetime: last.datetime, price: last.price };
 }
 
 export function invalidateIntradayHistoryCache() {
   _intradayHistoryCache = null;
+}
+
+export function getCachedIntradayLastPrice(symbol: string): number | null {
+  const canonical = String(symbol || "").trim().toUpperCase();
+  const cacheMap = readIntradayLastPriceCacheMap();
+  const value = cacheMap[canonical];
+  return Number.isFinite(value) ? value : null;
 }
 
 // Benchmark parameters for deterministic generation

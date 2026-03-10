@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, TrendingUp, TrendingDown } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { getLatestIntradayPointForCurrentSession, holdings, invalidateIntradayHistoryCache } from "@/data/investments";
+import { getCachedIntradayLastPrice, getLatestIntradayPointForCurrentSession, holdings, invalidateIntradayHistoryCache } from "@/data/investments";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
@@ -10,7 +10,14 @@ import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
 const Assets = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("Todos");
-  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+  const [livePrices, setLivePrices] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {};
+    for (const h of holdings) {
+      const cached = getCachedIntradayLastPrice(h.symbol);
+      if (Number.isFinite(cached)) initial[h.symbol] = Number(cached);
+    }
+    return initial;
+  });
   const categories = ["Todos", ...Array.from(new Set(holdings.map((h) => h.sector)))];
 
   useEffect(() => {

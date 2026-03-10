@@ -2,8 +2,8 @@
 
 on:
   schedule:
-    # 13:05-20:35 UTC = 10:05-17:35 America/Fortaleza (segunda a sexta, intervalo de 30 min)
-    - cron: "5,35 13-20 * * 1-5"
+    # 13:05-20:50 UTC = 10:05-17:50 America/Fortaleza (segunda a sexta, intervalo de 15 min)
+    - cron: "5,20,35,50 13-20 * * 1-5"
   workflow_dispatch: {}
 
 jobs:

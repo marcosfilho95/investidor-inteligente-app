@@ -2,7 +2,7 @@
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getFilteredPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache } from "@/data/investments";
+import { holdings, getFilteredPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getCachedIntradayLastPrice } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
@@ -78,7 +78,7 @@ const AssetDetail = () => {
     sources: { ibov: "ok", cdi: "ok", ipca: "ok" },
   });
   const [intradayPriceHistory, setIntradayPriceHistory] = useState<{ month: string; price: number; datetime?: string }[]>([]);
-  const [intradayCurrentPrice, setIntradayCurrentPrice] = useState<number | null>(null);
+  const [intradayCurrentPrice, setIntradayCurrentPrice] = useState<number | null>(() => getCachedIntradayLastPrice(canonicalSymbol));
   const [intradayLastUpdatedLabel, setIntradayLastUpdatedLabel] = useState<string | null>(null);
   const { addHolding, sellHolding, userHoldings } = useUserHoldings();
 
@@ -136,9 +136,12 @@ const AssetDetail = () => {
   }, [asset.symbol, selectedPeriod, chartsReady]);
 
   useEffect(() => {
+    setIntradayCurrentPrice(getCachedIntradayLastPrice(asset.symbol));
+  }, [asset.symbol]);
+
+  useEffect(() => {
     let mounted = true;
     if (!chartsReady) {
-      setIntradayCurrentPrice(null);
       return () => {
         mounted = false;
       };
@@ -403,7 +406,10 @@ const AssetDetail = () => {
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right mr-4">
-                <p className="text-2xl font-semibold font-mono">R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                <p className="text-2xl font-semibold font-mono">
+                  R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}{" "}
+                  <span className="text-sm font-medium text-muted-foreground">(1 dia)</span>
+                </p>
                 <div className="flex items-center justify-end gap-1.5 mt-1">
                   {isPositive ? <TrendingUp className="h-3.5 w-3.5 text-gain" /> : <TrendingDown className="h-3.5 w-3.5 text-loss" />}
                   <span className={`text-sm font-mono font-medium ${isPositive ? "text-gain" : "text-loss"}`}>{isPositive ? "+" : ""}{asset.changePercent}%</span>
