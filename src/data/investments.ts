@@ -361,6 +361,13 @@ function getRowsForCurrentSession(rows: IntradayPoint[], now: Date = new Date())
   return rows.filter((r) => r.datetime.slice(0, 10) === todayKey);
 }
 
+function getRowsForLatestSession(rows: IntradayPoint[]): IntradayPoint[] {
+  if (!rows.length) return [];
+  const lastDate = rows[rows.length - 1]?.datetime?.slice(0, 10);
+  if (!lastDate) return [];
+  return rows.filter((r) => r.datetime.slice(0, 10) === lastDate);
+}
+
 function getDailyCloseForDate(symbol: string, dateKey: string): number | null {
   const aliases = normalizeIntradayTicker(symbol);
   const market = getMarketHistory();
@@ -455,7 +462,8 @@ export async function getFilteredIntradayPriceHistory(symbol: string): Promise<I
 
   if (!rows.length) return [];
 
-  const sessionRows = getRowsForCurrentSession(rows);
+  const currentSessionRows = getRowsForCurrentSession(rows);
+  const sessionRows = currentSessionRows.length > 0 ? currentSessionRows : getRowsForLatestSession(rows);
   if (!sessionRows.length) return [];
 
   const lastSessionDt = sessionRows[sessionRows.length - 1]?.datetime ?? null;
@@ -486,7 +494,8 @@ export async function getLatestIntradayPointForCurrentSession(
     aliases.map((alias) => allIntraday[alias]).find((series) => Array.isArray(series) && series.length > 0) || [];
 
   if (!rows.length) return null;
-  const sessionRows = getRowsForCurrentSession(rows);
+  const currentSessionRows = getRowsForCurrentSession(rows);
+  const sessionRows = currentSessionRows.length > 0 ? currentSessionRows : getRowsForLatestSession(rows);
   if (!sessionRows.length) return null;
 
   const lastSessionDt = sessionRows[sessionRows.length - 1]?.datetime ?? null;

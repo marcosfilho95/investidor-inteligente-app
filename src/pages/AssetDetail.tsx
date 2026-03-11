@@ -227,9 +227,9 @@ const AssetDetail = () => {
 
   const priceHistory = useMemo(() => {
     if (!chartsReady) return [];
-    if (selectedPeriod === "Daily" && intradayPriceHistory.length > 0) {
-      return intradayPriceHistory;
-    }
+    // Daily deve usar somente a série intraday (sessão atual ou última sessão disponível),
+    // evitando cair no fallback "1D" que gera o resumo OHLC (Fech.ant./Abertura/Mínima/Máxima/Fechar).
+    if (selectedPeriod === "Daily") return intradayPriceHistory;
     if (selectedPeriod === "7 DIAS" && sevenDayPriceHistory.length > 0) {
       return sevenDayPriceHistory;
     }
