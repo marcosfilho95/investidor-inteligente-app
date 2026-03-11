@@ -1032,15 +1032,6 @@ function getLatestMarketDate(): Date {
   return latest ?? new Date();
 }
 
-function getBrtDateKey(date: Date = new Date()): string {
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  return fmt.format(date);
-}
 export function getLatestMarketDateKey(): string {
   return getLatestMarketDate().toISOString().slice(0, 10);
 }
