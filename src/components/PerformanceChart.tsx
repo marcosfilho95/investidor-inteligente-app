@@ -10,7 +10,7 @@ const benchmarks = [
   { key: "ipca", label: "IPCA", color: "hsl(280, 65%, 60%)" },
 ] as const;
 
-const periods = ["1 DIA", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
+const periods = ["Daily", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
 
 interface PerformanceChartProps {
   userHoldings?: (Holding & { avgPrice?: number; firstBuyDate?: string | null })[];

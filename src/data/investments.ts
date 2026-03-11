@@ -1072,6 +1072,7 @@ export function getFilteredBenchmarks(
   let startDate: Date;
   
   switch (period) {
+    case "Daily": startDate = new Date(now); startDate.setDate(now.getDate() - 1); break;
     case "1 DIA": startDate = new Date(now); startDate.setDate(now.getDate() - 1); break;
     case "7 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 7); break;
     case "30 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 30); break;
@@ -1255,7 +1256,7 @@ export function getFilteredBenchmarks(
       const monthNames = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
       
       let label: string;
-      if (period === "1 DIA" || period === "7 DIAS" || period === "30 DIAS") {
+      if (period === "Daily" || period === "1 DIA" || period === "7 DIAS" || period === "30 DIAS") {
         label = `${day}/${month}`;
       } else if (period === "6 MESES" || period === "YTD") {
         label = `${day}/${monthNames[parseInt(month)]}`;
