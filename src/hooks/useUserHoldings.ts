@@ -409,15 +409,17 @@ export function useUserHoldings() {
       const latestClose = marketSeries.length > 0 ? marketSeries[marketSeries.length - 1].close : asset.price;
       const prevClose = marketSeries.length > 1 ? marketSeries[marketSeries.length - 2].close : latestClose;
       const intradayPrice = getCachedIntradayLastPrice(uh.symbol);
-      const displayedPrice = Number.isFinite(intradayPrice) ? Number(intradayPrice) : Number(latestClose);
+      const hasIntradayPrice = Number.isFinite(intradayPrice);
+      const displayedPrice = hasIntradayPrice ? Number(intradayPrice) : Number(latestClose);
+      const referenceClose = hasIntradayPrice ? Number(latestClose) : Number(prevClose);
       const value = uh.shares * displayedPrice;
-      const dayChangeValue = (displayedPrice - prevClose) * uh.shares;
+      const dayChangeValue = (displayedPrice - referenceClose) * uh.shares;
       const totalGainValue = (displayedPrice - uh.avg_price) * uh.shares;
       return {
         ...asset,
         price: displayedPrice,
-        change: displayedPrice - prevClose,
-        changePercent: prevClose > 0 ? Math.round((((displayedPrice / prevClose) - 1) * 100) * 100) / 100 : 0,
+        change: displayedPrice - referenceClose,
+        changePercent: referenceClose > 0 ? Math.round((((displayedPrice / referenceClose) - 1) * 100) * 100) / 100 : 0,
         shares: uh.shares,
         avgPrice: uh.avg_price,
         value,

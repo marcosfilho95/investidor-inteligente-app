@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, TrendingUp, TrendingDown } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { getCachedIntradayLastPrice, getLatestIntradayPointForCurrentSession, getLatestMarketDateKey, getMarketHistory, holdings, invalidateIntradayHistoryCache, isMarketDataStale } from "@/data/investments";
+import { getCachedIntradayLastPrice, getLatestIntradayPointForCurrentSession, getMarketHistory, holdings, invalidateIntradayHistoryCache } from "@/data/investments";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
@@ -20,11 +20,6 @@ const Assets = () => {
   });
   const categories = ["Todos", ...Array.from(new Set(holdings.map((h) => h.sector)))];
   const marketHistory = getMarketHistory();
-  const dataStale = isMarketDataStale();
-  const latestMarketDateLabel = (() => {
-    const [yyyy, mm, dd] = getLatestMarketDateKey().split("-");
-    return yyyy && mm && dd ? `${dd}/${mm}/${yyyy}` : getLatestMarketDateKey();
-  })();
 
   const normalizeSearchText = (value: string) =>
     value
@@ -85,7 +80,6 @@ const Assets = () => {
         <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
           <div>
             <h1 className="text-xl font-semibold">Ativos</h1>
-            {dataStale && <p className="text-xs text-warning mt-1">Dados de fechamento em {latestMarketDateLabel}.</p>}
             <p className="text-sm text-muted-foreground">Explore os 30 ativos da B3 disponíveis na plataforma</p>
           </div>
 
@@ -112,9 +106,11 @@ const Assets = () => {
                   const series = marketHistory[asset.symbol] || [];
                   const latestClose = series.length > 0 ? Number(series[series.length - 1].close) : Number(asset.price);
                   const prevClose = series.length > 1 ? Number(series[series.length - 2].close) : latestClose;
-                  const displayedPrice = dataStale ? latestClose : (livePrices[asset.symbol] ?? asset.price);
-                  const dailyChangePercent = prevClose > 0
-                    ? Math.round((((displayedPrice / prevClose) - 1) * 100) * 100) / 100
+                  const hasLivePrice = Number.isFinite(livePrices[asset.symbol]);
+                  const displayedPrice = hasLivePrice ? Number(livePrices[asset.symbol]) : latestClose;
+                  const referenceClose = hasLivePrice ? latestClose : prevClose;
+                  const dailyChangePercent = referenceClose > 0
+                    ? Math.round((((displayedPrice / referenceClose) - 1) * 100) * 100) / 100
                     : 0;
                   const isPositive = dailyChangePercent >= 0;
 
@@ -142,7 +138,6 @@ const Assets = () => {
                       <span className={`text-sm font-mono font-medium ${isPositive ? "text-gain" : "text-loss"}`}>
                         {isPositive ? "+" : ""}{dailyChangePercent}%
                       </span>
-                      {dataStale && <span className="text-[10px] text-muted-foreground">(últ. fechamento)</span>}
                     </div>
                   </div>
                 </Link>
