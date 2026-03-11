@@ -1,5 +1,5 @@
 ﻿import { Link } from "react-router-dom";
-import { ArrowUpRight, ChevronDown, ChevronRight, DollarSign, ShoppingCart } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, ChevronDown, ChevronRight, DollarSign, ShoppingCart } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import {
   PieChart as RechartsPie,
@@ -338,7 +338,11 @@ const Portfolio = () => {
                     <span className={`text-lg font-semibold font-mono ${metrics.rentabilidade >= 0 ? "text-gain" : "text-loss"}`}>
                       {metrics.rentabilidade}%
                     </span>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-gain" />
+                    {metrics.rentabilidade >= 0 ? (
+                      <ArrowUpRight className="h-3.5 w-3.5 text-gain" />
+                    ) : (
+                      <ArrowDownRight className="h-3.5 w-3.5 text-loss" />
+                    )}
                   </div>
                 </div>
               </div>,
@@ -547,7 +551,11 @@ const Portfolio = () => {
                                   <span className={`text-sm font-mono ${rentab >= 0 ? "text-gain" : "text-loss"}`}>
                                     {rentab.toFixed(2)}%
                                   </span>
-                                  <ArrowUpRight className="h-3 w-3 text-gain" />
+                                  {rentab >= 0 ? (
+                                    <ArrowUpRight className="h-3 w-3 text-gain" />
+                                  ) : (
+                                    <ArrowDownRight className="h-3 w-3 text-loss" />
+                                  )}
                                 </div>
                               </td>
                               <td className="text-right px-4 py-3 text-sm font-mono">
