@@ -235,17 +235,26 @@ const AssetDetail = () => {
   }, [asset.symbol, selectedPeriod, chartsReady]);
 
   const displayedPrice = intradayCurrentPrice ?? asset.price;
+  const dailyFallbackHistory = useMemo(() => getFilteredPriceHistory(asset.symbol, "7D"), [asset.symbol]);
 
   const priceHistory = useMemo(() => {
     if (!chartsReady) return [];
     // Daily deve usar somente a série intraday (sessão atual ou última sessão disponível),
     // evitando cair no fallback "1D" que gera o resumo OHLC (Fech.ant./Abertura/Mínima/Máxima/Fechar).
-    if (selectedPeriod === "Daily") return intradayPriceHistory;
+    if (selectedPeriod === "Daily") {
+      const source = intradayPriceHistory.length > 0 ? "intraday" : "daily-fallback";
+      const data = intradayPriceHistory.length > 0 ? intradayPriceHistory : dailyFallbackHistory;
+      const last = data[data.length - 1];
+      console.log(
+        `[Daily][priceHistory] symbol=${asset.symbol} source=${source} points=${data.length} last=${last?.month ?? "-"}`
+      );
+      return data;
+    }
     if (selectedPeriod === "7 DIAS") {
       return sevenDayLoaded ? sevenDayPriceHistory : [];
     }
     return getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]);
-  }, [asset.symbol, selectedPeriod, chartsReady, intradayPriceHistory, sevenDayPriceHistory, sevenDayLoaded]);
+  }, [asset.symbol, selectedPeriod, chartsReady, intradayPriceHistory, sevenDayPriceHistory, sevenDayLoaded, dailyFallbackHistory]);
 
   const priceHistoryYAxisDomain = useMemo(() => {
     if (!Y_DOMAIN_ADJUST_PERIODS.has(selectedPeriod)) return undefined;
