@@ -2,7 +2,7 @@
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getFilteredPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getCachedIntradayLastPrice } from "@/data/investments";
+import { holdings, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getCachedIntradayLastPrice } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
@@ -78,6 +78,7 @@ const AssetDetail = () => {
     sources: { ibov: "ok", cdi: "ok", ipca: "ok" },
   });
   const [intradayPriceHistory, setIntradayPriceHistory] = useState<{ month: string; price: number; datetime?: string }[]>([]);
+  const [sevenDayPriceHistory, setSevenDayPriceHistory] = useState<{ month: string; price: number }[]>([]);
   const [intradayCurrentPrice, setIntradayCurrentPrice] = useState<number | null>(() => getCachedIntradayLastPrice(canonicalSymbol));
   const [intradayLastUpdatedLabel, setIntradayLastUpdatedLabel] = useState<string | null>(null);
   const { addHolding, sellHolding, userHoldings } = useUserHoldings();
@@ -128,6 +129,30 @@ const AssetDetail = () => {
         if (!mounted) return;
         setIntradayPriceHistory([]);
         setIntradayLastUpdatedLabel(null);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [asset.symbol, selectedPeriod, chartsReady]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!chartsReady || selectedPeriod !== "7 DIAS") {
+      setSevenDayPriceHistory([]);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    getFiltered7dPriceHistory(asset.symbol)
+      .then((rows) => {
+        if (!mounted) return;
+        setSevenDayPriceHistory(rows);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setSevenDayPriceHistory([]);
       });
 
     return () => {
@@ -205,8 +230,11 @@ const AssetDetail = () => {
     if (selectedPeriod === "Daily" && intradayPriceHistory.length > 0) {
       return intradayPriceHistory;
     }
+    if (selectedPeriod === "7 DIAS" && sevenDayPriceHistory.length > 0) {
+      return sevenDayPriceHistory;
+    }
     return getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]);
-  }, [asset.symbol, selectedPeriod, chartsReady, intradayPriceHistory]);
+  }, [asset.symbol, selectedPeriod, chartsReady, intradayPriceHistory, sevenDayPriceHistory]);
 
   const priceHistoryYAxisDomain = useMemo(() => {
     if (!Y_DOMAIN_ADJUST_PERIODS.has(selectedPeriod)) return undefined;
