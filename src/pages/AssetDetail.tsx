@@ -2,7 +2,7 @@
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getCachedIntradayLastPrice, getMarketHistory } from "@/data/investments";
+import { holdings, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getCachedIntradayLastPrice, getLatestMarketDateKey, getMarketHistory, isMarketDataStale } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
@@ -239,6 +239,11 @@ const AssetDetail = () => {
     : 0;
   const isPositive = dailyChangePercent >= 0;
   const dailyFallbackHistory = useMemo(() => getFilteredPriceHistory(asset.symbol, "7D"), [asset.symbol]);
+  const dataStale = isMarketDataStale();
+  const latestMarketDateLabel = (() => {
+    const [yyyy, mm, dd] = getLatestMarketDateKey().split("-");
+    return yyyy && mm && dd ? `${dd}/${mm}/${yyyy}` : getLatestMarketDateKey();
+  })();
 
   const priceHistory = useMemo(() => {
     if (!chartsReady) return [];
@@ -482,6 +487,8 @@ const AssetDetail = () => {
                   {isPositive ? <TrendingUp className="h-3.5 w-3.5 text-gain" /> : <TrendingDown className="h-3.5 w-3.5 text-loss" />}
                   <span className={`text-xs md:text-sm font-mono font-medium leading-none ${isPositive ? "text-gain" : "text-loss"}`}>{isPositive ? "+" : ""}{dailyChangePercent}%</span>
                   <span className={`text-xs md:text-sm font-mono font-medium leading-none ${isPositive ? "text-gain" : "text-loss"}`}>(1 dia)</span>
+                  <span className={`text-xs md:text-sm font-mono font-medium leading-none ${isPositive ? "text-gain" : "text-loss"}`}>{isPositive ? "+" : ""}{dailyChangePercent}%</span>
+                  <span className={`text-xs md:text-sm font-mono font-medium leading-none ${isPositive ? "text-gain" : "text-loss"}`}>{dataStale ? `(últ. fechamento ${latestMarketDateLabel})` : "(1 dia)"}</span>
                 </div>
               </div>
               <button onClick={() => { setOrderType("buy"); setOrderQtyInput("1"); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"><ShoppingCart className="h-4 w-4" /> Comprar</button>
