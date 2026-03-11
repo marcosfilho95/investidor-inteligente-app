@@ -572,6 +572,13 @@ export async function getFiltered7dPriceHistory(
     })
     .filter((p): p is { month: string; price: number } => Boolean(p));
 
+  const lastPointSource = intradayTail && windowDates[windowDates.length - 1] === intradayTail.date ? "intraday" : "daily";
+  console.log(
+    `[7D][asset] symbol=${symbol} points=${out.length} hasDailyToday=${hasDailyToday} intradayTail=${Boolean(
+      intradayTail
+    )} lastPointSource=${lastPointSource} dates=${windowDates.join(",")}`
+  );
+
   return out;
 }
 
@@ -1065,6 +1072,7 @@ export function getFilteredBenchmarks(
   let startDate: Date;
   
   switch (period) {
+    case "Daily": startDate = new Date(now); startDate.setDate(now.getDate() - 1); break;
     case "1 DIA": startDate = new Date(now); startDate.setDate(now.getDate() - 1); break;
     case "7 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 7); break;
     case "30 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 30); break;
@@ -1248,7 +1256,7 @@ export function getFilteredBenchmarks(
       const monthNames = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
       
       let label: string;
-      if (period === "1 DIA" || period === "7 DIAS" || period === "30 DIAS") {
+      if (period === "Daily" || period === "1 DIA" || period === "7 DIAS" || period === "30 DIAS") {
         label = `${day}/${month}`;
       } else if (period === "6 MESES" || period === "YTD") {
         label = `${day}/${monthNames[parseInt(month)]}`;
@@ -1625,6 +1633,13 @@ function getSeriesValueOnOrBefore(series: SeriesPoint[], date: string): number |
   return null;
 }
 
+function buildDailyLineSeries(rows: SeriesPoint[], count = 7): SeriesPoint[] {
+  return rows
+    .filter((r) => !!r.date && Number.isFinite(r.value))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-count);
+}
+
 function buildEmergencyComparisonPoints(
   symbol: string,
   p: "1D" | "7D" | "30D" | "6M" | "YTD" | "1A" | "5A",
@@ -1738,6 +1753,57 @@ export async function getInvestmentComparisonData(symbol: string, period: string
     );
 
     if (p === "1D") {
+      const buildDailyLineFallbackFor1D = (): InvestmentComparisonResponse | null => {
+        const assetDaily = buildDailyLineSeries(assetRaw, 7);
+        if (assetDaily.length < 2) return null;
+        const ibovDaily = buildDailyLineSeries(ibovRaw, 90);
+        const cdiDaily = buildDailyLineSeries(cdiRaw, 90);
+        const ipcaDaily = buildDailyLineSeries(ipcaRaw, 90);
+        const windowDates = assetDaily.map((p0) => p0.date);
+
+        const fillSeries = (daily: SeriesPoint[]): SeriesPoint[] => {
+          const out: SeriesPoint[] = [];
+          let lastValue: number | null = null;
+          for (const d of windowDates) {
+            let value = getSeriesValueOnOrBefore(daily, d);
+            if (!Number.isFinite(value ?? Number.NaN)) value = lastValue;
+            if (!Number.isFinite(value ?? Number.NaN)) value = 1000;
+            lastValue = Number(value);
+            out.push({ date: d, value: Number(value) });
+          }
+          return out;
+        };
+
+        const assetNorm = normalizeSeriesByBase(fillSeries(assetDaily), 1000);
+        const ibovNorm = normalizeSeriesByBase(fillSeries(ibovDaily), 1000);
+        const cdiNorm = normalizeSeriesByBase(fillSeries(cdiDaily), 1000);
+        const ipcaNorm = normalizeSeriesByBase(fillSeries(ipcaDaily), 1000);
+
+        const points: InvestmentComparisonPoint[] = windowDates.map((d, i) => ({
+          date: d,
+          month: formatDateLabel(d, "7D"),
+          [symbol]: Number(assetNorm[i].value.toFixed(2)),
+          IBOV: Number(ibovNorm[i].value.toFixed(2)),
+          CDI: Number(cdiNorm[i].value.toFixed(2)),
+          IPCA: Number(ipcaNorm[i].value.toFixed(2)),
+        }));
+
+        console.log(
+          `[Daily][comparison] symbol=${symbol} source=daily-fallback points=${points.length} lastDate=${points[points.length - 1]?.date ?? "-"}`
+        );
+
+        return {
+          points,
+          meta: {
+            ...apiData.meta,
+            sources: {
+              ...apiData.meta.sources,
+              ibov: "ok",
+            },
+          },
+        };
+      };
+
       const toSeries = (rows: IntradayPoint[]): SeriesPoint[] =>
         rows
           .map((r) => ({ date: r.datetime, value: r.price }))
@@ -1766,13 +1832,13 @@ export async function getInvestmentComparisonData(symbol: string, period: string
       const targetDay = commonDays.at(-1) || assetDays.at(-1) || ibovDays.at(-1);
 
       if (!targetDay) {
-        return buildNeverEmptyFallback(apiData.meta);
+        return buildDailyLineFallbackFor1D() ?? buildNeverEmptyFallback(apiData.meta);
       }
 
       const assetDay = assetRows.filter((r) => onlyDate(r.datetime) === targetDay);
       const ibovDay = ibovRows.filter((r) => onlyDate(r.datetime) === targetDay);
       if (assetDay.length < 2 || ibovDay.length < 2) {
-        return buildNeverEmptyFallback(apiData.meta);
+        return buildDailyLineFallbackFor1D() ?? buildNeverEmptyFallback(apiData.meta);
       }
 
       const assetSeries = toSeries(assetDay);
@@ -1813,6 +1879,12 @@ export async function getInvestmentComparisonData(symbol: string, period: string
         CDI: 1000,
         IPCA: 1000,
       }));
+
+      const todayKey = getBrtDateKey(new Date());
+      const source = targetDay === todayKey ? "intraday" : "last-session";
+      console.log(
+        `[Daily][comparison] symbol=${symbol} source=${source} points=${points.length} lastDate=${points[points.length - 1]?.date ?? "-"}`
+      );
 
       return {
         points,
@@ -1915,6 +1987,13 @@ export async function getInvestmentComparisonData(symbol: string, period: string
         CDI: Number(cdiWindow[i].value.toFixed(2)),
         IPCA: Number(ipcaWindow[i].value.toFixed(2)),
       }));
+
+      const lastPoint = points[points.length - 1];
+      console.log(
+        `[7D][compare] symbol=${symbol} points=${points.length} hasDailyToday=${hasDailyToday} intradayAssetTail=${Boolean(
+          assetIntradayTail
+        )} intradayIbovTail=${Boolean(ibovIntradayTail)} lastDate=${lastPoint?.date ?? "-"} dates=${windowDates.join(",")}`
+      );
 
       debugInvestmentSeries(symbol, assetWindow);
       debugInvestmentSeries("IBOV", ibovWindow);
