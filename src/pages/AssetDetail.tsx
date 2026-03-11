@@ -232,14 +232,7 @@ const AssetDetail = () => {
 
   const marketSeries = useMemo(() => getMarketHistory()[asset.symbol] || [], [asset.symbol]);
   const latestClose = marketSeries.length > 0 ? Number(marketSeries[marketSeries.length - 1].close) : Number(asset.price);
-  const prevClose = marketSeries.length > 1 ? Number(marketSeries[marketSeries.length - 2].close) : latestClose;
-  const hasIntradayPrice = Number.isFinite(intradayCurrentPrice);
-  const displayedPrice = hasIntradayPrice ? Number(intradayCurrentPrice) : latestClose;
-  const referenceClose = hasIntradayPrice ? latestClose : prevClose;
-  const dailyChangePercent = referenceClose > 0
-    ? Math.round((((displayedPrice / referenceClose) - 1) * 100) * 100) / 100
-    : 0;
-  const isPositive = dailyChangePercent >= 0;
+  const prevCloseFallback = marketSeries.length > 1 ? Number(marketSeries[marketSeries.length - 2].close) : latestClose;
   const dailyFallbackHistory = useMemo(() => getFilteredPriceHistory(asset.symbol, "7D"), [asset.symbol]);
 
   const priceHistory = useMemo(() => {
@@ -255,6 +248,52 @@ const AssetDetail = () => {
     }
     return getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]);
   }, [asset.symbol, selectedPeriod, chartsReady, intradayPriceHistory, sevenDayPriceHistory, sevenDayLoaded, dailyFallbackHistory]);
+
+  const prevClose = useMemo(() => {
+    // Para 7 DIAS, extrai o fechamento do dia útil anterior da própria série exibida no gráfico.
+    if (selectedPeriod === "7 DIAS" && priceHistory.length > 1) {
+      type TimedPoint = { datetime: string; price: number };
+      const timed: TimedPoint[] = priceHistory
+        .map((p) => ({ datetime: String((p as { datetime?: string }).datetime || ""), price: Number(p.price) }))
+        .filter((p) => p.datetime.includes(" ") && Number.isFinite(p.price));
+
+      if (timed.length > 1) {
+        const byDate = new Map<string, TimedPoint>();
+        for (const p of timed) {
+          const d = p.datetime.slice(0, 10);
+          const prev = byDate.get(d);
+          if (!prev || p.datetime > prev.datetime) {
+            byDate.set(d, p);
+          }
+        }
+
+        const currentDate = timed[timed.length - 1].datetime.slice(0, 10);
+        const previousDates = Array.from(byDate.keys())
+          .filter((d) => d < currentDate)
+          .sort((a, b) => a.localeCompare(b));
+        const prevDate = previousDates[previousDates.length - 1];
+        const prevDayClose = prevDate ? byDate.get(prevDate)?.price : null;
+        if (Number.isFinite(prevDayClose)) return Number(prevDayClose);
+      }
+    }
+
+    return prevCloseFallback;
+  }, [selectedPeriod, priceHistory, prevCloseFallback]);
+
+  const displayedPrice = intradayCurrentPrice ?? latestClose;
+  const dailyChangePercent = prevClose > 0
+    ? Math.round((((displayedPrice / prevClose) - 1) * 100) * 100) / 100
+    : 0;
+  const isPositive = dailyChangePercent >= 0;
+
+  useEffect(() => {
+    console.log({
+      symbol: asset.symbol,
+      displayedPrice,
+      prevClose,
+      changePercent: dailyChangePercent,
+    });
+  }, [asset.symbol, displayedPrice, prevClose, dailyChangePercent]);
 
   const priceHistoryYAxisDomain = useMemo(() => {
     if (!Y_DOMAIN_ADJUST_PERIODS.has(selectedPeriod)) return undefined;
