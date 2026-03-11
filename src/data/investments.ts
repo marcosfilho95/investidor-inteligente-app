@@ -582,21 +582,40 @@ async function build7dIntradaySeries(symbol: string): Promise<SevenDayIntradayPo
     if (!firstDatetimeByDate.has(d)) firstDatetimeByDate.set(d, row.datetime);
   }
 
-  const out: SevenDayIntradayPoint[] = [];
+  const rowsByDate = new Map<string, IntradayPoint[]>();
   for (const row of resampled) {
     const date = row.datetime.slice(0, 10);
     if (!selectedDateSet.has(date)) continue;
-    const time = row.datetime.slice(11, 16);
+    const bucket = rowsByDate.get(date) ?? [];
+    bucket.push(row);
+    rowsByDate.set(date, bucket);
+  }
+
+  for (const date of selectedDates) {
+    const dayRows = rowsByDate.get(date);
+    if (!dayRows || dayRows.length === 0) continue;
+    const lastDt = dayRows[dayRows.length - 1]?.datetime ?? null;
+    const closeAnchor = maybeBuildClosingAnchorForDailySession(symbol, date, lastDt);
+    if (closeAnchor) dayRows.push(closeAnchor);
+  }
+
+  const out: SevenDayIntradayPoint[] = [];
+  for (const date of selectedDates) {
+    const dayRows = (rowsByDate.get(date) || []).sort((a, b) => a.datetime.localeCompare(b.datetime));
+    if (!dayRows.length) continue;
     const ddmm = formatDdMm(date);
     const firstDt = firstDatetimeByDate.get(date);
-    const month = row.datetime === firstDt ? ddmm : time;
-    out.push({
-      date,
-      datetime: row.datetime,
-      price: Math.round(Number(row.price) * 100) / 100,
-      month,
-      tooltipLabel: `${ddmm} ${time}`,
-    });
+    for (const row of dayRows) {
+      const time = row.datetime.slice(11, 16);
+      const month = row.datetime === firstDt ? ddmm : time;
+      out.push({
+        date,
+        datetime: row.datetime,
+        price: Math.round(Number(row.price) * 100) / 100,
+        month,
+        tooltipLabel: `${ddmm} ${time}`,
+      });
+    }
   }
 
   return out;
