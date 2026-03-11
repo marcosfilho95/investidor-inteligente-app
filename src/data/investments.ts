@@ -572,6 +572,13 @@ export async function getFiltered7dPriceHistory(
     })
     .filter((p): p is { month: string; price: number } => Boolean(p));
 
+  const lastPointSource = intradayTail && windowDates[windowDates.length - 1] === intradayTail.date ? "intraday" : "daily";
+  console.log(
+    `[7D][asset] symbol=${symbol} points=${out.length} hasDailyToday=${hasDailyToday} intradayTail=${Boolean(
+      intradayTail
+    )} lastPointSource=${lastPointSource} dates=${windowDates.join(",")}`
+  );
+
   return out;
 }
 
@@ -1915,6 +1922,13 @@ export async function getInvestmentComparisonData(symbol: string, period: string
         CDI: Number(cdiWindow[i].value.toFixed(2)),
         IPCA: Number(ipcaWindow[i].value.toFixed(2)),
       }));
+
+      const lastPoint = points[points.length - 1];
+      console.log(
+        `[7D][compare] symbol=${symbol} points=${points.length} hasDailyToday=${hasDailyToday} intradayAssetTail=${Boolean(
+          assetIntradayTail
+        )} intradayIbovTail=${Boolean(ibovIntradayTail)} lastDate=${lastPoint?.date ?? "-"} dates=${windowDates.join(",")}`
+      );
 
       debugInvestmentSeries(symbol, assetWindow);
       debugInvestmentSeries("IBOV", ibovWindow);

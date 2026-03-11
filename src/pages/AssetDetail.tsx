@@ -79,6 +79,7 @@ const AssetDetail = () => {
   });
   const [intradayPriceHistory, setIntradayPriceHistory] = useState<{ month: string; price: number; datetime?: string }[]>([]);
   const [sevenDayPriceHistory, setSevenDayPriceHistory] = useState<{ month: string; price: number }[]>([]);
+  const [sevenDayLoaded, setSevenDayLoaded] = useState(false);
   const [intradayCurrentPrice, setIntradayCurrentPrice] = useState<number | null>(() => getCachedIntradayLastPrice(canonicalSymbol));
   const [intradayLastUpdatedLabel, setIntradayLastUpdatedLabel] = useState<string | null>(null);
   const { addHolding, sellHolding, userHoldings } = useUserHoldings();
@@ -140,19 +141,29 @@ const AssetDetail = () => {
     let mounted = true;
     if (!chartsReady || selectedPeriod !== "7 DIAS") {
       setSevenDayPriceHistory([]);
+      setSevenDayLoaded(false);
       return () => {
         mounted = false;
       };
     }
 
+    setSevenDayLoaded(false);
     getFiltered7dPriceHistory(asset.symbol)
       .then((rows) => {
         if (!mounted) return;
         setSevenDayPriceHistory(rows);
+        setSevenDayLoaded(true);
+        console.log(
+          `[7D][priceHistory] symbol=${asset.symbol} points=${rows.length} dates=${rows
+            .map((r) => r.month)
+            .join(",")}`
+        );
       })
       .catch(() => {
         if (!mounted) return;
         setSevenDayPriceHistory([]);
+        setSevenDayLoaded(true);
+        console.warn(`[7D][priceHistory] symbol=${asset.symbol} failed to load dedicated 7D series`);
       });
 
     return () => {
@@ -230,11 +241,11 @@ const AssetDetail = () => {
     // Daily deve usar somente a série intraday (sessão atual ou última sessão disponível),
     // evitando cair no fallback "1D" que gera o resumo OHLC (Fech.ant./Abertura/Mínima/Máxima/Fechar).
     if (selectedPeriod === "Daily") return intradayPriceHistory;
-    if (selectedPeriod === "7 DIAS" && sevenDayPriceHistory.length > 0) {
-      return sevenDayPriceHistory;
+    if (selectedPeriod === "7 DIAS") {
+      return sevenDayLoaded ? sevenDayPriceHistory : [];
     }
     return getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]);
-  }, [asset.symbol, selectedPeriod, chartsReady, intradayPriceHistory, sevenDayPriceHistory]);
+  }, [asset.symbol, selectedPeriod, chartsReady, intradayPriceHistory, sevenDayPriceHistory, sevenDayLoaded]);
 
   const priceHistoryYAxisDomain = useMemo(() => {
     if (!Y_DOMAIN_ADJUST_PERIODS.has(selectedPeriod)) return undefined;
@@ -301,6 +312,12 @@ const AssetDetail = () => {
         if (!isMounted) return;
         setInvestmentComparison(result.points);
         setComparisonMeta(result.meta);
+        if (selectedPeriod === "7 DIAS") {
+          const last = result.points[result.points.length - 1];
+          console.log(
+            `[7D][comparison] symbol=${asset.symbol} points=${result.points.length} lastDate=${last?.date ?? "-"}`
+          );
+        }
       })
       .catch((err) => {
         console.warn("[AssetDetail] getInvestmentComparison failed:", err);
