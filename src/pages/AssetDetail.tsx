@@ -78,7 +78,9 @@ const AssetDetail = () => {
     sources: { ibov: "ok", cdi: "ok", ipca: "ok" },
   });
   const [intradayPriceHistory, setIntradayPriceHistory] = useState<{ month: string; price: number; datetime?: string }[]>([]);
-  const [sevenDayPriceHistory, setSevenDayPriceHistory] = useState<{ month: string; price: number }[]>([]);
+  const [sevenDayPriceHistory, setSevenDayPriceHistory] = useState<
+    { month: string; price: number; datetime?: string; tooltipLabel?: string }[]
+  >([]);
   const [sevenDayLoaded, setSevenDayLoaded] = useState(false);
   const [intradayCurrentPrice, setIntradayCurrentPrice] = useState<number | null>(() => getCachedIntradayLastPrice(canonicalSymbol));
   const [intradayLastUpdatedLabel, setIntradayLastUpdatedLabel] = useState<string | null>(null);
@@ -645,7 +647,7 @@ const AssetDetail = () => {
                     <Tooltip
                       contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }}
                       formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Preco"]}
-                      labelFormatter={(label: string) => label}
+                      labelFormatter={(_label: string, payload: any[]) => payload?.[0]?.payload?.tooltipLabel ?? _label}
                     />
                     <Area
                       type="monotone"
@@ -713,7 +715,7 @@ const AssetDetail = () => {
                         color: "hsl(var(--foreground))",
                       }}
                       formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`]}
-                      labelFormatter={(label: string) => label}
+                      labelFormatter={(_label: string, payload: any[]) => payload?.[0]?.payload?.tooltipLabel ?? _label}
                     />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
                     <Area
