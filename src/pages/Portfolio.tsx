@@ -316,14 +316,6 @@ const Portfolio = () => {
                 <p className="text-xl font-semibold font-mono">
                   R$ {totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-xs font-medium ${metrics.variacao >= 0 ? "text-gain" : "text-loss"}`}>
-                    {metrics.variacao}% {metrics.variacao >= 0 ? "▲" : "▼"}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    Investido R$ {metrics.totalInvested.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
               </div>,
               <div className="glass-card p-4" key="2">
                 <span className="text-xs text-muted-foreground">Lucro total</span>

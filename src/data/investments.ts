@@ -1132,6 +1132,7 @@ export function getFilteredBenchmarks(
   let startDate: Date;
   
   switch (period) {
+    case "DESDE O INÍCIO": startDate = new Date(now); startDate.setFullYear(now.getFullYear() - 50); break;
     case "Daily": startDate = new Date(now); startDate.setDate(now.getDate() - 1); break;
     case "1 DIA": startDate = new Date(now); startDate.setDate(now.getDate() - 1); break;
     case "7 DIAS": startDate = new Date(now); startDate.setDate(now.getDate() - 7); break;
@@ -1168,7 +1169,7 @@ export function getFilteredBenchmarks(
   const cdiStart = cdiData[0]?.value || ibovStart;
   const ipcaStart = ipcaData[0]?.value || ibovStart;
   
-  const maxPoints = period === "5 ANOS" ? 200 : period === "1 ANO" ? 120 : 60;
+  const maxPoints = (period === "5 ANOS" || period === "DESDE O INÍCIO") ? 200 : period === "1 ANO" ? 120 : 60;
   const step = Math.max(1, Math.floor(ibovData.length / maxPoints));
   
   // Build portfolio value from real user holdings price data
