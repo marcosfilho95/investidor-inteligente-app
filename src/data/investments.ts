@@ -1130,7 +1130,7 @@ export function getFilteredBenchmarks(
   baseValue: number,
   minStartDate?: string,
   userPortfolio?: Array<{ symbol: string; shares: number; avgPrice?: number; firstBuyDate?: string | null }>
-): { month: string; carteira: number; ibovespa: number; cdi: number; ipca: number }[] {
+): { month: string; tooltipLabel?: string; carteira: number; ibovespa: number; cdi: number; ipca: number }[] {
   const benchmarks = getBenchmarkHistory();
   const now = getLatestMarketDate();
   let startDate: Date;
@@ -1242,9 +1242,11 @@ export function getFilteredBenchmarks(
       } else {
         label = `${monthNames[parseInt(month)]}/${year}`;
       }
+      const tooltipLabel = `${day}/${month}`;
       
       return {
         month: label,
+        tooltipLabel,
         carteira: Number((portfolioVal - (investedAtDate > 0 ? investedAtDate : referenceBase)).toFixed(2)),
         ibovespa: Number((ibovNorm - referenceBase).toFixed(2)),
         cdi: Number((cdiNorm - referenceBase).toFixed(2)),

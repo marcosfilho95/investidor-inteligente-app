@@ -72,6 +72,7 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
     () =>
       rawData.map((d) => ({
         month: d.month,
+        tooltipLabel: d.tooltipLabel ?? d.month,
         carteira: (d.carteira / investedBase) * 100,
         ibovespa: (d.ibovespa / investedBase) * 100,
         cdi: (d.cdi / investedBase) * 100,
@@ -256,7 +257,7 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
                 fontFamily: "JetBrains Mono",
                 color: "hsl(var(--foreground))",
               }}
-              labelFormatter={(label: string) => label}
+              labelFormatter={(_label: string, payload: any[]) => payload?.[0]?.payload?.tooltipLabel ?? _label}
               formatter={(value: number, name: string) => {
                 const label = benchmarks.find((b) => b.key === name)?.label || name;
                 const numeric = Number(value || 0);
