@@ -415,6 +415,10 @@ export function useUserHoldings() {
       const value = uh.shares * displayedPrice;
       const dayChangeValue = (displayedPrice - referenceClose) * uh.shares;
       const totalGainValue = (displayedPrice - uh.avg_price) * uh.shares;
+      const closePrice = Number(latestClose);
+      const closeValue = uh.shares * closePrice;
+      const dayChangeCloseValue = (closePrice - Number(prevClose)) * uh.shares;
+      const totalGainCloseValue = (closePrice - uh.avg_price) * uh.shares;
       return {
         ...asset,
         price: displayedPrice,
@@ -426,6 +430,10 @@ export function useUserHoldings() {
         prevClose,
         dayChangeValue,
         totalGainValue,
+        closePrice,
+        closeValue,
+        dayChangeCloseValue,
+        totalGainCloseValue,
         firstBuyDate: firstBuyDateBySymbol[uh.symbol] ?? uh.created_at ?? null,
         lastTradeDate: lastTradeDateBySymbol[uh.symbol] ?? null,
       };
@@ -435,6 +443,10 @@ export function useUserHoldings() {
       prevClose: number;
       dayChangeValue: number;
       totalGainValue: number;
+      closePrice: number;
+      closeValue: number;
+      dayChangeCloseValue: number;
+      totalGainCloseValue: number;
       firstBuyDate: string | null;
       lastTradeDate: string | null;
     })[];

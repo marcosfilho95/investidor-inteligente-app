@@ -55,7 +55,7 @@ const Portfolio = () => {
   const [showHoldingsScrollHint, setShowHoldingsScrollHint] = useState(false);
   const [showHoldingsMobileScrollbar, setShowHoldingsMobileScrollbar] = useState(false);
   const holdingsScrollRef = useRef<HTMLDivElement | null>(null);
-  const { enrichedHoldings, totalValue, loading, userTrades, addHolding, sellHolding } = useUserHoldings();
+  const { enrichedHoldings, loading, userTrades, addHolding, sellHolding } = useUserHoldings();
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
 
@@ -88,17 +88,18 @@ const Portfolio = () => {
 
   const metrics = useMemo(() => {
     const totalInvested = enrichedHoldings.reduce((s, h) => s + h.avgPrice * h.shares, 0);
-    const totalGain = enrichedHoldings.reduce((s, h) => s + (h.totalGainValue ?? (h.price - h.avgPrice) * h.shares), 0);
-    const dailyChange = enrichedHoldings.reduce((s, h) => s + (h.dayChangeValue ?? h.change * h.shares), 0);
+    const totalCloseValue = enrichedHoldings.reduce((s, h) => s + (h.closeValue ?? h.value), 0);
+    const totalGain = enrichedHoldings.reduce((s, h) => s + (h.totalGainCloseValue ?? h.totalGainValue ?? (h.price - h.avgPrice) * h.shares), 0);
+    const dailyChange = enrichedHoldings.reduce((s, h) => s + (h.dayChangeCloseValue ?? h.dayChangeValue ?? h.change * h.shares), 0);
     const previousValue = enrichedHoldings.reduce((s, h) => s + (h.prevClose ?? h.price) * h.shares, 0);
     const variacao = previousValue > 0 ? Math.round((dailyChange / previousValue) * 10000) / 100 : 0;
     const rentabilidade = totalInvested > 0 ? Math.round((totalGain / totalInvested) * 10000) / 100 : 0;
     const proventos =
-      totalValue > 0
-        ? Math.round(enrichedHoldings.reduce((sum, h) => sum + h.value * ((h.dividend || 0) / 100), 0) * 100) / 100
+      totalCloseValue > 0
+        ? Math.round(enrichedHoldings.reduce((sum, h) => sum + (h.closeValue ?? h.value) * ((h.dividend || 0) / 100), 0) * 100) / 100
         : 0;
-    return { totalInvested, totalGain, dailyChange, variacao, rentabilidade, proventos };
-  }, [enrichedHoldings, totalValue]);
+    return { totalInvested, totalCloseValue, totalGain, dailyChange, variacao, rentabilidade, proventos };
+  }, [enrichedHoldings]);
 
   const sortedHoldings = useMemo(
     () => [...enrichedHoldings].sort((a, b) => b.value - a.value),
@@ -314,7 +315,7 @@ const Portfolio = () => {
               <div className="glass-card p-4" key="1">
                 <span className="text-xs text-muted-foreground">Patrimonio total</span>
                 <p className="text-xl font-semibold font-mono">
-                  R$ {totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  R$ {metrics.totalCloseValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </p>
               </div>,
               <div className="glass-card p-4" key="2">
