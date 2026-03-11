@@ -246,10 +246,14 @@ async function fetchLatestVersionToken(): Promise<string | null> {
         signal: AbortSignal.timeout(5000),
         cache: "no-store",
       });
+      console.log(`[csvLoader] status.json fetch status=${resp.status} ok=${resp.ok}`);
       if (resp.ok) {
         const payload = (await resp.json()) as { last_success_at?: string; last_version_date?: string };
         const timestampToken = normalizeVersionToken(payload?.last_success_at);
-        if (timestampToken) return timestampToken;
+        if (timestampToken) {
+          console.log(`[csvLoader] latestVersion from status.json=${timestampToken}`);
+          return timestampToken;
+        }
         // Nao retornar apenas last_version_date daqui.
         // O data-status.json de Storage pode ter so a data (YYYY-MM-DD),
         // o que nao distingue multiplos refreshes no mesmo dia.
@@ -262,13 +266,20 @@ async function fetchLatestVersionToken(): Promise<string | null> {
   try {
     const status = await fetchDataStatus(true);
     const timestampToken = normalizeVersionToken(status.last_success_at);
-    if (timestampToken) return timestampToken;
+    if (timestampToken) {
+      console.log(`[csvLoader] latestVersion from edge-function=${timestampToken}`);
+      return timestampToken;
+    }
     const dateToken = normalizeVersionToken(status.last_version_date);
-    if (dateToken) return dateToken;
+    if (dateToken) {
+      console.log(`[csvLoader] latestVersion date fallback from edge-function=${dateToken}`);
+      return dateToken;
+    }
   } catch (e) {
     console.warn("[csvLoader] data-status fallback failed:", e);
   }
 
+  console.warn("[csvLoader] latestVersion unavailable (status.json + edge-function).");
   return null;
 }
 
@@ -345,36 +356,55 @@ async function resolveLatestPrices(
   emitUpdateEvent = false,
   forceStorageRevalidation = false
 ): Promise<Record<string, OHLCVDay[]>> {
+  console.log(
+    `[csvLoader] resolveLatestPrices currentVersion=${currentVersion ?? "null"} forceStorageRevalidation=${forceStorageRevalidation}`
+  );
   const latestVersion = await fetchLatestVersionToken();
+  console.log(`[csvLoader] resolveLatestPrices latestVersion=${latestVersion ?? "null"}`);
 
   if (!forceStorageRevalidation && latestVersion && latestVersion === currentVersion && currentCachedData) {
     // Versao igual: mantenha o cache atual sem mesclar com CSV local.
     // Isso evita que fallback local (potencialmente antigo) sobrescreva dados do Storage.
+    console.log("[csvLoader] keeping current cached data (same version). source=cache");
     _source = "storage";
     _realPricesCache = currentCachedData;
     _loaded = true;
     return currentCachedData;
   }
 
-  if (latestVersion) {
-    const storageData = await fetchFromStorage(latestVersion);
-    if (storageData) {
-      // Storage e a fonte primaria de mercado em producao.
-      // Fallback local so deve ser usado se Storage falhar.
-      await saveCachedPrices(latestVersion, storageData);
-      _realPricesCache = storageData;
-      _loaded = true;
+  // Sempre tenta Storage. Quando nao ha token de versao, usa token efemero
+  // apenas para cache-busting da URL.
+  const storageAttemptVersion = latestVersion ?? `direct-${Date.now()}`;
+  const storageData = await fetchFromStorage(storageAttemptVersion);
+  if (storageData) {
+    const remoteLatestDate = getLatestDateFromData(storageData);
+    const cachedLatestDate = currentCachedData ? getLatestDateFromData(currentCachedData) : null;
+    console.log(
+      `[csvLoader] storage candidate remoteLatestDate=${remoteLatestDate} cachedLatestDate=${cachedLatestDate}`
+    );
+    // Storage e a fonte primaria de mercado em producao.
+    // Fallback local so deve ser usado se Storage falhar.
+    await saveCachedPrices(storageAttemptVersion, storageData);
+    _realPricesCache = storageData;
+    _loaded = true;
 
-      if (emitUpdateEvent) {
-        window.dispatchEvent(
-          new CustomEvent("ii:prices-data-updated", {
-            detail: { version: latestVersion },
-          })
-        );
-      }
-      return storageData;
+    if (emitUpdateEvent) {
+      window.dispatchEvent(
+        new CustomEvent("ii:prices-data-updated", {
+          detail: { version: storageAttemptVersion },
+        })
+      );
     }
+    return storageData;
+  }
 
+  if (latestVersion) {
+    console.warn("[csvLoader] storage fetch failed even with known latestVersion; trying local fallback.");
+  } else {
+    console.warn("[csvLoader] storage fetch failed without latestVersion; trying local fallback.");
+  }
+
+  if (latestVersion) {
     // If a newer version exists but Storage fetch fails, prefer local CSV
     // over stale IndexedDB cache.
     const localData = await fetchFromLocal().catch(() => null);
@@ -394,12 +424,14 @@ async function resolveLatestPrices(
   }
 
   if (currentCachedData) {
+    console.warn("[csvLoader] using stale cached data (storage and local unavailable).");
     _source = "local";
     _realPricesCache = currentCachedData;
     _loaded = true;
     return currentCachedData;
   }
 
+  console.warn("[csvLoader] falling back to bundled local CSV.");
   const localData = await fetchFromLocal();
   _realPricesCache = localData;
   _loaded = true;
@@ -472,13 +504,19 @@ export async function loadRealPriceData(forceRefresh = false): Promise<Record<st
     try {
       const currentVersion = getCurrentVersion();
       const cachedData = currentVersion ? await readCachedPricesByVersion(currentVersion) : null;
+      const forcePostClose = shouldForcePostCloseDailyRevalidation(cachedData);
+      const cachedLatestDate = cachedData ? getLatestDateFromData(cachedData) : null;
+      console.log(
+        `[csvLoader] loadRealPriceData forceRefresh=${forceRefresh} currentVersion=${currentVersion ?? "null"} cachedLatestDate=${cachedLatestDate ?? "null"} forcePostClose=${forcePostClose}`
+      );
 
       if (cachedData && !forceRefresh) {
         _realPricesCache = cachedData;
         _loaded = true;
         _source = "local";
 
-        if (shouldForcePostCloseDailyRevalidation(cachedData)) {
+        if (forcePostClose) {
+          console.log("[csvLoader] forcing post-close storage revalidation.");
           return await resolveLatestPrices(currentVersion, cachedData, true, true);
         }
 
