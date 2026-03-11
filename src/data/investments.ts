@@ -1221,19 +1221,6 @@ export async function getFilteredBenchmarks(
     };
   };
 
-  const getInvestedAtDate = (dateOrDatetime: string): number => {
-    const dateKey = dateOrDatetime.slice(0, 10);
-    const positionsAtDate = activePositions.filter((p) => {
-      const buyDate = p.firstBuyDate ? p.firstBuyDate.slice(0, 10) : null;
-      return !buyDate || dateKey >= buyDate;
-    });
-    const investedAtDate = positionsAtDate.reduce((sum, p) => {
-      const avg = Number(p.avgPrice ?? 0);
-      return sum + Math.max(0, avg * p.shares);
-    }, 0);
-    return investedAtDate > 0 ? investedAtDate : referenceBase;
-  };
-
   const cdiSeries = benchmarks.CDI
     .filter((d) => !!d.date && Number.isFinite(d.value))
     .map((d) => ({ date: d.date, value: Number(d.value) }))
@@ -1255,9 +1242,8 @@ export async function getFilteredBenchmarks(
     const cdiBase = getSeriesValueOnOrBefore(cdiSeries, firstDateKey) ?? cdiSeries[0]?.value ?? 1;
     const ipcaBase = getSeriesValueOnOrBefore(ipcaSeries, firstDateKey) ?? ipcaSeries[0]?.value ?? 1;
 
-    // Carteira deve ser ancorada no capital investido em t0 para evitar distorção
-    // quando o primeiro ponto de mercado já abre com variação.
-    const investedBase = getInvestedAtDate(calendar[0].date);
+    const portfolioBaseRaw = portfolioResolver(calendar[0].date);
+    const portfolioBase = portfolioBaseRaw > 0 ? portfolioBaseRaw : referenceBase;
 
     return calendar.map((point) => {
       const dateKey = point.date.slice(0, 10);
@@ -1267,7 +1253,7 @@ export async function getFilteredBenchmarks(
       const ipcaVal = getSeriesValueOnOrBefore(ipcaSeries, dateKey) ?? ipcaBase;
       return {
         month: point.month,
-        carteira: toPercent(portfolioVal > 0 ? portfolioVal : investedBase, investedBase),
+        carteira: toPercent(portfolioVal > 0 ? portfolioVal : portfolioBase, portfolioBase),
         ibovespa: toPercent(Number(ibovVal), Number(ibovBase)),
         cdi: toPercent(Number(cdiVal), Number(cdiBase)),
         ipca: toPercent(Number(ipcaVal), Number(ipcaBase)),

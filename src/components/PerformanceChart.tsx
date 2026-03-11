@@ -16,14 +16,13 @@ interface PerformanceChartProps {
   userHoldings?: (Holding & { avgPrice?: number; firstBuyDate?: string | null })[];
   totalValue?: number;
   firstBuyDate?: string | null;
-  onPortfolioMetricChange?: (payload: { period: string; value: number | null }) => void;
 }
 
 type BenchmarkKey = "carteira" | "ibovespa" | "cdi" | "ipca";
 
 const benchmarkCache = new Map<string, Awaited<ReturnType<typeof getFilteredBenchmarks>>>();
 
-export function PerformanceChart({ userHoldings, totalValue, firstBuyDate, onPortfolioMetricChange }: PerformanceChartProps) {
+export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: PerformanceChartProps) {
   const [showIbovespa, setShowIbovespa] = useState(true);
   const [showCdi, setShowCdi] = useState(true);
   const [showIpca, setShowIpca] = useState(true);
@@ -115,13 +114,6 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate, onPor
     if (lo === hi) return [lo - 1, hi + 1] as [number, number];
     return [lo, hi] as [number, number];
   }, [chartData]);
-
-  useEffect(() => {
-    if (!onPortfolioMetricChange) return;
-    const last = chartData[chartData.length - 1];
-    const value = Number.isFinite(last?.carteira) ? Number(last.carteira) : null;
-    onPortfolioMetricChange({ period: selectedPeriod, value });
-  }, [chartData, selectedPeriod, onPortfolioMetricChange]);
 
   useEffect(() => {
     setChartKey((k) => k + 1);

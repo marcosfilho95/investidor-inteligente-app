@@ -5,7 +5,7 @@ import { HoldingsTable } from "@/components/HoldingsTable";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
@@ -14,8 +14,6 @@ const Index = () => {
   const [userName, setUserName] = useState(() => localStorage.getItem("ii_user_name") || "Investidor");
   const [minDelayDone, setMinDelayDone] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
-  const [chartPeriod, setChartPeriod] = useState("YTD");
-  const [chartPortfolioReturn, setChartPortfolioReturn] = useState<number | null>(null);
   const { enrichedHoldings, totalValue, loading, userTrades } = useUserHoldings();
 
   useEffect(() => {
@@ -85,11 +83,6 @@ const Index = () => {
     buys.sort((a, b) => a.traded_at.localeCompare(b.traded_at));
     return buys[0].traded_at.slice(0, 10);
   }, [userTrades]);
-  const handlePortfolioMetricChange = useCallback(({ period, value }: { period: string; value: number | null }) => {
-    setChartPeriod(period);
-    setChartPortfolioReturn(value);
-  }, []);
-  const rentabilityCardValue = chartPortfolioReturn ?? metrics.totalGainPercent;
   const aiDashboardWelcome = useMemo(() => `${greeting}, ${userName}! Sou o Hodl, seu assistente de investimentos.
 
 Meu foco aqui no Dashboard é:
@@ -167,11 +160,11 @@ Você pode começar com:
               },
               {
                 title: "Rentabilidade",
-                value: `${rentabilityCardValue}%`,
-                change: rentabilityCardValue,
-                changeLabel: chartPeriod,
+                value: `${metrics.totalGainPercent}%`,
+                change: metrics.totalGainPercent,
+                changeLabel: "desde o início",
                 icon: "percent" as const,
-                positive: rentabilityCardValue >= 0,
+                positive: metrics.totalGainPercent >= 0,
               },
               ].map((card, i) => (
                 <AnimatedCard key={card.title} delay={i * 0.08}>
@@ -192,12 +185,7 @@ Você pode começar com:
               <AnimatedCard delay={0.3} className="h-full min-h-[460px] flex flex-col">
                 <div className="h-full flex flex-col">
                   <div className="flex-1">
-                    <PerformanceChart
-                      userHoldings={enrichedHoldings}
-                      totalValue={totalValue}
-                      firstBuyDate={firstBuyDate}
-                      onPortfolioMetricChange={handlePortfolioMetricChange}
-                    />
+                    <PerformanceChart userHoldings={enrichedHoldings} totalValue={totalValue} firstBuyDate={firstBuyDate} />
                   </div>
                 </div>
               </AnimatedCard>
