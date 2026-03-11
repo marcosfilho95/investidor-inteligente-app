@@ -302,9 +302,13 @@ type IntradayChartPoint = {
 
 const INTRADAY_LOCAL_PATH = "/data/intraday_latest.csv";
 const INTRADAY_LAST_PRICE_CACHE_KEY = "ii_intraday_last_price_v1";
+const DEFAULT_SUPABASE_PROJECT_ID = "txpqdupsxtqxcikgpkld";
 const INTRADAY_STORAGE_PATH = (() => {
   const env = (import.meta as ImportMeta & { env: Record<string, string | undefined> }).env;
-  const projectId = env?.VITE_SUPABASE_PROJECT_ID || env?.SUPABASE_PROJECT_ID || "";
+  const projectId =
+    env?.VITE_SUPABASE_PROJECT_ID ||
+    env?.SUPABASE_PROJECT_ID ||
+    DEFAULT_SUPABASE_PROJECT_ID;
   const supabaseUrl =
     env?.VITE_SUPABASE_URL ||
     env?.SUPABASE_URL ||
@@ -518,67 +522,118 @@ function formatDdMm(dateKey: string): string {
   return `${dd}/${mm}`;
 }
 
-function pick7TradingDates(
-  dailyDates: string[],
-  todayKey: string,
-  useIntradayTail: boolean
-): string[] {
-  const base = dailyDates.slice(-7);
-  if (!useIntradayTail) return base;
+type SevenDayIntradayPoint = {
+  date: string;
+  datetime: string;
+  price: number;
+  month: string;
+  tooltipLabel: string;
+};
 
-  const withoutToday = base.filter((d) => d !== todayKey);
-  const prior = withoutToday.slice(-6);
-  return [...prior, todayKey];
+function isMarketHourForIntraday7d(datetime: string): boolean {
+  const hhmm = datetime.split(" ")[1]?.slice(0, 5) || "";
+  return hhmm >= "10:00" && hhmm <= "18:30";
+}
+
+function floorTo15mDatetime(datetime: string): string {
+  const [date, time] = datetime.split(" ");
+  if (!date || !time) return datetime;
+  const [hhRaw, mmRaw] = time.split(":");
+  const hh = Number(hhRaw);
+  const mm = Number(mmRaw);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return datetime;
+  const bucket = Math.floor(mm / 15) * 15;
+  return `${date} ${String(hh).padStart(2, "0")}:${String(bucket).padStart(2, "0")}:00`;
+}
+
+function resampleIntradayRowsTo15m(rows: IntradayPoint[]): IntradayPoint[] {
+  const buckets = new Map<string, IntradayPoint>();
+  const sorted = [...rows].sort((a, b) => a.datetime.localeCompare(b.datetime));
+  for (const row of sorted) {
+    if (!isMarketHourForIntraday7d(row.datetime) || !Number.isFinite(row.price)) continue;
+    const bucketKey = floorTo15mDatetime(row.datetime);
+    // Mantém a última ocorrência dentro do bucket de 15 minutos.
+    buckets.set(bucketKey, { datetime: bucketKey, price: Number(row.price) });
+  }
+  return Array.from(buckets.values()).sort((a, b) => a.datetime.localeCompare(b.datetime));
+}
+
+async function build7dIntradaySeries(symbol: string): Promise<SevenDayIntradayPoint[]> {
+  const allIntraday = await getIntradayHistory();
+  const aliases = normalizeIntradayTicker(symbol);
+  const rows =
+    aliases.map((alias) => allIntraday[alias]).find((series) => Array.isArray(series) && series.length > 0) || [];
+  if (!rows.length) return [];
+
+  const resampled = resampleIntradayRowsTo15m(rows);
+  if (!resampled.length) return [];
+
+  const tradingDates = Array.from(new Set(resampled.map((r) => r.datetime.slice(0, 10)))).sort((a, b) =>
+    a.localeCompare(b)
+  );
+  const selectedDates = tradingDates.slice(-7);
+  if (selectedDates.length < 2) return [];
+
+  const selectedDateSet = new Set(selectedDates);
+  const firstDatetimeByDate = new Map<string, string>();
+  for (const row of resampled) {
+    const d = row.datetime.slice(0, 10);
+    if (!selectedDateSet.has(d)) continue;
+    if (!firstDatetimeByDate.has(d)) firstDatetimeByDate.set(d, row.datetime);
+  }
+
+  const out: SevenDayIntradayPoint[] = [];
+  for (const row of resampled) {
+    const date = row.datetime.slice(0, 10);
+    if (!selectedDateSet.has(date)) continue;
+    const time = row.datetime.slice(11, 16);
+    const ddmm = formatDdMm(date);
+    const firstDt = firstDatetimeByDate.get(date);
+    const month = row.datetime === firstDt ? ddmm : time;
+    out.push({
+      date,
+      datetime: row.datetime,
+      price: Math.round(Number(row.price) * 100) / 100,
+      month,
+      tooltipLabel: `${ddmm} ${time}`,
+    });
+  }
+
+  return out;
 }
 
 export async function getFiltered7dPriceHistory(
   symbol: string
-): Promise<{ month: string; price: number }[]> {
+): Promise<{ month: string; price: number; datetime?: string; tooltipLabel?: string }[]> {
+  const intradaySeries = await build7dIntradaySeries(symbol);
+  if (intradaySeries.length >= 20) {
+    const last = intradaySeries[intradaySeries.length - 1];
+    const sessionCount = new Set(intradaySeries.map((p) => p.date)).size;
+    console.log(
+      `[7D][asset] symbol=${symbol} source=intraday-15m points=${intradaySeries.length} sessions=${sessionCount} lastDate=${last?.date ?? "-"} lastTime=${last?.datetime?.slice(11, 16) ?? "-"}`
+    );
+    return intradaySeries.map((p) => ({
+      month: p.month,
+      price: p.price,
+      datetime: p.datetime,
+      tooltipLabel: p.tooltipLabel,
+    }));
+  }
+
   const allData = getMarketHistory()[symbol];
   if (!allData || allData.length === 0) return [];
 
-  const dailyTail = allData.slice(-7);
-  if (!dailyTail.length) return [];
-
-  const todayKey = getBrtDateKey(new Date());
-  const hasDailyToday = dailyTail.some((d) => d.date === todayKey);
-
-  // Base principal: candles daily.
-  // Intraday só substitui o último ponto quando o daily do dia atual ainda não existe.
-  let intradayTail: { date: string; price: number } | null = null;
-  if (!hasDailyToday) {
-    const intradayLast = await getLatestIntradayPointForCurrentSession(symbol);
-    const intradayDate = intradayLast?.datetime?.slice(0, 10) || "";
-    if (intradayLast && intradayDate === todayKey && Number.isFinite(intradayLast.price)) {
-      intradayTail = { date: intradayDate, price: Number(intradayLast.price) };
-    }
-  }
-
-  const windowDates = pick7TradingDates(
-    allData.map((d) => d.date),
-    todayKey,
-    Boolean(intradayTail)
-  );
-
-  const byDate = new Map(allData.map((d) => [d.date, d]));
-  const out = windowDates
-    .map((date) => {
-      if (intradayTail && date === intradayTail.date) {
-        return { month: formatDdMm(date), price: Math.round(intradayTail.price * 100) / 100 };
-      }
-      const daily = byDate.get(date);
-      if (!daily || !Number.isFinite(daily.close)) return null;
-      return { month: formatDdMm(date), price: Math.round(Number(daily.close) * 100) / 100 };
-    })
-    .filter((p): p is { month: string; price: number } => Boolean(p));
-
-  const lastPointSource = intradayTail && windowDates[windowDates.length - 1] === intradayTail.date ? "intraday" : "daily";
+  const out = allData
+    .slice(-7)
+    .filter((d) => Number.isFinite(d.close))
+    .map((d) => ({
+      month: formatDdMm(d.date),
+      price: Math.round(Number(d.close) * 100) / 100,
+      tooltipLabel: `${formatDdMm(d.date)} 18:00`,
+    }));
   console.log(
-    `[7D][asset] symbol=${symbol} points=${out.length} hasDailyToday=${hasDailyToday} intradayTail=${Boolean(
-      intradayTail
-    )} lastPointSource=${lastPointSource} dates=${windowDates.join(",")}`
+    `[7D][asset] symbol=${symbol} source=daily-fallback points=${out.length} reason=intraday-insufficient`
   );
-
   return out;
 }
 
@@ -1899,42 +1954,102 @@ export async function getInvestmentComparisonData(symbol: string, period: string
     }
 
     if (p === "7D") {
-      const todayKey = getBrtDateKey(new Date());
-      const hasDailyToday = assetRaw.some((p0) => p0.date === todayKey);
+      const assetIntraday7d = await build7dIntradaySeries(symbol);
+      const ibovIntraday7d = await build7dIntradaySeries("IBOV");
 
-      let assetIntradayTail: SeriesPoint | null = null;
-      let ibovIntradayTail: SeriesPoint | null = null;
+      if (assetIntraday7d.length >= 20 && ibovIntraday7d.length >= 20) {
+        const calendar = assetIntraday7d.map((p0) => p0.datetime);
 
-      if (!hasDailyToday) {
-        const intradayData = await getIntradayHistory();
-        const symbolAliases = normalizeIntradayTicker(symbol);
-        const ibovAliases = normalizeIntradayTicker("IBOV");
-        const assetRows =
-          symbolAliases.map((a) => intradayData[a] || []).find((rows) => rows.length > 0) || [];
-        const ibovRows =
-          ibovAliases.map((a) => intradayData[a] || []).find((rows) => rows.length > 0) || [];
+        const fillIntradayOnCalendar = (series: SeriesPoint[], cal: string[]): SeriesPoint[] => {
+          if (!series.length || !cal.length) return [];
+          const sorted = [...series].sort((a, b) => a.date.localeCompare(b.date));
+          let idx = 0;
+          let lastValue: number | null = null;
+          const out: SeriesPoint[] = [];
 
-        const sessionAsset = getRowsForCurrentSession(assetRows);
-        const sessionIbov = getRowsForCurrentSession(ibovRows);
-        const assetLast = sessionAsset[sessionAsset.length - 1];
-        const ibovLast = sessionIbov[sessionIbov.length - 1];
+          for (const dt of cal) {
+            while (idx < sorted.length && sorted[idx].date <= dt) {
+              lastValue = sorted[idx].value;
+              idx += 1;
+            }
+            if (!Number.isFinite(lastValue ?? Number.NaN)) {
+              lastValue = sorted[0]?.value ?? 1000;
+            }
+            out.push({ date: dt, value: Number(lastValue) });
+          }
+          return out;
+        };
 
-        if (assetLast && Number.isFinite(assetLast.price)) {
-          assetIntradayTail = { date: todayKey, value: Number(assetLast.price) };
-        }
-        if (ibovLast && Number.isFinite(ibovLast.price)) {
-          ibovIntradayTail = { date: todayKey, value: Number(ibovLast.price) };
-        }
+        const assetIntradaySeries: SeriesPoint[] = assetIntraday7d.map((p0) => ({
+          date: p0.datetime,
+          value: p0.price,
+        }));
+        const ibovIntradaySeries: SeriesPoint[] = ibovIntraday7d.map((p0) => ({
+          date: p0.datetime,
+          value: p0.price,
+        }));
+
+        const assetWindow = normalizeSeriesByBase(fillIntradayOnCalendar(assetIntradaySeries, calendar), 1000);
+        const ibovWindow = normalizeSeriesByBase(fillIntradayOnCalendar(ibovIntradaySeries, calendar), 1000);
+
+        const cdiDaily = cdiRaw
+          .filter((r) => !!r.date && Number.isFinite(r.value))
+          .sort((a, b) => a.date.localeCompare(b.date));
+        const ipcaDaily = ipcaRaw
+          .filter((r) => !!r.date && Number.isFinite(r.value))
+          .sort((a, b) => a.date.localeCompare(b.date));
+
+        const cdiWindowBase: SeriesPoint[] = calendar.map((dt) => {
+          const dateKey = dt.slice(0, 10);
+          const value = getSeriesValueOnOrBefore(cdiDaily, dateKey) ?? 1000;
+          return { date: dt, value };
+        });
+        const ipcaWindowBase: SeriesPoint[] = calendar.map((dt) => {
+          const dateKey = dt.slice(0, 10);
+          const value = getSeriesValueOnOrBefore(ipcaDaily, dateKey) ?? 1000;
+          return { date: dt, value };
+        });
+        const cdiWindow = normalizeSeriesByBase(cdiWindowBase, 1000);
+        const ipcaWindow = normalizeSeriesByBase(ipcaWindowBase, 1000);
+
+        const points: InvestmentComparisonPoint[] = calendar.map((dt, i) => ({
+          date: dt,
+          month: assetIntraday7d[i]?.month ?? dt.slice(11, 16),
+          tooltipLabel: assetIntraday7d[i]?.tooltipLabel ?? dt,
+          [symbol]: Number(assetWindow[i].value.toFixed(2)),
+          IBOV: Number(ibovWindow[i].value.toFixed(2)),
+          CDI: Number(cdiWindow[i].value.toFixed(2)),
+          IPCA: Number(ipcaWindow[i].value.toFixed(2)),
+        }));
+
+        const lastPoint = points[points.length - 1];
+        const sessionCount = new Set(assetIntraday7d.map((p0) => p0.date)).size;
+        console.log(
+          `[7D][compare] symbol=${symbol} source=intraday-15m points=${points.length} sessions=${sessionCount} lastDate=${lastPoint?.date ?? "-"}`
+        );
+
+        debugInvestmentSeries(symbol, assetWindow);
+        debugInvestmentSeries("IBOV", ibovWindow);
+        debugInvestmentSeries("CDI", cdiWindow);
+        debugInvestmentSeries("IPCA", ipcaWindow);
+
+        return {
+          points,
+          meta: {
+            ...apiData.meta,
+            sources: {
+              ...apiData.meta.sources,
+              ibov: "ok",
+            },
+          },
+        };
       }
 
-      const useIntradayTail = Boolean(assetIntradayTail || ibovIntradayTail);
-      const windowDates = pick7TradingDates(
-        assetRaw.map((p0) => p0.date),
-        todayKey,
-        useIntradayTail
-      );
-
-      if (windowDates.length === 0) {
+      const windowDates = assetRaw
+        .slice(-7)
+        .map((p0) => p0.date)
+        .filter(Boolean);
+      if (!windowDates.length) {
         return buildNeverEmptyFallback(apiData.meta);
       }
 
@@ -1948,51 +2063,36 @@ export async function getInvestmentComparisonData(symbol: string, period: string
       const cdiDaily = toDailySeries(cdiRaw);
       const ipcaDaily = toDailySeries(ipcaRaw);
 
-      const buildWindowSeries = (
-        daily: SeriesPoint[],
-        intradayTail: SeriesPoint | null
-      ): SeriesPoint[] => {
+      const buildDailyWindow = (daily: SeriesPoint[]): SeriesPoint[] => {
         const out: SeriesPoint[] = [];
         let lastValue: number | null = null;
-
         for (const d of windowDates) {
-          let value: number | null = null;
-          if (intradayTail && d === intradayTail.date && Number.isFinite(intradayTail.value)) {
-            value = Number(intradayTail.value);
-          } else {
-            value = getSeriesValueOnOrBefore(daily, d);
-          }
-          if (!Number.isFinite(value ?? Number.NaN)) {
-            value = lastValue;
-          }
-          if (!Number.isFinite(value ?? Number.NaN)) {
-            value = 1000;
-          }
+          let value = getSeriesValueOnOrBefore(daily, d);
+          if (!Number.isFinite(value ?? Number.NaN)) value = lastValue;
+          if (!Number.isFinite(value ?? Number.NaN)) value = 1000;
           lastValue = Number(value);
           out.push({ date: d, value: Number(value) });
         }
         return out;
       };
 
-      const assetWindow = normalizeSeriesByBase(buildWindowSeries(assetDaily, assetIntradayTail), 1000);
-      const ibovWindow = normalizeSeriesByBase(buildWindowSeries(ibovDaily, ibovIntradayTail), 1000);
-      const cdiWindow = normalizeSeriesByBase(buildWindowSeries(cdiDaily, null), 1000);
-      const ipcaWindow = normalizeSeriesByBase(buildWindowSeries(ipcaDaily, null), 1000);
+      const assetWindow = normalizeSeriesByBase(buildDailyWindow(assetDaily), 1000);
+      const ibovWindow = normalizeSeriesByBase(buildDailyWindow(ibovDaily), 1000);
+      const cdiWindow = normalizeSeriesByBase(buildDailyWindow(cdiDaily), 1000);
+      const ipcaWindow = normalizeSeriesByBase(buildDailyWindow(ipcaDaily), 1000);
 
       const points: InvestmentComparisonPoint[] = windowDates.map((d, i) => ({
         date: d,
         month: formatDateLabel(d, p),
+        tooltipLabel: `${formatDdMm(d)} 18:00`,
         [symbol]: Number(assetWindow[i].value.toFixed(2)),
         IBOV: Number(ibovWindow[i].value.toFixed(2)),
         CDI: Number(cdiWindow[i].value.toFixed(2)),
         IPCA: Number(ipcaWindow[i].value.toFixed(2)),
       }));
 
-      const lastPoint = points[points.length - 1];
       console.log(
-        `[7D][compare] symbol=${symbol} points=${points.length} hasDailyToday=${hasDailyToday} intradayAssetTail=${Boolean(
-          assetIntradayTail
-        )} intradayIbovTail=${Boolean(ibovIntradayTail)} lastDate=${lastPoint?.date ?? "-"} dates=${windowDates.join(",")}`
+        `[7D][compare] symbol=${symbol} source=daily-fallback points=${points.length} reason=intraday-insufficient`
       );
 
       debugInvestmentSeries(symbol, assetWindow);
