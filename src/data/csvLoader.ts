@@ -338,11 +338,12 @@ function mergePreferRicherSeries(
 async function resolveLatestPrices(
   currentVersion: string | null,
   currentCachedData: Record<string, OHLCVDay[]> | null,
-  emitUpdateEvent = false
+  emitUpdateEvent = false,
+  forceStorageRevalidation = false
 ): Promise<Record<string, OHLCVDay[]>> {
   const latestVersion = await fetchLatestVersionToken();
 
-  if (latestVersion && latestVersion === currentVersion && currentCachedData) {
+  if (!forceStorageRevalidation && latestVersion && latestVersion === currentVersion && currentCachedData) {
     // Versao igual: mantenha o cache atual sem mesclar com CSV local.
     // Isso evita que fallback local (potencialmente antigo) sobrescreva dados do Storage.
     _source = "storage";
@@ -418,6 +419,39 @@ function shouldRunBackgroundCheck(): boolean {
   return true;
 }
 
+function getBrtNowParts(now = new Date()): { dateKey: string; hhmm: string } {
+  const dateFmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const timeFmt = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  return {
+    dateKey: dateFmt.format(now),
+    hhmm: timeFmt.format(now),
+  };
+}
+
+function shouldForcePostCloseDailyRevalidation(cachedData: Record<string, OHLCVDay[]> | null): boolean {
+  if (!cachedData) return false;
+
+  const { dateKey: todayBrt, hhmm } = getBrtNowParts();
+  // Revalida automaticamente no pos-fechamento para capturar close consolidado.
+  if (hhmm < "18:30") return false;
+
+  const cachedLatest = getLatestDateFromData(cachedData);
+  if (!cachedLatest) return false;
+
+  // YYYY-MM-DD permite comparacao lexicografica segura.
+  return cachedLatest < todayBrt;
+}
+
 export async function loadRealPriceData(forceRefresh = false): Promise<Record<string, OHLCVDay[]>> {
   if (!forceRefresh && _realPricesCache) {
     if (!_backgroundVersionCheckPromise && shouldRunBackgroundCheck()) {
@@ -439,6 +473,10 @@ export async function loadRealPriceData(forceRefresh = false): Promise<Record<st
         _realPricesCache = cachedData;
         _loaded = true;
         _source = "local";
+
+        if (shouldForcePostCloseDailyRevalidation(cachedData)) {
+          return await resolveLatestPrices(currentVersion, cachedData, true, true);
+        }
 
         if (!_backgroundVersionCheckPromise && shouldRunBackgroundCheck()) {
           _backgroundVersionCheckPromise = checkForUpdatedVersionInBackground().finally(() => {
