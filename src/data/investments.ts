@@ -626,11 +626,6 @@ export async function getFiltered7dPriceHistory(
 ): Promise<{ month: string; price: number; datetime?: string; tooltipLabel?: string }[]> {
   const intradaySeries = await build7dIntradaySeries(symbol);
   if (intradaySeries.length >= 20) {
-    const last = intradaySeries[intradaySeries.length - 1];
-    const sessionCount = new Set(intradaySeries.map((p) => p.date)).size;
-    console.log(
-      `[7D][asset] symbol=${symbol} source=intraday-15m points=${intradaySeries.length} sessions=${sessionCount} lastDate=${last?.date ?? "-"} lastTime=${last?.datetime?.slice(11, 16) ?? "-"}`
-    );
     return intradaySeries.map((p) => ({
       month: p.month,
       price: p.price,
@@ -650,9 +645,6 @@ export async function getFiltered7dPriceHistory(
       price: Math.round(Number(d.close) * 100) / 100,
       tooltipLabel: `${formatDdMm(d.date)} 18:00`,
     }));
-  console.log(
-    `[7D][asset] symbol=${symbol} source=daily-fallback points=${out.length} reason=intraday-insufficient`
-  );
   return out;
 }
 
@@ -794,9 +786,6 @@ export function setMacroMarketData(data: MacroMarketData) {
     IPCA_MONTHLY = data.ipcaMonthly;
   }
   _benchmarkCache = null;
-  console.log(
-    `[investments] Macro data injected: cdiYears=${Object.keys(CDI_MONTHLY).length} ipcaYears=${Object.keys(IPCA_MONTHLY).length}`
-  );
 }
 
 function getBusinessDaysInMonth(year: number, monthZeroBased: number): number {
@@ -961,10 +950,7 @@ export function setRealMarketData(data: Record<string, OHLCVDay[]>) {
       IPCA: ipcaBenchmark,
       IBOV: ibovSeries,
     };
-    console.log(`[investments] Real IBOV data injected (${ibovSeries.length} points, cleaned)`);
   }
-
-  console.log(`[investments] Real market data injected for ${Object.keys(data).length} tickers`);
 }
 
 /**
@@ -1675,18 +1661,6 @@ function markMetaStale(meta: InvestmentComparisonMeta, keys: Array<keyof Investm
   return next;
 }
 
-function debugInvestmentSeries(name: string, series: SeriesPoint[]) {
-  if (series.length === 0) {
-    console.log(`[investmentComparison] ${name}: empty series`);
-    return;
-  }
-  const first = series[0];
-  const last = series[series.length - 1];
-  console.log(
-    `[investmentComparison] ${name} baseDate=${first.date} baseValue=${first.value.toFixed(4)} lastDate=${last.date} lastValue=${last.value.toFixed(4)}`
-  );
-}
-
 function getBenchmarkEndValueInRange(series: { date: string; value: number }[], from: string, to: string): number {
   const filtered = series
     .filter((p) => p.date >= from && p.date <= to && Number.isFinite(p.value))
@@ -1862,10 +1836,6 @@ export async function getInvestmentComparisonData(symbol: string, period: string
           IPCA: Number(ipcaNorm[i].value.toFixed(2)),
         }));
 
-        console.log(
-          `[Daily][comparison] symbol=${symbol} source=daily-fallback points=${points.length} lastDate=${points[points.length - 1]?.date ?? "-"}`
-        );
-
         return {
           points,
           meta: {
@@ -1956,9 +1926,6 @@ export async function getInvestmentComparisonData(symbol: string, period: string
 
       const todayKey = getBrtDateKey(new Date());
       const source = targetDay === todayKey ? "intraday" : "last-session";
-      console.log(
-        `[Daily][comparison] symbol=${symbol} source=${source} points=${points.length} lastDate=${points[points.length - 1]?.date ?? "-"}`
-      );
 
       return {
         points,
@@ -2041,17 +2008,6 @@ export async function getInvestmentComparisonData(symbol: string, period: string
           IPCA: Number(ipcaWindow[i].value.toFixed(2)),
         }));
 
-        const lastPoint = points[points.length - 1];
-        const sessionCount = new Set(assetIntraday7d.map((p0) => p0.date)).size;
-        console.log(
-          `[7D][compare] symbol=${symbol} source=intraday-15m points=${points.length} sessions=${sessionCount} lastDate=${lastPoint?.date ?? "-"}`
-        );
-
-        debugInvestmentSeries(symbol, assetWindow);
-        debugInvestmentSeries("IBOV", ibovWindow);
-        debugInvestmentSeries("CDI", cdiWindow);
-        debugInvestmentSeries("IPCA", ipcaWindow);
-
         return {
           points,
           meta: {
@@ -2110,15 +2066,6 @@ export async function getInvestmentComparisonData(symbol: string, period: string
         IPCA: Number(ipcaWindow[i].value.toFixed(2)),
       }));
 
-      console.log(
-        `[7D][compare] symbol=${symbol} source=daily-fallback points=${points.length} reason=intraday-insufficient`
-      );
-
-      debugInvestmentSeries(symbol, assetWindow);
-      debugInvestmentSeries("IBOV", ibovWindow);
-      debugInvestmentSeries("CDI", cdiWindow);
-      debugInvestmentSeries("IPCA", ipcaWindow);
-
       return {
         points,
         meta: {
@@ -2167,11 +2114,6 @@ export async function getInvestmentComparisonData(symbol: string, period: string
     const ibovFilled = forwardFillOnCalendar(ensureNonEmptySeries(ibovNorm, calendar), calendar);
     const cdiFilled = forwardFillOnCalendar(ensureNonEmptySeries(cdiNorm, calendar), calendar);
     const ipcaFilled = forwardFillOnCalendar(ensureNonEmptySeries(ipcaNorm, calendar), calendar);
-
-    debugInvestmentSeries(symbol, assetFilled);
-    debugInvestmentSeries("IBOV", ibovFilled);
-    debugInvestmentSeries("CDI", cdiFilled);
-    debugInvestmentSeries("IPCA", ipcaFilled);
 
     let points: InvestmentComparisonPoint[] = calendar.map((date, i) => ({
       date,

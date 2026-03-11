@@ -155,11 +155,6 @@ const AssetDetail = () => {
         if (!mounted) return;
         setSevenDayPriceHistory(rows);
         setSevenDayLoaded(true);
-        console.log(
-          `[7D][priceHistory] symbol=${asset.symbol} points=${rows.length} dates=${rows
-            .map((r) => r.month)
-            .join(",")}`
-        );
       })
       .catch(() => {
         if (!mounted) return;
@@ -244,12 +239,7 @@ const AssetDetail = () => {
     // Daily deve usar somente a série intraday (sessão atual ou última sessão disponível),
     // evitando cair no fallback "1D" que gera o resumo OHLC (Fech.ant./Abertura/Mínima/Máxima/Fechar).
     if (selectedPeriod === "Daily") {
-      const source = intradayPriceHistory.length > 0 ? "intraday" : "daily-fallback";
       const data = intradayPriceHistory.length > 0 ? intradayPriceHistory : dailyFallbackHistory;
-      const last = data[data.length - 1];
-      console.log(
-        `[Daily][priceHistory] symbol=${asset.symbol} source=${source} points=${data.length} last=${last?.month ?? "-"}`
-      );
       return data;
     }
     if (selectedPeriod === "7 DIAS") {
@@ -323,12 +313,6 @@ const AssetDetail = () => {
         if (!isMounted) return;
         setInvestmentComparison(result.points);
         setComparisonMeta(result.meta);
-        if (selectedPeriod === "7 DIAS") {
-          const last = result.points[result.points.length - 1];
-          console.log(
-            `[7D][comparison] symbol=${asset.symbol} points=${result.points.length} lastDate=${last?.date ?? "-"}`
-          );
-        }
       })
       .catch((err) => {
         console.warn("[AssetDetail] getInvestmentComparison failed:", err);

@@ -100,7 +100,7 @@ Se quiser aprender do zero, posso te direcionar para a aba Aprender com trilhas 
 Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estratégia vs Especulação, Psicologia do Investidor e Gestão de Risco.
 
 Você pode começar com:
-1) "Analise minha carteira como se eu fosse iniciante"
+1) "Analise minha carteira"
 2) "Quais ativos parecem caros pelos fundamentos?"
 3) "Como reduzir risco sem perder tanto potencial?"`, [greeting, userName, loading, isEmpty, enrichedHoldings.length]);
 
