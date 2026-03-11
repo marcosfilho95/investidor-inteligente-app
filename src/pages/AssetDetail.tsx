@@ -2,7 +2,7 @@
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getCachedIntradayLastPrice } from "@/data/investments";
+import { holdings, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getCachedIntradayLastPrice, getMarketHistory } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
@@ -99,7 +99,6 @@ const AssetDetail = () => {
 
   const userHolding = userHoldings.find(h => h.symbol === asset.symbol);
   const displaySymbol = getDisplaySymbol(asset.symbol);
-  const isPositive = asset.changePercent >= 0;
   const recommendation = useMemo(() => calcRecommendationScore(asset), [asset]);
   const activeValuation = useMemo(() => resolveActiveValuation(asset), [asset]);
   const activeValuationType = activeValuation.type;
@@ -231,7 +230,14 @@ const AssetDetail = () => {
     return () => window.clearInterval(id);
   }, [asset.symbol, selectedPeriod, chartsReady]);
 
-  const displayedPrice = intradayCurrentPrice ?? asset.price;
+  const marketSeries = useMemo(() => getMarketHistory()[asset.symbol] || [], [asset.symbol]);
+  const latestClose = marketSeries.length > 0 ? Number(marketSeries[marketSeries.length - 1].close) : Number(asset.price);
+  const prevClose = marketSeries.length > 1 ? Number(marketSeries[marketSeries.length - 2].close) : latestClose;
+  const displayedPrice = intradayCurrentPrice ?? latestClose;
+  const dailyChangePercent = prevClose > 0
+    ? Math.round((((displayedPrice / prevClose) - 1) * 100) * 100) / 100
+    : 0;
+  const isPositive = dailyChangePercent >= 0;
   const dailyFallbackHistory = useMemo(() => getFilteredPriceHistory(asset.symbol, "7D"), [asset.symbol]);
 
   const priceHistory = useMemo(() => {
@@ -474,7 +480,7 @@ const AssetDetail = () => {
                 </p>
                 <div className="flex items-center justify-end gap-1 mt-1 whitespace-nowrap">
                   {isPositive ? <TrendingUp className="h-3.5 w-3.5 text-gain" /> : <TrendingDown className="h-3.5 w-3.5 text-loss" />}
-                  <span className={`text-xs md:text-sm font-mono font-medium leading-none ${isPositive ? "text-gain" : "text-loss"}`}>{isPositive ? "+" : ""}{asset.changePercent}%</span>
+                  <span className={`text-xs md:text-sm font-mono font-medium leading-none ${isPositive ? "text-gain" : "text-loss"}`}>{isPositive ? "+" : ""}{dailyChangePercent}%</span>
                   <span className={`text-xs md:text-sm font-mono font-medium leading-none ${isPositive ? "text-gain" : "text-loss"}`}>(1 dia)</span>
                 </div>
               </div>

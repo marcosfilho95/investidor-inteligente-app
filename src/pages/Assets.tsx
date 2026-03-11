@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, TrendingUp, TrendingDown } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { getCachedIntradayLastPrice, getLatestIntradayPointForCurrentSession, holdings, invalidateIntradayHistoryCache } from "@/data/investments";
+import { getCachedIntradayLastPrice, getLatestIntradayPointForCurrentSession, getMarketHistory, holdings, invalidateIntradayHistoryCache } from "@/data/investments";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
@@ -19,6 +19,7 @@ const Assets = () => {
     return initial;
   });
   const categories = ["Todos", ...Array.from(new Set(holdings.map((h) => h.sector)))];
+  const marketHistory = getMarketHistory();
 
   const normalizeSearchText = (value: string) =>
     value
@@ -101,6 +102,17 @@ const Assets = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((asset, i) => (
               <AnimatedCard key={asset.symbol} delay={i * 0.04}>
+                {(() => {
+                  const displayedPrice = livePrices[asset.symbol] ?? asset.price;
+                  const series = marketHistory[asset.symbol] || [];
+                  const latestClose = series.length > 0 ? Number(series[series.length - 1].close) : Number(asset.price);
+                  const prevClose = series.length > 1 ? Number(series[series.length - 2].close) : latestClose;
+                  const dailyChangePercent = prevClose > 0
+                    ? Math.round((((displayedPrice / prevClose) - 1) * 100) * 100) / 100
+                    : 0;
+                  const isPositive = dailyChangePercent >= 0;
+
+                  return (
                 <Link to={`/ativos/${getAssetRouteSymbol(asset.symbol)}`} className="glass-card p-5 hover:border-primary/30 transition-all group block">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -115,18 +127,20 @@ const Assets = () => {
                   <div className="flex items-end justify-between">
                     <div>
                       <p className="text-lg font-semibold font-mono">
-                        R$ {(livePrices[asset.symbol] ?? asset.price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">{asset.subsetor}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      {asset.changePercent >= 0 ? <TrendingUp className="h-3.5 w-3.5 text-gain" /> : <TrendingDown className="h-3.5 w-3.5 text-loss" />}
-                      <span className={`text-sm font-mono font-medium ${asset.changePercent >= 0 ? "text-gain" : "text-loss"}`}>
-                        {asset.changePercent >= 0 ? "+" : ""}{asset.changePercent}%
+                      {isPositive ? <TrendingUp className="h-3.5 w-3.5 text-gain" /> : <TrendingDown className="h-3.5 w-3.5 text-loss" />}
+                      <span className={`text-sm font-mono font-medium ${isPositive ? "text-gain" : "text-loss"}`}>
+                        {isPositive ? "+" : ""}{dailyChangePercent}%
                       </span>
                     </div>
                   </div>
                 </Link>
+                  );
+                })()}
               </AnimatedCard>
             ))}
           </div>
