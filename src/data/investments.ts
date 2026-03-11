@@ -1838,6 +1838,7 @@ const safeWeighted = (maxPoints: number, ratio: number): number =>
 function scoreValuationGraham(asset: Holding, maxPoints: number): number {
   // A recomendacao usa SEMPRE o valuation ativo (Graham > Preco Justo Estimado).
   const activeValuation = resolveActiveValuation(asset);
+  const hasNegativeOrZeroLpa = !Number.isFinite(asset.lpa) || (asset.lpa ?? 0) <= 0;
   if (
     !activeValuation.price ||
     !Number.isFinite(activeValuation.price) ||
@@ -1845,16 +1846,28 @@ function scoreValuationGraham(asset: Holding, maxPoints: number): number {
     !Number.isFinite(activeValuation.upside) ||
     asset.price <= 0
   ) {
-    return maxPoints * 0.5;
+    const fallbackScore = maxPoints * 0.5;
+    // Sem LPA positivo, Graham fica invalido; fallback nao pode dar nota maxima.
+    if (hasNegativeOrZeroLpa) {
+      return clamp(fallbackScore, 4, 8);
+    }
+    return fallbackScore;
   }
 
   const upside = activeValuation.upside;
-  if (upside >= 40) return maxPoints;
-  if (upside >= 25) return safeWeighted(maxPoints, 0.85);
-  if (upside >= 10) return safeWeighted(maxPoints, 0.7);
-  if (upside >= -10) return safeWeighted(maxPoints, 0.5);
-  if (upside >= -25) return safeWeighted(maxPoints, 0.25);
-  return safeWeighted(maxPoints, 0.05);
+  let calculatedScore = safeWeighted(maxPoints, 0.05);
+  if (upside >= 40) calculatedScore = maxPoints;
+  else if (upside >= 25) calculatedScore = safeWeighted(maxPoints, 0.85);
+  else if (upside >= 10) calculatedScore = safeWeighted(maxPoints, 0.7);
+  else if (upside >= -10) calculatedScore = safeWeighted(maxPoints, 0.5);
+  else if (upside >= -25) calculatedScore = safeWeighted(maxPoints, 0.25);
+
+  // Sem lucro (LPA <= 0), usar fallback apenas como referencia moderada.
+  if (hasNegativeOrZeroLpa) {
+    return clamp(calculatedScore, 4, 8);
+  }
+
+  return calculatedScore;
 }
 
 function scoreValuationPL(asset: Holding, maxPoints: number, isTech: boolean, isCommodities: boolean): number {
@@ -2195,6 +2208,19 @@ function calculateSectorAdjustment(ticker: string, asset: Holding): number {
   return sectorAdjustment;
 }
 
+function calculateValueTrapPenalty(asset: Holding): number {
+  const fragilitySignals = [
+    (asset.lpa ?? 0) <= 0,
+    (asset.roe ?? 0) <= 0,
+    (asset.margemLiquida ?? 0) <= 0,
+  ].filter(Boolean).length;
+
+  // Penalizacao moderada para evitar "barato" com fundamento fraco.
+  if (fragilitySignals >= 3) return -8;
+  if (fragilitySignals >= 2) return -6;
+  return 0;
+}
+
 export function calcRecommendationScore(asset: Holding): { score: number; label: string; color: string } {
   const isFinancial = asset.sector === "Financeiro";
   const isUtilities = asset.sector === "Utilidades Públicas";
@@ -2226,7 +2252,8 @@ export function calcRecommendationScore(asset: Holding): { score: number; label:
   const rawScore = valuationScore + profitabilityScore + riskScore + growthScore + dividendScore;
   const scoreBase = Math.round(clamp(rawScore, 0, 100));
   const sectorAdjustment = calculateSectorAdjustment(asset.symbol, asset);
-  const score = Math.round(clamp(scoreBase + sectorAdjustment, 0, 100));
+  const valueTrapPenalty = calculateValueTrapPenalty(asset);
+  const score = Math.round(clamp(scoreBase + sectorAdjustment + valueTrapPenalty, 0, 100));
 
   let label: string, color: string;
   if (score >= 70) { label = "Comprar"; color = "hsl(var(--gain))"; }
@@ -2454,11 +2481,15 @@ export function getRecommendationBreakdown(ticker: string): RecommendationBreakd
 
   const scoreBase = Math.round(clamp(rawScore, 0, 100));
   const sectorAdjustment = calculateSectorAdjustment(asset.symbol, asset);
-  const scoreFinal = Math.round(clamp(scoreBase + sectorAdjustment, 0, 100));
+  const valueTrapPenalty = calculateValueTrapPenalty(asset);
+  const scoreFinal = Math.round(clamp(scoreBase + sectorAdjustment + valueTrapPenalty, 0, 100));
   const recommendation = calcRecommendationScore(asset).label;
 
   const sectorDebug = calculateSectorAdjustmentDebug(asset.symbol, asset);
   const sectorReasons = [...sectorDebug.reasons];
+  if (valueTrapPenalty < 0) {
+    sectorReasons.push(`value trap penalty: ${valueTrapPenalty}`);
+  }
   if (sectorDebug.adjustment !== sectorAdjustment) {
     sectorReasons.push(
       `aviso debug: ajuste calculado no debug (${sectorDebug.adjustment}) difere do oficial (${sectorAdjustment})`
@@ -2512,6 +2543,7 @@ function buildScoreMethodologyContext(): string {
     "- Crescimento = 15% (CAGR Lucro 5 anos)",
     "- Dividendos = 10% (Dividend Yield)",
     "- Ajuste Setorial/Estrutural pos-score base (faixa: -8 a +6)",
+    "- Penalizacao de value trap (pos-score base): -6 ou -8 quando ha sinais combinados de fragilidade (LPA<=0, ROE<=0, margem liquida<=0)",
     "",
     "Ajustes por setor:",
     "- Financeiro: risco via Basileia; maior relevancia de P/VP e ROE.",

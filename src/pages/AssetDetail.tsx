@@ -360,6 +360,29 @@ const AssetDetail = () => {
       }
     }, 150);
     const onPricesUpdated = () => {
+      invalidateIntradayHistoryCache();
+      getLatestIntradayPointForCurrentSession(asset.symbol)
+        .then((last) => {
+          setIntradayCurrentPrice(last?.price ?? null);
+        })
+        .catch(() => {
+          setIntradayCurrentPrice(null);
+        });
+
+      if (selectedPeriod === "Daily") {
+        getFilteredIntradayPriceHistory(asset.symbol)
+          .then((rows) => {
+            setIntradayPriceHistory(rows);
+            const last = rows[rows.length - 1];
+            const hhmm = last?.datetime?.split(" ")[1]?.slice(0, 5) || null;
+            setIntradayLastUpdatedLabel(hhmm);
+          })
+          .catch(() => {
+            setIntradayPriceHistory([]);
+            setIntradayLastUpdatedLabel(null);
+          });
+      }
+
       setChartsReady(true);
       setChartAnimKey((k) => k + 1);
       setCompareAnimKey((k) => k + 1);
@@ -369,7 +392,7 @@ const AssetDetail = () => {
       window.clearInterval(pollId);
       window.removeEventListener("ii:prices-data-updated", onPricesUpdated as EventListener);
     };
-  }, [chartsReady]);
+  }, [chartsReady, asset.symbol, selectedPeriod]);
 
   return (
     <div className="min-h-screen bg-background">

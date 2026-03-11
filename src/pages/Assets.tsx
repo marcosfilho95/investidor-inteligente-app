@@ -20,6 +20,12 @@ const Assets = () => {
   });
   const categories = ["Todos", ...Array.from(new Set(holdings.map((h) => h.sector)))];
 
+  const normalizeSearchText = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
   useEffect(() => {
     let mounted = true;
 
@@ -57,10 +63,11 @@ const Assets = () => {
 
   const filtered = holdings.filter((h) => {
     const displaySymbol = getDisplaySymbol(h.symbol);
+    const normalizedSearch = normalizeSearchText(search);
     const matchSearch =
-      h.symbol.toLowerCase().includes(search.toLowerCase()) ||
-      displaySymbol.toLowerCase().includes(search.toLowerCase()) ||
-      h.name.toLowerCase().includes(search.toLowerCase());
+      normalizeSearchText(h.symbol).includes(normalizedSearch) ||
+      normalizeSearchText(displaySymbol).includes(normalizedSearch) ||
+      normalizeSearchText(h.name).includes(normalizedSearch);
     const matchCategory = categoryFilter === "Todos" || h.sector === categoryFilter;
     return matchSearch && matchCategory;
   });
