@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { holdings as allAssets, getCachedIntradayLastPrice, getMarketHistory } from "@/data/investments";
+import { holdings as allAssets, getMarketHistory } from "@/data/investments";
 import { useToast } from "@/hooks/use-toast";
 
 export interface UserHolding {
@@ -408,10 +408,8 @@ export function useUserHoldings() {
       const marketSeries = getMarketHistory()[uh.symbol] || [];
       const latestClose = marketSeries.length > 0 ? marketSeries[marketSeries.length - 1].close : asset.price;
       const prevClose = marketSeries.length > 1 ? marketSeries[marketSeries.length - 2].close : latestClose;
-      const intradayPrice = getCachedIntradayLastPrice(uh.symbol);
-      const hasIntradayPrice = Number.isFinite(intradayPrice);
-      const displayedPrice = hasIntradayPrice ? Number(intradayPrice) : Number(latestClose);
-      const referenceClose = hasIntradayPrice ? Number(latestClose) : Number(prevClose);
+      const displayedPrice = Number(latestClose);
+      const referenceClose = Number(prevClose);
       const value = uh.shares * displayedPrice;
       const dayChangeValue = (displayedPrice - referenceClose) * uh.shares;
       const totalGainValue = (displayedPrice - uh.avg_price) * uh.shares;
