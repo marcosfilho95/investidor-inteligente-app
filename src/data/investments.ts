@@ -1032,6 +1032,10 @@ function getLatestMarketDate(): Date {
   return latest ?? new Date();
 }
 
+export function getLatestMarketDateKey(): string {
+  return getLatestMarketDate().toISOString().slice(0, 10);
+}
+
 // Filter OHLCV data by period, returning simplified { month, price } for charts
 export function getFilteredPriceHistory(symbol: string, period: string): { month: string; price: number }[] {
   const allData = getMarketHistory()[symbol];

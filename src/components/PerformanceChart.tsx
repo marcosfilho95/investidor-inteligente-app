@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Holding, getFilteredBenchmarks } from "@/data/investments";
+import { Holding, getFilteredBenchmarks, getLatestMarketDateKey } from "@/data/investments";
 
 const benchmarks = [
   { key: "carteira", label: "Carteira", color: "hsl(142, 72%, 48%)" },
@@ -31,6 +31,7 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(false);
   const [showScrollHint, setShowScrollHint] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
   const periodsScrollRef = useRef<HTMLDivElement | null>(null);
 
   const baseValue = totalValue || 100000;
@@ -46,9 +47,11 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
     [userHoldings]
   );
 
+  const latestMarketDateKey = getLatestMarketDateKey();
+
   const rawData = useMemo(() => {
     const roundedBase = Math.round(baseValue * 100) / 100;
-    const key = `${selectedPeriod}:${roundedBase}:${firstBuyDate ?? ""}:${userPortfolio.length}`;
+    const key = `${selectedPeriod}:${roundedBase}:${firstBuyDate ?? ""}:${userPortfolio.length}:${latestMarketDateKey}`;
     const cached = benchmarkCache.get(key);
     if (cached) return cached;
     const fresh = getFilteredBenchmarks(selectedPeriod, roundedBase, firstBuyDate ?? undefined, userPortfolio);
@@ -58,7 +61,7 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
       if (first) benchmarkCache.delete(first);
     }
     return fresh;
-  }, [selectedPeriod, baseValue, firstBuyDate, userPortfolio]);
+  }, [selectedPeriod, baseValue, firstBuyDate, userPortfolio, latestMarketDateKey, refreshTick]);
 
   const investedBase = useMemo(() => {
     const invested = userPortfolio.reduce((sum, p) => sum + Math.max(0, Number(p.avgPrice || 0) * p.shares), 0);
@@ -95,6 +98,14 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
   useEffect(() => {
     setChartKey((k) => k + 1);
   }, [selectedPeriod, firstBuyDate, investedBase]);
+
+  useEffect(() => {
+    // Revalida periodicamente para captar novo fechamento sem reload manual.
+    const id = window.setInterval(() => {
+      setRefreshTick((t) => t + 1);
+    }, 60 * 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const container = periodsScrollRef.current;
