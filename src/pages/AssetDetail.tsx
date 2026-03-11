@@ -249,7 +249,7 @@ const AssetDetail = () => {
     return getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]);
   }, [asset.symbol, selectedPeriod, chartsReady, intradayPriceHistory, sevenDayPriceHistory, sevenDayLoaded, dailyFallbackHistory]);
 
-  const prevClose = useMemo(() => {
+  const { prevClose, latestDate } = useMemo(() => {
     // Para 7 DIAS, extrai o fechamento do dia útil anterior da própria série exibida no gráfico.
     if (selectedPeriod === "7 DIAS" && priceHistory.length > 1) {
       type TimedPoint = { datetime: string; price: number };
@@ -273,12 +273,21 @@ const AssetDetail = () => {
           .sort((a, b) => a.localeCompare(b));
         const prevDate = previousDates[previousDates.length - 1];
         const prevDayClose = prevDate ? byDate.get(prevDate)?.price : null;
-        if (Number.isFinite(prevDayClose)) return Number(prevDayClose);
+        if (Number.isFinite(prevDayClose)) {
+          return { prevClose: Number(prevDayClose), latestDate: currentDate };
+        }
+      }
+
+      // Quando o fallback de 7D não traz datetime, usa o penúltimo ponto do próprio gráfico.
+      const latestPoint = Number(priceHistory[priceHistory.length - 1]?.price);
+      const previousPoint = Number(priceHistory[priceHistory.length - 2]?.price);
+      if (Number.isFinite(latestPoint) && Number.isFinite(previousPoint)) {
+        return { prevClose: previousPoint, latestDate: "7D-series" };
       }
     }
 
-    return prevCloseFallback;
-  }, [selectedPeriod, priceHistory, prevCloseFallback]);
+    return { prevClose: prevCloseFallback, latestDate: marketSeries[marketSeries.length - 1]?.date ?? null };
+  }, [selectedPeriod, priceHistory, prevCloseFallback, marketSeries]);
 
   const displayedPrice = intradayCurrentPrice ?? latestClose;
   const dailyChangePercent = prevClose > 0
@@ -292,8 +301,9 @@ const AssetDetail = () => {
       displayedPrice,
       prevClose,
       changePercent: dailyChangePercent,
+      latestDate,
     });
-  }, [asset.symbol, displayedPrice, prevClose, dailyChangePercent]);
+  }, [asset.symbol, displayedPrice, prevClose, dailyChangePercent, latestDate]);
 
   const priceHistoryYAxisDomain = useMemo(() => {
     if (!Y_DOMAIN_ADJUST_PERIODS.has(selectedPeriod)) return undefined;
