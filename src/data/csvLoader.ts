@@ -288,18 +288,32 @@ async function fetchFromStorage(version: string): Promise<Record<string, OHLCVDa
 
   try {
     const url = `${STORAGE_PRICES_PATH}?v=${encodeURIComponent(version)}`;
+    console.log(`[csvLoader] trying storage fetch url=${url}`);
     const resp = await fetch(url, {
       signal: AbortSignal.timeout(10000),
       cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+      },
     });
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      console.warn(`[csvLoader] storage fetch non-ok status=${resp.status} statusText=${resp.statusText}`);
+      return null;
+    }
 
     const text = await resp.text();
-    if (!text || text.length < 100) return null;
+    if (!text || text.length < 100) {
+      console.warn(`[csvLoader] storage fetch returned short/empty payload length=${text?.length ?? 0}`);
+      return null;
+    }
 
     const data = parsePricesCSV(text);
     const tickerCount = Object.keys(data).length;
-    if (tickerCount < 5) return null;
+    if (tickerCount < 5) {
+      console.warn(`[csvLoader] parsed storage csv has too few tickers tickerCount=${tickerCount}`);
+      return null;
+    }
 
     const latestDate = getLatestDateFromData(data);
     console.log(`[csvLoader] Loaded from Storage latestDate=${latestDate} tickers=${tickerCount} version=${version}`);

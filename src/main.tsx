@@ -7,9 +7,12 @@ createRoot(document.getElementById("root")!).render(<App />);
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     if (import.meta.env.PROD) {
-      navigator.serviceWorker.register("/sw.js").catch((error) => {
+      navigator.serviceWorker
+        .register("/sw.js", { updateViaCache: "none" })
+        .then((registration) => registration.update())
+        .catch((error) => {
         console.warn("[PWA] Service worker registration failed:", error);
-      });
+        });
       return;
     }
 

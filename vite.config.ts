@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
   const supabaseProjectId =
     env.VITE_SUPABASE_PROJECT_ID ||
     env.SUPABASE_PROJECT_ID ||
-    "qjocvozhlycmqcodwzqp";
+    "txpqdupsxtqxcikgpkld";
 
   const supabaseUrl =
     env.VITE_SUPABASE_URL ||
@@ -79,6 +79,11 @@ export default defineConfig(({ mode }) => {
                 expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
                 cacheableResponse: { statuses: [0, 200] },
               },
+            },
+            {
+              // Market datasets should always prefer network to avoid stale charts.
+              urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/market-data\/.*/i,
+              handler: "NetworkOnly",
             },
             {
               urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
