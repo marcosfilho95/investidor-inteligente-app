@@ -8,7 +8,11 @@ let _lastBackgroundCheckAt = 0;
 let _loaded = false;
 let _source: "storage" | "local" | null = null;
 
-const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || import.meta.env.SUPABASE_PROJECT_ID || "";
+const DEFAULT_PROJECT_ID = "txpqdupsxtqxcikgpkld";
+const PROJECT_ID =
+  import.meta.env.VITE_SUPABASE_PROJECT_ID ||
+  import.meta.env.SUPABASE_PROJECT_ID ||
+  DEFAULT_PROJECT_ID;
 const SUPABASE_URL =
   import.meta.env.VITE_SUPABASE_URL ||
   import.meta.env.SUPABASE_URL ||
