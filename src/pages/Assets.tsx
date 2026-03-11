@@ -109,10 +109,10 @@ const Assets = () => {
             {filtered.map((asset, i) => (
               <AnimatedCard key={asset.symbol} delay={i * 0.04}>
                 {(() => {
-                  const displayedPrice = livePrices[asset.symbol] ?? asset.price;
                   const series = marketHistory[asset.symbol] || [];
                   const latestClose = series.length > 0 ? Number(series[series.length - 1].close) : Number(asset.price);
                   const prevClose = series.length > 1 ? Number(series[series.length - 2].close) : latestClose;
+                  const displayedPrice = dataStale ? latestClose : (livePrices[asset.symbol] ?? asset.price);
                   const dailyChangePercent = prevClose > 0
                     ? Math.round((((displayedPrice / prevClose) - 1) * 100) * 100) / 100
                     : 0;

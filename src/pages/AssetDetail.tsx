@@ -233,13 +233,13 @@ const AssetDetail = () => {
   const marketSeries = useMemo(() => getMarketHistory()[asset.symbol] || [], [asset.symbol]);
   const latestClose = marketSeries.length > 0 ? Number(marketSeries[marketSeries.length - 1].close) : Number(asset.price);
   const prevClose = marketSeries.length > 1 ? Number(marketSeries[marketSeries.length - 2].close) : latestClose;
-  const displayedPrice = intradayCurrentPrice ?? latestClose;
+  const dataStale = isMarketDataStale();
+  const displayedPrice = dataStale ? latestClose : (intradayCurrentPrice ?? latestClose);
   const dailyChangePercent = prevClose > 0
     ? Math.round((((displayedPrice / prevClose) - 1) * 100) * 100) / 100
     : 0;
   const isPositive = dailyChangePercent >= 0;
   const dailyFallbackHistory = useMemo(() => getFilteredPriceHistory(asset.symbol, "7D"), [asset.symbol]);
-  const dataStale = isMarketDataStale();
   const latestMarketDateLabel = (() => {
     const [yyyy, mm, dd] = getLatestMarketDateKey().split("-");
     return yyyy && mm && dd ? `${dd}/${mm}/${yyyy}` : getLatestMarketDateKey();
