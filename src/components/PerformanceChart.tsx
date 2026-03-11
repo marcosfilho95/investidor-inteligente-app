@@ -16,23 +16,21 @@ interface PerformanceChartProps {
   userHoldings?: (Holding & { avgPrice?: number; firstBuyDate?: string | null })[];
   totalValue?: number;
   firstBuyDate?: string | null;
-  onPortfolioMetricChange?: (payload: { period: string; value: number | null }) => void;
 }
 
 type BenchmarkKey = "carteira" | "ibovespa" | "cdi" | "ipca";
 
-const benchmarkCache = new Map<string, Awaited<ReturnType<typeof getFilteredBenchmarks>>>();
+const benchmarkCache = new Map<string, ReturnType<typeof getFilteredBenchmarks>>();
 
-export function PerformanceChart({ userHoldings, totalValue, firstBuyDate, onPortfolioMetricChange }: PerformanceChartProps) {
+export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: PerformanceChartProps) {
   const [showIbovespa, setShowIbovespa] = useState(true);
   const [showCdi, setShowCdi] = useState(true);
   const [showIpca, setShowIpca] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState("YTD");
+  const [selectedPeriod, setSelectedPeriod] = useState("1 ANO");
   const [chartKey, setChartKey] = useState(0);
   const [showLeftFade, setShowLeftFade] = useState(false);
   const [showRightFade, setShowRightFade] = useState(false);
   const [showScrollHint, setShowScrollHint] = useState(false);
-  const [rawData, setRawData] = useState<Awaited<ReturnType<typeof getFilteredBenchmarks>>>([]);
   const periodsScrollRef = useRef<HTMLDivElement | null>(null);
 
   const baseValue = totalValue || 100000;
@@ -48,57 +46,35 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate, onPor
     [userHoldings]
   );
 
-  const portfolioSignature = useMemo(
-    () =>
-      userPortfolio
-        .map((p) => `${p.symbol}:${p.shares}:${Number(p.avgPrice || 0).toFixed(2)}:${p.firstBuyDate ?? ""}`)
-        .sort()
-        .join("|"),
-    [userPortfolio]
-  );
-
-  useEffect(() => {
-    let mounted = true;
+  const rawData = useMemo(() => {
     const roundedBase = Math.round(baseValue * 100) / 100;
-    const key = `${selectedPeriod}:${roundedBase}:${firstBuyDate ?? ""}:${portfolioSignature}`;
+    const key = `${selectedPeriod}:${roundedBase}:${firstBuyDate ?? ""}:${userPortfolio.length}`;
     const cached = benchmarkCache.get(key);
-    if (cached) {
-      setRawData(cached);
-      return () => {
-        mounted = false;
-      };
+    if (cached) return cached;
+    const fresh = getFilteredBenchmarks(selectedPeriod, roundedBase, firstBuyDate ?? undefined, userPortfolio);
+    benchmarkCache.set(key, fresh);
+    if (benchmarkCache.size > 24) {
+      const first = benchmarkCache.keys().next().value;
+      if (first) benchmarkCache.delete(first);
     }
+    return fresh;
+  }, [selectedPeriod, baseValue, firstBuyDate, userPortfolio]);
 
-    getFilteredBenchmarks(selectedPeriod, roundedBase, firstBuyDate ?? undefined, userPortfolio)
-      .then((fresh) => {
-        benchmarkCache.set(key, fresh);
-        if (benchmarkCache.size > 24) {
-          const first = benchmarkCache.keys().next().value;
-          if (first) benchmarkCache.delete(first);
-        }
-        if (!mounted) return;
-        setRawData(fresh);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setRawData([]);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [selectedPeriod, baseValue, firstBuyDate, userPortfolio, portfolioSignature]);
+  const investedBase = useMemo(() => {
+    const invested = userPortfolio.reduce((sum, p) => sum + Math.max(0, Number(p.avgPrice || 0) * p.shares), 0);
+    return invested > 0 ? invested : Math.max(1, baseValue);
+  }, [userPortfolio, baseValue]);
 
   const chartData = useMemo(
     () =>
       rawData.map((d) => ({
         month: d.month,
-        carteira: d.carteira,
-        ibovespa: d.ibovespa,
-        cdi: d.cdi,
-        ipca: d.ipca,
+        carteira: (d.carteira / investedBase) * 100,
+        ibovespa: (d.ibovespa / investedBase) * 100,
+        cdi: (d.cdi / investedBase) * 100,
+        ipca: (d.ipca / investedBase) * 100,
       })),
-    [rawData]
+    [rawData, investedBase]
   );
 
   const tickInterval = Math.max(0, Math.floor(chartData.length / 8));
@@ -117,15 +93,8 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate, onPor
   }, [chartData]);
 
   useEffect(() => {
-    if (!onPortfolioMetricChange) return;
-    const last = chartData[chartData.length - 1];
-    const value = Number.isFinite(last?.carteira) ? Number(last.carteira) : null;
-    onPortfolioMetricChange({ period: selectedPeriod, value });
-  }, [chartData, selectedPeriod, onPortfolioMetricChange]);
-
-  useEffect(() => {
     setChartKey((k) => k + 1);
-  }, [selectedPeriod, firstBuyDate, portfolioSignature]);
+  }, [selectedPeriod, firstBuyDate, investedBase]);
 
   useEffect(() => {
     const container = periodsScrollRef.current;
