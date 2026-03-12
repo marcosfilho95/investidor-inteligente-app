@@ -31,6 +31,7 @@ TODAY = datetime.now().strftime("%Y-%m-%d")
 BUCKET = "market-data"
 PRICES_LATEST_OBJECT = "prices/prices_latest.csv"
 INTRADAY_LATEST_OBJECT = "intraday/intraday_latest.csv"
+FUNDAMENTALS_LATEST_OBJECT = "fundamentals/fundamentals_latest.json"
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
@@ -340,6 +341,31 @@ def find_intraday_file() -> str | None:
     return None
 
 
+def find_fundamentals_file() -> str | None:
+    latest = os.path.join(OUTPUT_DIR, "fundamentals_latest.json")
+    if os.path.exists(latest):
+        return latest
+    files = sorted(
+        [f for f in os.listdir(OUTPUT_DIR) if f.startswith("fundamentals_") and f.endswith(".json")],
+        reverse=True,
+    )
+    if not files:
+        return None
+    return os.path.join(OUTPUT_DIR, files[0])
+
+
+def count_fundamentals_assets(filepath: str) -> int:
+    try:
+        with open(filepath, encoding="utf-8") as f:
+            payload = json.load(f)
+        assets = payload.get("assets") if isinstance(payload, dict) else None
+        if not isinstance(assets, dict):
+            return 0
+        return len(assets)
+    except Exception:
+        return 0
+
+
 def parse_cli_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Upload datasets to Supabase")
     parser.add_argument("--intraday-only", action="store_true", help="Upload only intraday dataset")
@@ -482,6 +508,40 @@ def main() -> int:
         update_meta(sb, "macro", TODAY, f"macro/macro_{TODAY}.csv", macro_rows, macro_checksum, status="ok")
     else:
         log("No macro file found. Macro upload skipped.")
+
+    fundamentals_filepath = find_fundamentals_file()
+    if fundamentals_filepath:
+        fundamentals_assets = count_fundamentals_assets(fundamentals_filepath)
+        changed, fundamentals_checksum = upload_if_changed(
+            sb,
+            fundamentals_filepath,
+            FUNDAMENTALS_LATEST_OBJECT,
+            f"fundamentals/fundamentals_{TODAY}.json",
+            content_type="application/json",
+        )
+        if changed:
+            update_meta(
+                sb,
+                "fundamentals",
+                TODAY,
+                f"fundamentals/fundamentals_{TODAY}.json",
+                fundamentals_assets,
+                fundamentals_checksum,
+                status="ok",
+            )
+        else:
+            update_meta(
+                sb,
+                "fundamentals",
+                TODAY,
+                FUNDAMENTALS_LATEST_OBJECT,
+                fundamentals_assets,
+                fundamentals_checksum,
+                status="skipped",
+                message="fundamentals upload skipped: no changes detected",
+            )
+    else:
+        log("No fundamentals file found. Fundamentals upload skipped.")
 
     upload_data_status(sb, TODAY)
 

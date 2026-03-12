@@ -1,0 +1,11 @@
+{
+  "updatedAt": null,
+  "provider": "local-fallback",
+  "assets": {},
+  "summary": {
+    "assetsProcessed": 0,
+    "dynamicFields": 0,
+    "fallbackFields": 0,
+    "failedAssets": 0
+  }
+}
