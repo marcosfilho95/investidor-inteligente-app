@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getDailyPriceState, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache } from "@/data/investments";
+import { holdings, getDailyPriceState, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getTrailing12mReturnPct } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
@@ -293,12 +293,7 @@ const AssetDetail = () => {
   );
   const return12m = useMemo(() => {
     if (!chartsReady) return null;
-    const history = getFilteredPriceHistory(asset.symbol, "1A");
-    if (history.length < 2) return null;
-    const firstPrice = history[0].price;
-    const lastPrice = history[history.length - 1].price;
-    if (!firstPrice || firstPrice === 0) return null;
-    return ((lastPrice / firstPrice - 1) * 100);
+    return getTrailing12mReturnPct(asset.symbol);
   }, [asset.symbol, chartsReady]);
   const displayedPrice = dailyPriceState.lastPrice;
   const dailyChangePercent = dailyPriceState.previousClose > 0

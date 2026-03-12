@@ -1101,6 +1101,33 @@ export function getLatestMarketDateKey(): string {
 export function isMarketDataStale(referenceDate: Date = new Date()): boolean {
   return getLatestMarketDateKey() < getBrtDateKey(referenceDate);
 }
+
+// Trailing 12M return based on the asset's own latest available close.
+// This avoids distortions when one ticker is 1-2 days behind the global latest date.
+export function getTrailing12mReturnPct(symbol: string): number | null {
+  const rows = getMarketHistory()[symbol];
+  if (!rows || rows.length < 2) return null;
+
+  const latest = rows[rows.length - 1];
+  const latestClose = Number(latest?.close);
+  if (!Number.isFinite(latestClose) || latestClose <= 0) return null;
+
+  const latestDate = toDateAtNoon(latest.date);
+  const cutoff = new Date(latestDate);
+  cutoff.setFullYear(cutoff.getFullYear() - 1);
+  const cutoffKey = cutoff.toISOString().slice(0, 10);
+
+  let start = rows.find((r) => r.date >= cutoffKey && Number.isFinite(Number(r.close)) && Number(r.close) > 0);
+  if (!start) {
+    start = rows.find((r) => Number.isFinite(Number(r.close)) && Number(r.close) > 0);
+  }
+  if (!start) return null;
+
+  const startClose = Number(start.close);
+  if (!Number.isFinite(startClose) || startClose <= 0) return null;
+
+  return ((latestClose / startClose) - 1) * 100;
+}
 // Filter OHLCV data by period, returning simplified { month, price } for charts
 export function getFilteredPriceHistory(symbol: string, period: string): { month: string; price: number }[] {
   const allData = getMarketHistory()[symbol];
@@ -2988,16 +3015,9 @@ export function buildAssetContext(symbol: string): string {
     }
   }
 
-  // Asset 12-month return
-  const assetHistory = getMarketHistory()[symbol];
-  let assetReturn12m = "N/A";
-  if (assetHistory && assetHistory.length > 0) {
-    const assetStart = assetHistory.find(d => d.date >= startStr);
-    const assetEnd = assetHistory[assetHistory.length - 1];
-    if (assetStart && assetEnd) {
-      assetReturn12m = ((assetEnd.close / assetStart.close - 1) * 100).toFixed(2);
-    }
-  }
+  // Asset 12-month return (same rule used in UI cards)
+  const trailing12m = getTrailing12mReturnPct(symbol);
+  const assetReturn12m = trailing12m === null ? "N/A" : trailing12m.toFixed(2);
 
   return `Dados atuais de ${h.symbol} (${h.name}):
 Preço: R$ ${h.price} | Variação: ${h.changePercent >= 0 ? '+' : ''}${h.changePercent}%
