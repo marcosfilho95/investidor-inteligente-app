@@ -10,6 +10,7 @@ Output:
 from __future__ import annotations
 
 import json
+import math
 import sys
 from dataclasses import dataclass
 from datetime import datetime
@@ -31,6 +32,9 @@ ALIASES = {
     "SAPR4": "SAPR11",
     "NATU3": "NTCO3",
 }
+
+BANK_TICKERS = {"ITUB4", "BBAS3", "BBDC4"}
+BANK_IGNORED_METRICS = {"margemBruta", "liqCorrente", "divLiqEbitda"}
 
 FUNDAMENTAL_FIELDS = [
     "marketCap",
@@ -54,6 +58,17 @@ FUNDAMENTAL_FIELDS = [
     "divLiqEbitda",
     "giroAtivos",
 ]
+
+METRIC_RULES: dict[str, dict[str, float | bool]] = {
+    "dividend": {"min": 0, "max": 40, "min_exclusive": True},
+    "pe": {"min": 0, "max": 200, "min_exclusive": True},
+    "pvp": {"min": 0, "max": 20, "min_exclusive": True},
+    "roe": {"min": -100, "max": 100},
+    "margemBruta": {"min": -100, "max": 100},
+    "margemEbit": {"min": -100, "max": 100},
+    "margemLiquida": {"min": -100, "max": 100},
+    "liqCorrente": {"min": 0, "max": 10},
+}
 
 
 def utc_ts() -> str:
@@ -82,7 +97,61 @@ def to_pct(v: Any) -> float | None:
     x = to_float(v)
     if x is None:
         return None
-    return x * 100.0
+    # Providers may return ratios (0.125 => 12.5) or already-in-percent values
+    # (1.25 => 1.25%). Convert only when clearly ratio scale.
+    return x * 100.0 if abs(x) <= 1 else x
+
+
+def is_bank_like_ticker(ticker: str) -> bool:
+    return ticker in BANK_TICKERS
+
+
+def validate_dynamic_metric(field: str, value: Any, ticker: str) -> tuple[bool, str]:
+    if value is None:
+        return False, "null"
+
+    if isinstance(value, (int, float)):
+        value_num = float(value)
+        if math.isnan(value_num) or math.isinf(value_num):
+            return False, "invalid number"
+    elif field == "marketCap":
+        if not str(value).strip():
+            return False, "empty string"
+        return True, "dynamic"
+    else:
+        return False, "invalid type"
+
+    is_bank_like = is_bank_like_ticker(ticker)
+    if is_bank_like and field in BANK_IGNORED_METRICS:
+        return False, "bank metric"
+
+    if is_bank_like and field == "margemBruta" and value_num == 0:
+        return False, "bank metric"
+
+    rule = METRIC_RULES.get(field)
+    if not rule:
+        return True, "dynamic"
+
+    min_value = rule.get("min")
+    max_value = rule.get("max")
+    min_exclusive = bool(rule.get("min_exclusive", False))
+    max_exclusive = bool(rule.get("max_exclusive", False))
+
+    if min_value is not None:
+        if min_exclusive:
+            if value_num <= float(min_value):
+                return False, "invalid range"
+        elif value_num < float(min_value):
+            return False, "invalid range"
+
+    if max_value is not None:
+        if max_exclusive:
+            if value_num >= float(max_value):
+                return False, "invalid range"
+        elif value_num > float(max_value):
+            return False, "invalid range"
+
+    return True, "dynamic"
 
 
 def format_market_cap_br(value: float | None) -> str | None:
@@ -135,7 +204,7 @@ class FieldStatus:
     failed: int = 0
 
 
-def build_asset_payload(info: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
+def build_asset_payload(info: dict[str, Any], ticker: str) -> tuple[dict[str, Any], dict[str, str]]:
     payload: dict[str, Any] = {
         "marketCap": None,
         "pe": None,
@@ -193,11 +262,18 @@ def build_asset_payload(info: dict[str, Any]) -> tuple[dict[str, Any], dict[str,
     payload["evEbit"] = None
 
     field_status: dict[str, str] = {}
-    for k, v in payload.items():
-        if v is None:
-            field_status[k] = "fallback"
+    for field in FUNDAMENTAL_FIELDS:
+        is_valid, reason = validate_dynamic_metric(field, payload.get(field), ticker)
+        if not is_valid:
+            payload[field] = None
+            field_status[field] = f"fallback ({reason})"
         else:
-            field_status[k] = "dynamic"
+            field_status[field] = "dynamic"
+
+    # Keep raw market cap only when valid.
+    market_cap_raw = payload.get("marketCapRaw")
+    if not isinstance(market_cap_raw, (int, float)) or not math.isfinite(float(market_cap_raw)) or float(market_cap_raw) <= 0:
+        payload["marketCapRaw"] = None
 
     return payload, field_status
 
@@ -240,14 +316,14 @@ def main() -> int:
                 summary["fallbackFields"] += 1
             continue
 
-        payload, field_status = build_asset_payload(info)
+        payload, field_status = build_asset_payload(info, tk)
         assets[tk] = payload
 
         log(f"[{tk}]")
         for field in FUNDAMENTAL_FIELDS:
-            status = field_status.get(field, "fallback")
+            status = field_status.get(field, "fallback (unknown)")
             log(f"- {field}: {status}")
-            if status == "dynamic":
+            if status.startswith("dynamic"):
                 summary["dynamicFields"] += 1
             else:
                 summary["fallbackFields"] += 1
