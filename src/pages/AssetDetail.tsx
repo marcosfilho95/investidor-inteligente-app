@@ -128,6 +128,21 @@ const AssetDetail = () => {
   const [intradayCurrentPoint, setIntradayCurrentPoint] = useState<{ datetime: string; price: number } | null>(null);
   const [intradayLastUpdatedLabel, setIntradayLastUpdatedLabel] = useState<string | null>(null);
   const { addHolding, sellHolding, userHoldings } = useUserHoldings();
+  const sevenDayLastUpdatedLabel = useMemo(() => {
+    const last = sevenDayPriceHistory[sevenDayPriceHistory.length - 1];
+    if (!last) return null;
+    if (last.tooltipLabel && /\d{2}\/\d{2}\s\d{2}:\d{2}$/.test(last.tooltipLabel)) {
+      return last.tooltipLabel;
+    }
+    if (last.datetime && last.datetime.includes(" ")) {
+      const [datePart, timePart] = last.datetime.split(" ");
+      const dd = datePart?.slice(8, 10);
+      const mm = datePart?.slice(5, 7);
+      const hhmm = timePart?.slice(0, 5);
+      if (dd && mm && hhmm) return `${dd}/${mm} ${hhmm}`;
+    }
+    return last.tooltipLabel ?? null;
+  }, [sevenDayPriceHistory]);
 
   useEffect(() => {
     let mounted = true;
@@ -758,6 +773,9 @@ const AssetDetail = () => {
                   </h3>
                   {selectedPeriod === "DAILY" && intradayLastUpdatedLabel && (
                     <p className="text-[11px] text-muted-foreground">Última atualização: {intradayLastUpdatedLabel}</p>
+                  )}
+                  {selectedPeriod === "7 DIAS" && sevenDayLastUpdatedLabel && (
+                    <p className="text-[11px] text-muted-foreground">Última atualização: {sevenDayLastUpdatedLabel}</p>
                   )}
                 </div>
                 <ResponsiveContainer width="100%" height={280}>

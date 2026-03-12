@@ -529,6 +529,33 @@ function getRowsForLatestSession(rows: IntradayPoint[]): IntradayPoint[] {
   return rows.filter((r) => r.datetime.slice(0, 10) === lastDate);
 }
 
+function getDailyCloseForDate(symbol: string, dateKey: string): number | null {
+  const aliases = normalizeIntradayTicker(symbol);
+  const market = getMarketHistory();
+  for (const alias of aliases) {
+    const rows = market[alias];
+    if (!rows || !rows.length) continue;
+    const hit = rows.find((r) => r.date === dateKey);
+    if (hit && Number.isFinite(hit.close)) return Number(hit.close);
+  }
+  return null;
+}
+
+function maybeBuildClosingAnchorFor7d(
+  symbol: string,
+  sessionDate: string,
+  lastDatetime: string | null
+): IntradayPoint | null {
+  const dailyClose = getDailyCloseForDate(symbol, sessionDate);
+  if (!Number.isFinite(dailyClose)) return null;
+  const lastTime = lastDatetime?.split(" ")[1]?.slice(0, 5) || "";
+  if (lastTime >= "17:00") return null;
+  return {
+    datetime: `${sessionDate} 17:00:00`,
+    price: Number(dailyClose),
+  };
+}
+
 function parseIntradayCsv(text: string): Record<string, IntradayPoint[]> {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length <= 1) return {};
@@ -773,6 +800,10 @@ async function build7dIntradaySeries(symbol: string): Promise<SevenDayIntradayPo
   for (const date of selectedDates) {
     const dayRows = rowsByDate.get(date);
     if (!dayRows || dayRows.length === 0) continue;
+    dayRows.sort((a, b) => a.datetime.localeCompare(b.datetime));
+    const lastDt = dayRows[dayRows.length - 1]?.datetime ?? null;
+    const closeAnchor = maybeBuildClosingAnchorFor7d(symbol, date, lastDt);
+    if (closeAnchor) dayRows.push(closeAnchor);
     rowsByDate.set(date, dayRows.sort((a, b) => a.datetime.localeCompare(b.datetime)));
   }
 
@@ -820,7 +851,7 @@ export async function getFiltered7dPriceHistory(
     .map((d) => ({
       month: formatDdMm(d.date),
       price: Math.round(Number(d.close) * 100) / 100,
-      tooltipLabel: formatDdMm(d.date),
+      tooltipLabel: `${formatDdMm(d.date)} 17:00`,
     }));
   return out;
 }
