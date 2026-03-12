@@ -33,6 +33,9 @@ const STORAGE_PATH = SUPABASE_URL
   ? `${SUPABASE_URL}/storage/v1/object/public/market-data/fundamentals/fundamentals_latest.json`
   : "";
 const LOCAL_PATH = "/data/fundamentals_latest.json";
+const DYNAMIC_FUNDAMENTALS_ENABLED = !["0", "false", "no", "off"].includes(
+  String(import.meta.env.VITE_DYNAMIC_FUNDAMENTALS_ENABLED ?? "true").trim().toLowerCase()
+);
 
 let _cache: FundamentalsCachePayload | null = null;
 let _inFlight: Promise<FundamentalsCachePayload | null> | null = null;
@@ -74,6 +77,7 @@ async function fetchJson(url: string): Promise<FundamentalsCachePayload | null> 
 }
 
 export async function loadFundamentalsCache(): Promise<FundamentalsCachePayload | null> {
+  if (!DYNAMIC_FUNDAMENTALS_ENABLED) return null;
   if (_cache) return _cache;
   if (_inFlight) return _inFlight;
 

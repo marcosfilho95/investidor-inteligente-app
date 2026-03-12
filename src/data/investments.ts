@@ -108,8 +108,76 @@ export function isValidMetricValue(value: unknown): boolean {
   return false;
 }
 
-export function resolveMetricValue<T>(dynamicValue: T | null | undefined, staticValue: T): T {
-  return isValidMetricValue(dynamicValue) ? (dynamicValue as T) : staticValue;
+function isBankLikeSector(sector?: string, subsetor?: string): boolean {
+  const normalizedSector = String(sector || "").trim().toLowerCase();
+  const normalizedSubsetor = String(subsetor || "").trim().toLowerCase();
+  return normalizedSector.includes("finance") || normalizedSubsetor.includes("banco");
+}
+
+const BANK_IGNORED_METRICS = new Set<keyof DynamicFundamentals>([
+  "margemBruta",
+  "liqCorrente",
+  "divLiqEbitda",
+]);
+
+type MetricRule = {
+  min?: number;
+  max?: number;
+  minExclusive?: boolean;
+  maxExclusive?: boolean;
+};
+
+const DYNAMIC_METRIC_RULES: Partial<Record<keyof DynamicFundamentals, MetricRule>> = {
+  dividend: { min: 0, max: 40, minExclusive: true },
+  pe: { min: 0, max: 200, minExclusive: true },
+  pvp: { min: 0, max: 20, minExclusive: true },
+  roe: { min: -100, max: 100 },
+  margemBruta: { min: -100, max: 100 },
+  margemEbit: { min: -100, max: 100 },
+  margemLiquida: { min: -100, max: 100 },
+  liqCorrente: { min: 0, max: 10 },
+  marketCapRaw: { min: 0, minExclusive: true },
+};
+
+export function validateDynamicMetric(
+  metricName: keyof DynamicFundamentals,
+  value: unknown,
+  sector?: string,
+  subsetor?: string
+): boolean {
+  if (!isValidMetricValue(value)) return false;
+
+  const isBankLike = isBankLikeSector(sector, subsetor);
+  if (isBankLike && BANK_IGNORED_METRICS.has(metricName)) return false;
+  if (isBankLike && metricName === "margemBruta" && Number(value) === 0) return false;
+
+  // marketCap is displayed as formatted string in UI.
+  if (metricName === "marketCap") return typeof value === "string" && value.trim().length > 0;
+
+  if (typeof value !== "number" || !Number.isFinite(value)) return false;
+
+  const rule = DYNAMIC_METRIC_RULES[metricName];
+  if (!rule) return true;
+
+  if (rule.min !== undefined) {
+    if (rule.minExclusive ? value <= rule.min : value < rule.min) return false;
+  }
+  if (rule.max !== undefined) {
+    if (rule.maxExclusive ? value >= rule.max : value > rule.max) return false;
+  }
+
+  return true;
+}
+
+export function resolveMetricValue<T>(
+  metricName: keyof DynamicFundamentals,
+  dynamicValue: T | null | undefined,
+  staticValue: T,
+  options?: { sector?: string; subsetor?: string }
+): T {
+  return validateDynamicMetric(metricName, dynamicValue, options?.sector, options?.subsetor)
+    ? (dynamicValue as T)
+    : staticValue;
 }
 
 export function mergeHoldingWithDynamicMetrics(
@@ -123,8 +191,10 @@ export function mergeHoldingWithDynamicMetrics(
     const dynamicValue = dynamicMetrics[key];
     const staticValue = (merged as Record<string, unknown>)[key as string];
     (merged as Record<string, unknown>)[key as string] = resolveMetricValue(
+      key,
       dynamicValue as unknown,
-      staticValue
+      staticValue,
+      { sector: baseHolding.sector, subsetor: baseHolding.subsetor }
     );
   }
 
