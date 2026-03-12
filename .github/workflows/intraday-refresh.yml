@@ -2,10 +2,15 @@
 
 on:
   schedule:
-    # 13:05-21:20 UTC = 10:05-18:20 America/Fortaleza (segunda a sexta, intervalo de 15 min)
-    - cron: "5,20,35,50 13-20 * * 1-5"
-    - cron: "5,20 21 * * 1-5"
+    # 12:37-20:07 UTC = 09:37-17:07 America/Fortaleza (segunda a sexta, intervalo de 15 min)
+    - cron: "37,52 12 * * 1-5"
+    - cron: "7,22,37,52 13-19 * * 1-5"
+    - cron: "7 20 * * 1-5"
   workflow_dispatch: {}
+
+concurrency:
+  group: intraday-refresh-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   refresh-intraday:
@@ -22,6 +27,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: requirements_openbb.txt
 
       - name: Install Python dependencies
         run: |

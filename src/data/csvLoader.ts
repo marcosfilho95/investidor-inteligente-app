@@ -472,7 +472,7 @@ function shouldForcePostCloseDailyRevalidation(cachedData: Record<string, OHLCVD
 
   const { dateKey: todayBrt, hhmm } = getBrtNowParts();
   // Revalida automaticamente no pos-fechamento para capturar close consolidado.
-  if (hhmm < "18:30") return false;
+  if (hhmm < "17:30") return false;
 
   const cachedLatest = getLatestDateFromData(cachedData);
   if (!cachedLatest) return false;
