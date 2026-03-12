@@ -2,8 +2,9 @@
 """
 Single entrypoint for n8n/GitHub job:
 1) refresh prices
-2) validate CSV
-3) upload to Supabase + SQL upsert
+2) refresh fundamentals snapshot
+3) validate CSV
+4) upload to Supabase + SQL upsert
 """
 
 from __future__ import annotations
@@ -18,6 +19,8 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parents[1]
 LOCAL_PRICES_FALLBACK = ROOT_DIR / "public" / "data" / "prices_daily_24assets_plus_ibov_5y.csv"
 OUTPUT_PRICES_LATEST = ROOT_DIR / "output" / "prices_latest.csv"
+LOCAL_FUNDAMENTALS_FALLBACK = ROOT_DIR / "public" / "data" / "fundamentals_latest.json"
+OUTPUT_FUNDAMENTALS_LATEST = ROOT_DIR / "output" / "fundamentals_latest.json"
 
 
 def utc_ts() -> str:
@@ -62,6 +65,14 @@ def sync_local_fallback_prices() -> None:
     log(f"Synced local fallback prices file={LOCAL_PRICES_FALLBACK}")
 
 
+def sync_local_fallback_fundamentals() -> None:
+    if not OUTPUT_FUNDAMENTALS_LATEST.exists():
+        raise RuntimeError(f"Missing generated fundamentals file: {OUTPUT_FUNDAMENTALS_LATEST}")
+    LOCAL_FUNDAMENTALS_FALLBACK.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(OUTPUT_FUNDAMENTALS_LATEST, LOCAL_FUNDAMENTALS_FALLBACK)
+    log(f"Synced local fallback fundamentals file={LOCAL_FUNDAMENTALS_FALLBACK}")
+
+
 def main() -> int:
     load_env_files()
     log(f"Project dir={ROOT_DIR}")
@@ -69,9 +80,11 @@ def main() -> int:
     log(f"Has service key={'yes' if (os.environ.get('SUPABASE_SERVICE_KEY') or os.environ.get('SUPABASE_SERVICE_ROLE_KEY')) else 'no'}")
 
     run_step("openbb_refresh", [sys.executable, "scripts/openbb_refresh.py"])
+    run_step("fundamentals_refresh", [sys.executable, "scripts/fundamentals_refresh.py"])
     run_step("macro_refresh", [sys.executable, "scripts/macro_refresh.py"])
     run_step("validate_dataset", [sys.executable, "scripts/validate_dataset.py", "output/prices_latest.csv"])
     sync_local_fallback_prices()
+    sync_local_fallback_fundamentals()
     run_step("upload_to_supabase", [sys.executable, "scripts/upload_to_supabase.py"])
 
     log("Pipeline finished successfully.")

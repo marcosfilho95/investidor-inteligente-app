@@ -44,6 +44,93 @@ export interface Holding {
   plAtivos: number | null;
 }
 
+export type DynamicFundamentals = Partial<
+  Pick<
+    Holding,
+    | "marketCap"
+    | "pe"
+    | "pvp"
+    | "dividend"
+    | "payout"
+    | "pEbit"
+    | "evEbit"
+    | "evEbitda"
+    | "lpa"
+    | "vpa"
+    | "roe"
+    | "roic"
+    | "margemBruta"
+    | "margemEbit"
+    | "margemLiquida"
+    | "liqCorrente"
+    | "plAtivos"
+    | "divLiqPl"
+    | "divLiqEbitda"
+    | "giroAtivos"
+    | "basileia"
+    | "cReceita5a"
+    | "cLucro5a"
+  >
+> & {
+  marketCapRaw?: number | null;
+};
+
+const DYNAMIC_FUNDAMENTAL_KEYS: Array<keyof DynamicFundamentals> = [
+  "marketCap",
+  "pe",
+  "pvp",
+  "dividend",
+  "payout",
+  "pEbit",
+  "evEbit",
+  "evEbitda",
+  "lpa",
+  "vpa",
+  "roe",
+  "roic",
+  "margemBruta",
+  "margemEbit",
+  "margemLiquida",
+  "liqCorrente",
+  "plAtivos",
+  "divLiqPl",
+  "divLiqEbitda",
+  "giroAtivos",
+  "basileia",
+  "cReceita5a",
+  "cLucro5a",
+];
+
+export function isValidMetricValue(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "string") return value.trim().length > 0;
+  return false;
+}
+
+export function resolveMetricValue<T>(dynamicValue: T | null | undefined, staticValue: T): T {
+  return isValidMetricValue(dynamicValue) ? (dynamicValue as T) : staticValue;
+}
+
+export function mergeHoldingWithDynamicMetrics(
+  baseHolding: Holding,
+  dynamicMetrics?: DynamicFundamentals | null
+): Holding {
+  if (!dynamicMetrics) return baseHolding;
+
+  const merged: Holding = { ...baseHolding };
+  for (const key of DYNAMIC_FUNDAMENTAL_KEYS) {
+    const dynamicValue = dynamicMetrics[key];
+    const staticValue = (merged as Record<string, unknown>)[key as string];
+    (merged as Record<string, unknown>)[key as string] = resolveMetricValue(
+      dynamicValue as unknown,
+      staticValue
+    );
+  }
+
+  return merged;
+}
+
 export const holdings: Holding[] = [
   // 🏦 Financeiro (4)
   // 🏦 Financeiro (4) — Preços reais CSV 2026-02-25

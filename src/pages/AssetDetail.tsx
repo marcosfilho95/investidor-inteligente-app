@@ -15,8 +15,9 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getDailyPriceState, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getTrailing12mReturnPct } from "@/data/investments";
+import { holdings, getDailyPriceState, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getTrailing12mReturnPct, mergeHoldingWithDynamicMetrics, type DynamicFundamentals } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
+import { loadDynamicFundamentalsBySymbol } from "@/data/fundamentalsLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
 import { AiChatWidget } from "@/components/AiChatWidget";
@@ -101,7 +102,8 @@ const AssetDetail = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const canonicalSymbol = getCanonicalSymbol(symbol ?? "");
-  const asset = holdings.find((h) => h.symbol === canonicalSymbol);
+  const baseAsset = holdings.find((h) => h.symbol === canonicalSymbol);
+  const [dynamicFundamentals, setDynamicFundamentals] = useState<DynamicFundamentals | null>(null);
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [orderType, setOrderType] = useState<"buy" | "sell">("buy");
   const [selectedPeriod, setSelectedPeriod] = useState("YTD");
@@ -127,6 +129,35 @@ const AssetDetail = () => {
   const [intradayLastUpdatedLabel, setIntradayLastUpdatedLabel] = useState<string | null>(null);
   const { addHolding, sellHolding, userHoldings } = useUserHoldings();
 
+  useEffect(() => {
+    let mounted = true;
+    if (!baseAsset?.symbol) {
+      setDynamicFundamentals(null);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    loadDynamicFundamentalsBySymbol(baseAsset.symbol)
+      .then((result) => {
+        if (!mounted) return;
+        setDynamicFundamentals(result?.data ?? null);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setDynamicFundamentals(null);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [baseAsset?.symbol]);
+
+  const asset = useMemo(
+    () => (baseAsset ? mergeHoldingWithDynamicMetrics(baseAsset, dynamicFundamentals) : undefined),
+    [baseAsset, dynamicFundamentals]
+  );
+
   if (!asset) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -146,6 +177,7 @@ const AssetDetail = () => {
   const activeFairPrice = activeValuation.price;
   const activeUpside = activeValuation.upside;
   const activeValuationLabel = activeValuation.label;
+  const valuationCardTitle = activeValuationType === "preco_justo" ? "Preço Justo Estimado" : "Valor Intrínseco";
   const activeUpsideFormatted = activeUpside !== null ? activeUpside.toFixed(1) : null;
   const recommendationDisclaimer =
     "Observação: O score fundamentalista combina valuation, rentabilidade, endividamento, crescimento, dividendos e ajustes estruturais, como risco setorial e risco estatal quando aplicável.";
@@ -609,7 +641,7 @@ const AssetDetail = () => {
               <div className="glass-card p-6 md:p-7 h-full">
                 <div className="mb-5">
                   <h3 className="text-base font-semibold flex items-center gap-2">
-                    Valor Intrínseco
+                    {valuationCardTitle}
                   </h3>
                 </div>
                 {activeValuationType === "preco_justo" && (
