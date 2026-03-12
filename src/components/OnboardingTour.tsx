@@ -29,7 +29,7 @@ const desktopSteps: TourStep[] = [
     selector: '[data-tour="nav-dashboard"]',
     title: "📊 Dashboard",
     description:
-      "Aqui é sua visão geral: valor da carteira, ganhos, rentabilidade e gráficos de performance vs benchmarks (Ibovespa e CDI).",
+      "Aqui é sua visão geral: valor da carteira, ganhos, rentabilidade, posições dos ativos e gráficos de performance vs benchmarks (Ibovespa, CDI e IPCA).",
     position: "bottom",
     route: "/dashboard",
   },
@@ -37,7 +37,7 @@ const desktopSteps: TourStep[] = [
     selector: '[data-tour="nav-carteira"]',
     title: "💼 Carteira",
     description:
-      "Gerencie seus investimentos! Veja alocação por ativo e setor, preço médio, variação e peso de cada posição.",
+      "Gerencie seus investimentos! Veja alocação por ativo e setor, preço médio, variação, peso de cada posição e histórico de compra/venda.",
     position: "bottom",
     route: "/carteira",
   },
@@ -53,7 +53,7 @@ const desktopSteps: TourStep[] = [
     selector: '[data-tour="nav-aprender"]',
     title: "🎓 Aprender",
     description:
-      "Trilhas educativas sobre mercado, análise fundamentalista, psicologia e estratégia. Aprenda no seu ritmo.",
+      "Conteúdos sobre mercado, análise fundamentalista e estratégia para você investir com mais inteligência.",
     position: "bottom",
     route: "/aprender",
   },
@@ -124,7 +124,7 @@ const mobileSteps: TourStep[] = [
   {
     selector: '[data-tour="nav-carteira"]',
     title: "👛 Carteira",
-    description: "Aqui você acompanha posições, alocação e desempenho dos seus ativos.",
+    description: "Aqui você acompanha posições, alocação, desempenho e histórico de compra/venda dos seus ativos.",
     position: "bottom",
     route: "/carteira",
     requiresMobileMenu: true,
@@ -142,7 +142,7 @@ const mobileSteps: TourStep[] = [
   {
     selector: '[data-tour="nav-aprender"]',
     title: "Aprender",
-    description: "Acesse trilhas educativas para evoluir seus conhecimentos.",
+    description: "Acesse trilhas educativas. Esta seção é fundamental para evoluir como investidor.",
     position: "bottom",
     route: "/aprender",
     requiresMobileMenu: true,
