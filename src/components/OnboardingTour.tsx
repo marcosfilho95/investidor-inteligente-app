@@ -35,7 +35,7 @@ const desktopSteps: TourStep[] = [
   },
   {
     selector: '[data-tour="nav-carteira"]',
-    title: "💰 Carteira",
+    title: "💼 Carteira",
     description:
       "Gerencie seus investimentos! Veja alocação por ativo e setor, preço médio, variação e peso de cada posição.",
     position: "bottom",
@@ -81,7 +81,7 @@ const desktopSteps: TourStep[] = [
   },
   {
     selector: '[data-tour="ai-chat"]',
-    title: "HODL — Seu Assistente IA",
+    title: "🤖 HODL — Seu Assistente IA",
     description:
       "O HODL está em todas as páginas. Pergunte sobre indicadores, peça análises ou tire dúvidas sobre sua carteira.",
     position: "top",
@@ -123,7 +123,7 @@ const mobileSteps: TourStep[] = [
   },
   {
     selector: '[data-tour="nav-carteira"]',
-    title: "Carteira",
+    title: "👛 Carteira",
     description: "Aqui você acompanha posições, alocação e desempenho dos seus ativos.",
     position: "bottom",
     route: "/carteira",
@@ -171,7 +171,7 @@ const mobileSteps: TourStep[] = [
   },
   {
     selector: '[data-tour="ai-chat"]',
-    title: "HODL AI",
+    title: "🤖 HODL AI",
     description: "Aqui está o bot da plataforma para tirar dúvidas e receber análises.",
     position: "top",
     route: "/dashboard",
