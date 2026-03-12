@@ -1,5 +1,18 @@
 ﻿import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
+import {
+  ArrowLeft,
+  TrendingUp,
+  TrendingDown,
+  LayoutDashboard,
+  ShoppingCart,
+  DollarSign,
+  Star,
+  BarChart3,
+  Percent,
+  Building2,
+  Activity,
+  type LucideIcon,
+} from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import { holdings, getDailyPriceState, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache } from "@/data/investments";
@@ -12,9 +25,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 import { getAssetRouteSymbol, getCanonicalSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
 
-const periods = ["Daily", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
-const periodMap: Record<string, string> = { "Daily": "1D", "7 DIAS": "7D", "30 DIAS": "30D", "6 MESES": "6M", "YTD": "YTD", "1 ANO": "1A", "5 ANOS": "5A" };
-const Y_DOMAIN_ADJUST_PERIODS = new Set(["Daily", "7 DIAS", "30 DIAS", "6 MESES", "YTD"]);
+const periods = ["DAILY", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
+const periodMap: Record<string, string> = { "DAILY": "1D", "7 DIAS": "7D", "30 DIAS": "30D", "6 MESES": "6M", "YTD": "YTD", "1 ANO": "1A", "5 ANOS": "5A" };
+const Y_DOMAIN_ADJUST_PERIODS = new Set(["DAILY", "7 DIAS", "30 DIAS", "6 MESES", "YTD"]);
 
 function computeVisualDomain(
   values: number[],
@@ -53,6 +66,34 @@ function computeVisualDomain(
   }
 
   return [Number(yMin.toFixed(4)), Number(yMax.toFixed(4))];
+}
+
+function MetricBadge({
+  icon: Icon,
+  label,
+  value,
+  color,
+  className,
+  emphasized,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  color?: string;
+  className?: string;
+  emphasized?: boolean;
+}) {
+  return (
+    <div className={`flex items-center gap-2.5 rounded-xl border border-border/30 bg-card/50 backdrop-blur-sm ${emphasized ? "px-4 py-3.5" : "px-3.5 py-2.5"} ${className ?? ""}`}>
+      <div className={`flex shrink-0 items-center justify-center rounded-lg bg-primary/10 ${emphasized ? "h-10 w-10" : "h-8 w-8"}`}>
+        <Icon className={`${emphasized ? "h-4 w-4" : "h-3.5 w-3.5"} text-primary`} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] leading-none tracking-wider text-muted-foreground uppercase">{label}</p>
+        <p className={`mt-0.5 font-semibold leading-none font-mono ${emphasized ? "text-base" : "text-sm"} ${color ?? "text-foreground"}`}>{value}</p>
+      </div>
+    </div>
+  );
 }
 
 const AssetDetail = () => {
@@ -111,7 +152,7 @@ const AssetDetail = () => {
 
   useEffect(() => {
     let mounted = true;
-    if (!chartsReady || selectedPeriod !== "Daily") {
+    if (!chartsReady || selectedPeriod !== "DAILY") {
       setIntradayPriceHistory([]);
       setIntradayLastUpdatedLabel(null);
       return () => {
@@ -195,7 +236,7 @@ const AssetDetail = () => {
   }, [asset.symbol, chartsReady]);
 
   useEffect(() => {
-    if (!chartsReady || selectedPeriod !== "Daily") return;
+    if (!chartsReady || selectedPeriod !== "DAILY") return;
     const id = window.setInterval(() => {
       invalidateIntradayHistoryCache();
       getFilteredIntradayPriceHistory(asset.symbol)
@@ -234,9 +275,9 @@ const AssetDetail = () => {
 
   const priceHistory = useMemo(() => {
     if (!chartsReady) return [];
-    // Daily deve usar somente a série intraday (sessão atual ou última sessão disponível),
+    // DAILY deve usar somente a série intraday (sessão atual ou última sessão disponível),
     // evitando cair no fallback "1D" que gera o resumo OHLC (Fech.ant./Abertura/Mínima/Máxima/Fechar).
-    if (selectedPeriod === "Daily") {
+    if (selectedPeriod === "DAILY") {
       const data = intradayPriceHistory.length > 0 ? intradayPriceHistory : dailyFallbackHistory;
       return data;
     }
@@ -250,11 +291,22 @@ const AssetDetail = () => {
     () => getDailyPriceState(asset.symbol, intradayCurrentPoint),
     [asset.symbol, intradayCurrentPoint]
   );
+  const return12m = useMemo(() => {
+    if (!chartsReady) return null;
+    const history = getFilteredPriceHistory(asset.symbol, "1A");
+    if (history.length < 2) return null;
+    const firstPrice = history[0].price;
+    const lastPrice = history[history.length - 1].price;
+    if (!firstPrice || firstPrice === 0) return null;
+    return ((lastPrice / firstPrice - 1) * 100);
+  }, [asset.symbol, chartsReady]);
   const displayedPrice = dailyPriceState.lastPrice;
   const dailyChangePercent = dailyPriceState.previousClose > 0
     ? Math.round((((dailyPriceState.lastPrice / dailyPriceState.previousClose) - 1) * 100) * 100) / 100
     : 0;
   const isPositive = dailyChangePercent >= 0;
+  const r12mPositive = return12m !== null && return12m >= 0;
+  const r12mColor = return12m !== null ? (r12mPositive ? "text-gain" : "text-loss") : undefined;
 
   const priceHistoryYAxisDomain = useMemo(() => {
     if (!Y_DOMAIN_ADJUST_PERIODS.has(selectedPeriod)) return undefined;
@@ -417,7 +469,7 @@ const AssetDetail = () => {
           setIntradayCurrentPoint(null);
         });
 
-      if (selectedPeriod === "Daily") {
+      if (selectedPeriod === "DAILY") {
         getFilteredIntradayPriceHistory(asset.symbol)
           .then((rows) => {
             setIntradayPriceHistory(rows);
@@ -458,63 +510,119 @@ const AssetDetail = () => {
       </header>
 
       <PageTransition>
-        <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
-          {/* Asset header + Actions */}
-          <div className="flex flex-col md:flex-row items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <AssetLogoWithFallback symbol={asset.symbol} size={56} />
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-semibold">{displaySymbol}</h1>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent text-muted-foreground">{asset.sector}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{asset.subsetor}</span>
+        <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-6">
+          {/* Hero */}
+          <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-card/30 p-4 sm:p-6 md:p-8 backdrop-blur-xl">
+            <div className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-primary/5 blur-3xl" />
+            <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between md:gap-6">
+              <div className="flex w-full items-start gap-4 sm:gap-5 md:w-auto">
+                <div className="relative">
+                  <div className="absolute inset-0 scale-125 rounded-2xl bg-primary/10 blur-lg" />
+                  <div className="relative">
+                    <AssetLogoWithFallback symbol={asset.symbol} size={92} />
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground">{asset.name}</p>
-                <p className="text-[10px] text-primary mt-0.5 min-h-4">
-                  {userHolding ? `Você possui ${userHolding.shares} ações` : ""}
-                </p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h1 className="text-[1.8rem] leading-none font-bold tracking-tight">{displaySymbol}</h1>
+                    <span className="max-[450px]:hidden text-[11px] px-2.5 py-1 rounded-full bg-transparent text-primary font-semibold border border-primary/30">{asset.sector}</span>
+                    <span className="max-[450px]:hidden text-[11px] px-2.5 py-1 rounded-full bg-muted text-muted-foreground border border-border/30">{asset.subsetor}</span>
+                  </div>
+                  <p className="mt-1.5 text-base leading-tight text-muted-foreground">{asset.name}</p>
+                  {userHolding && (
+                    <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-primary">
+                      <Star className="h-3 w-3 fill-primary" />
+                      Você possui {userHolding.shares} ações
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right mr-4">
-                <p className="text-2xl font-semibold font-mono">
+
+              <div className="text-center md:absolute md:right-40 md:text-right">
+                <p className="text-[1.95rem] font-bold tracking-tight font-mono leading-none">
                   R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </p>
-                <div className="flex items-center justify-end gap-1 mt-1 whitespace-nowrap">
-                  {isPositive ? <TrendingUp className="h-3.5 w-3.5 text-gain" /> : <TrendingDown className="h-3.5 w-3.5 text-loss" />}
-                  <span className={`text-xs md:text-sm font-mono font-medium leading-none ${isPositive ? "text-gain" : "text-loss"}`}>
+                <div className="mt-2 flex items-center justify-center gap-2 md:justify-end">
+                  <div className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold font-mono ${isPositive ? "bg-gain/10 text-gain" : "bg-loss/10 text-loss"}`}>
+                    {isPositive ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
                     {isPositive ? "+" : ""}{dailyChangePercent}%
-                  </span>
-                  <span className={`text-xs md:text-sm font-mono font-medium leading-none ${isPositive ? "text-gain" : "text-loss"}`}>(hoje)</span>
+                  </div>
+                  <span className="text-sm font-semibold text-muted-foreground">hoje</span>
                 </div>
               </div>
-              <button onClick={() => { setOrderType("buy"); setOrderQtyInput("1"); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"><ShoppingCart className="h-4 w-4" /> Comprar</button>
-              <button onClick={() => { setOrderType("sell"); setOrderQtyInput("1"); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors"><DollarSign className="h-4 w-4" /> Vender</button>
+
+              <div className="flex flex-col items-stretch justify-center gap-2 md:self-center">
+                <button
+                  onClick={() => { setOrderType("buy"); setOrderQtyInput("1"); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }}
+                  className="flex w-36 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20"
+                >
+                  <ShoppingCart className="h-3.5 w-3.5" /> Comprar
+                </button>
+                <button
+                  onClick={() => { setOrderType("sell"); setOrderQtyInput("1"); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }}
+                  className="flex w-36 items-center justify-center gap-1.5 rounded-xl bg-destructive px-4 py-2.5 text-xs font-semibold text-destructive-foreground transition-all hover:bg-destructive/90 hover:shadow-lg hover:shadow-destructive/25"
+                >
+                  <DollarSign className="h-3.5 w-3.5" /> Vender
+                </button>
+              </div>
             </div>
-          </div>
+
+            <div className="relative mt-6 border-t border-border/20 pt-6">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 auto-rows-fr">
+                <MetricBadge
+                  icon={Activity}
+                  label="Variação 12M"
+                  value={return12m !== null ? `${return12m >= 0 ? "+" : ""}${return12m.toFixed(2).replace(".", ",")}%` : "N/D"}
+                  color={r12mColor}
+                  emphasized
+                  className="col-span-2 justify-center md:col-span-1 md:justify-start"
+                />
+                <MetricBadge
+                  icon={Percent}
+                  label="Dividend Yield"
+                  value={`${asset.dividend}%`}
+                  className="max-[393px]:hidden"
+                />
+                <MetricBadge
+                  icon={Percent}
+                  label="D.Y"
+                  value={`${asset.dividend}%`}
+                  className="min-[394px]:hidden"
+                />
+                <MetricBadge icon={BarChart3} label="P/L" value={asset.pe?.toFixed(1) ?? "N/A"} />
+                <MetricBadge icon={BarChart3} label="P/VP" value={asset.pvp?.toFixed(2) ?? "N/A"} />
+                <MetricBadge icon={Building2} label="Market Cap" value={asset.marketCap} />
+              </div>
+            </div>
+          </section>
 
           {/* Score Fundamentalista + Valuation ativo (Graham > Preço Justo Estimado fallback) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
             <AnimatedCard delay={0.1}>
-              <div className="glass-card p-5 flex flex-col items-center justify-center">
-                <h3 className="text-base font-semibold mb-3 self-start">Score Fundamentalista</h3>
+              <div className="glass-card p-5 flex h-full flex-col items-center justify-center">
+                <h3 className="text-base font-semibold mb-3 self-start flex items-center gap-2">
+                  Recomendação
+                </h3>
                 <RecommendationGauge score={recommendation.score} label={recommendation.label} color={recommendation.color} />
-                <p className="text-[11px] text-muted-foreground/90 mt-2 text-center self-center">
+                <p className="text-[11px] text-muted-foreground/90 mt-1.5 text-center self-center">
                   Conteúdo educacional e informativo. Não constitui recomendação individual de investimento.
                 </p>
               </div>
             </AnimatedCard>
             <AnimatedCard delay={0.2}>
-              <div className="glass-card p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-base font-semibold">{activeValuationType === "graham" ? "Valor Intrínseco" : activeValuationType === "preco_justo" ? "Preço Justo Estimado" : "Valuation"}</h3>
+              <div className="glass-card p-6 md:p-7 h-full">
+                <div className="mb-5">
+                  <h3 className="text-base font-semibold flex items-center gap-2">
+                    Valor Intrínseco
+                  </h3>
                 </div>
                 {activeValuationType === "preco_justo" && (
-                  <p className="text-[11px] text-muted-foreground -mt-1 mb-2">
+                  <p className="text-[11px] text-muted-foreground mb-3">
                     Visão rápida de valor com base nos fundamentos.
                   </p>
                 )}
-                <p className="text-xs text-muted-foreground mb-4">
+                <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
                   {activeValuationType === "graham"
                     ? "Benjamin Graham, o pai do Value Investing, criou uma fórmula para estimar o preço justo de uma ação com base nos fundamentos reais da empresa."
                     : activeValuationType === "preco_justo"
@@ -522,70 +630,70 @@ const AssetDetail = () => {
                       : "Não há valuation disponível para este ativo no momento."}
                 </p>
                 {activeValuationType === "graham" && activeFairPrice !== null && activeUpsideFormatted !== null ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-muted/50 rounded-xl p-4 text-center">
+                  <div className="mt-1.5 space-y-5">
+                    <div className="grid grid-cols-1 min-[394px]:grid-cols-2 min-[560px]:grid-cols-3 gap-4">
+                      <div className="bg-muted/50 rounded-xl p-5 text-center">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preco atual</p>
-                        <p className="text-lg font-mono font-bold mt-1.5">R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        <p className="text-lg font-mono font-bold mt-2.5">R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                       </div>
-                      <div className="bg-primary/10 rounded-xl p-4 text-center border border-primary/20">
+                      <div className="bg-card/50 rounded-xl p-5 text-center border border-primary/30">
                         <p className="text-[10px] text-primary uppercase tracking-wider font-medium">Valor Intrínseco</p>
-                        <p className="text-lg font-mono font-bold text-primary mt-1.5">R$ {activeFairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        <p className="text-lg font-mono font-bold text-primary mt-2.5">R$ {activeFairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                       </div>
-                      <div className={`rounded-xl p-4 text-center ${Number(activeUpsideFormatted) > 15 ? "bg-gain/10 border border-gain/20" : Number(activeUpsideFormatted) >= -15 ? "bg-warning/10 border border-warning/20" : "bg-loss/10 border border-loss/20"}`}>
+                      <div className={`rounded-xl bg-card/50 p-5 text-center ${Number(activeUpsideFormatted) > 15 ? "border border-gain/30" : Number(activeUpsideFormatted) >= -15 ? "border border-warning/30" : "border border-loss/30"}`}>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Upside</p>
-                        <p className={`text-lg font-mono font-bold mt-1.5 ${Number(activeUpsideFormatted) > 15 ? "text-gain" : Number(activeUpsideFormatted) >= -15 ? "text-warning" : "text-loss"}`}>{Number(activeUpsideFormatted) >= 0 ? "+" : ""}{activeUpsideFormatted}%</p>
+                        <p className={`text-lg font-mono font-bold mt-2.5 ${Number(activeUpsideFormatted) > 15 ? "text-gain" : Number(activeUpsideFormatted) >= -15 ? "text-warning" : "text-loss"}`}>{Number(activeUpsideFormatted) >= 0 ? "+" : ""}{activeUpsideFormatted}%</p>
                       </div>
                     </div>
                     {Number(activeUpsideFormatted) > 15 ? (
-                      <div className="bg-gain/5 border border-gain/15 rounded-xl px-4 py-3 flex items-center gap-2">
+                      <div className="bg-gain/5 border border-gain/15 rounded-xl px-5 py-4 flex items-center gap-2">
                         <p className="text-xs text-gain font-medium">Preço descontado: abaixo do valor estimado por Graham</p>
                       </div>
                     ) : Number(activeUpsideFormatted) >= -15 ? (
-                      <div className="bg-warning/5 border border-warning/15 rounded-xl px-4 py-3 flex items-center gap-2">
-                        <p className="text-xs text-warning font-medium">Preço neutro: dentro da faixa do valor estimado por Graham</p>
+                      <div className="bg-warning/5 border border-warning/15 rounded-xl px-5 py-4 flex items-center gap-2">
+                        <p className="text-xs text-warning font-medium">Preço neutro: dentro da faixa de ±15% do valor estimado por Graham</p>
                       </div>
                     ) : (
-                      <div className="bg-loss/5 border border-loss/15 rounded-xl px-4 py-3 flex items-center gap-2">
+                      <div className="bg-loss/5 border border-loss/15 rounded-xl px-5 py-4 flex items-center gap-2">
                         <p className="text-xs text-loss font-medium">Preço esticado: acima do valor estimado por Graham</p>
                       </div>
                     )}
                   </div>
                 ) : activeValuationType === "preco_justo" && activeFairPrice !== null && activeUpsideFormatted !== null ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-muted/50 rounded-xl p-4 text-center">
+                  <div className="mt-1.5 space-y-5">
+                    <div className="grid grid-cols-1 min-[394px]:grid-cols-2 min-[560px]:grid-cols-3 gap-4">
+                      <div className="bg-muted/50 rounded-xl p-6 text-center">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preco atual</p>
-                        <p className="text-lg font-mono font-bold mt-1.5">R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        <p className="text-lg font-mono font-bold mt-2.5">R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                       </div>
-                      <div className="bg-warning/10 rounded-xl p-4 text-center border border-warning/20">
+                      <div className="bg-card/50 rounded-xl p-6 text-center border border-warning/30">
                         <p className="text-[10px] text-warning uppercase tracking-wider font-medium">Preço Justo Estimado</p>
-                        <p className="text-lg font-mono font-bold text-warning mt-1.5">R$ {activeFairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        <p className="text-lg font-mono font-bold text-warning mt-2.5">R$ {activeFairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                       </div>
-                      <div className={`rounded-xl p-4 text-center ${Number(activeUpsideFormatted) > 15 ? "bg-gain/10 border border-gain/20" : Number(activeUpsideFormatted) >= -15 ? "bg-warning/10 border border-warning/20" : "bg-loss/10 border border-loss/20"}`}>
+                      <div className={`rounded-xl bg-card/50 p-6 text-center ${Number(activeUpsideFormatted) > 15 ? "border border-gain/30" : Number(activeUpsideFormatted) >= -15 ? "border border-warning/30" : "border border-loss/30"}`}>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Upside</p>
-                        <p className={`text-lg font-mono font-bold mt-1.5 ${Number(activeUpsideFormatted) > 15 ? "text-gain" : Number(activeUpsideFormatted) >= -15 ? "text-warning" : "text-loss"}`}>{Number(activeUpsideFormatted) >= 0 ? "+" : ""}{activeUpsideFormatted}%</p>
+                        <p className={`text-lg font-mono font-bold mt-2.5 ${Number(activeUpsideFormatted) > 15 ? "text-gain" : Number(activeUpsideFormatted) >= -15 ? "text-warning" : "text-loss"}`}>{Number(activeUpsideFormatted) >= 0 ? "+" : ""}{activeUpsideFormatted}%</p>
                       </div>
                     </div>
-                    <div className="bg-warning/5 border border-warning/15 rounded-xl px-4 py-3">
+                    <div className="bg-warning/5 border border-warning/15 rounded-xl px-5 py-4">
                       <p className="text-xs text-warning font-medium">
                         Valor Intrínseco indisponível no momento. Exibindo estimativa alternativa.
                       </p>
                     </div>
                     {Number(activeUpsideFormatted) > 15 ? (
-                      <div className="bg-gain/5 border border-gain/15 rounded-xl px-4 py-3">
+                      <div className="bg-gain/5 border border-gain/15 rounded-xl px-5 py-4">
                         <p className="text-xs text-gain font-medium">Potencial de valorização relevante</p>
                       </div>
                     ) : Number(activeUpsideFormatted) >= 5 ? (
-                      <div className="bg-warning/5 border border-warning/15 rounded-xl px-4 py-3">
+                      <div className="bg-warning/5 border border-warning/15 rounded-xl px-5 py-4">
                         <p className="text-xs text-warning font-medium">Leve desconto em relação ao valor estimado.</p>
                       </div>
                     ) : Number(activeUpsideFormatted) >= -5 ? (
-                      <div className="bg-warning/5 border border-warning/15 rounded-xl px-4 py-3">
+                      <div className="bg-warning/5 border border-warning/15 rounded-xl px-5 py-4">
                         <p className="text-xs text-warning font-medium">Preço próximo do valor estimado</p>
                       </div>
                     ) : (
-                      <div className="bg-loss/5 border border-loss/15 rounded-xl px-4 py-3">
+                      <div className="bg-loss/5 border border-loss/15 rounded-xl px-5 py-4">
                         <p className="text-xs text-loss font-medium">Ação negociando acima do valor estimado</p>
                       </div>
                     )}
@@ -602,11 +710,13 @@ const AssetDetail = () => {
           </div>
 
           {/* Time period selector */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
             {periods.map((period) => (
               <button key={period} onClick={() => setSelectedPeriod(period)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
-                  period === selectedPeriod ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                className={`px-4 py-2 text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
+                  period === selectedPeriod
+                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent border border-transparent hover:border-border/30"
                 }`}>{period}</button>
             ))}
           </div>
@@ -614,10 +724,12 @@ const AssetDetail = () => {
           {/* Price History + Investment Comparison */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <AnimatedCard delay={0.3}>
-              <div className="glass-card p-5">
+              <div className="glass-card p-6">
                 <div className="mb-4 flex items-center justify-between gap-3">
-                  <h3 className="text-base font-semibold">Preço Histórico</h3>
-                  {selectedPeriod === "Daily" && intradayLastUpdatedLabel && (
+                  <h3 className="text-base font-semibold flex items-center gap-2">
+                    Preço Histórico
+                  </h3>
+                  {selectedPeriod === "DAILY" && intradayLastUpdatedLabel && (
                     <p className="text-[11px] text-muted-foreground">Última atualização: {intradayLastUpdatedLabel}</p>
                   )}
                 </div>
@@ -659,8 +771,10 @@ const AssetDetail = () => {
             </AnimatedCard>
 
             <AnimatedCard delay={0.4}>
-              <div className="glass-card p-5">
-                <h3 className="text-base font-semibold mb-1">Se você tivesse investido R$ 1.000</h3>
+              <div className="glass-card p-6">
+                <h3 className="text-base font-semibold mb-1 flex items-center gap-2">
+                  Se você tivesse investido R$ 1.000
+                </h3>
                 <div className="mb-4 flex flex-wrap items-center gap-2">
                   <p className="text-xs text-muted-foreground">
                     {`${displaySymbol} vs IBOV vs CDI vs IPCA`}
@@ -797,9 +911,11 @@ const AssetDetail = () => {
           {hasFundamentals && (
             <>
               <AnimatedCard delay={0.5}>
-                <div className="glass-card p-5">
-                  <h3 className="text-base font-semibold mb-1">Indicadores de Valuation</h3>
-                  <p className="text-xs text-muted-foreground mb-4">Passe o mouse sobre o  para entender cada indicador</p>
+                <div className="glass-card p-6">
+                  <h3 className="text-base font-semibold mb-1 flex items-center gap-2">
+                    Indicadores de Valuation
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-4">Passe o mouse sobre o ❓ para entender cada indicador</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                     <IndicatorCard label="DY" value={`${asset.dividend}%`} tooltip={indicatorTooltips.dividend} />
                     <IndicatorCard label="P/L" value={asset.pe?.toFixed(1) ?? null} tooltip={indicatorTooltips.pe} />
@@ -827,8 +943,10 @@ const AssetDetail = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <AnimatedCard delay={0.6}>
-                  <div className="glass-card p-5">
-                    <h3 className="text-base font-semibold mb-4">Indicadores de Rentabilidade</h3>
+                  <div className="glass-card p-6">
+                    <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                      Indicadores de Rentabilidade
+                    </h3>
                     <div className="grid grid-cols-2 gap-3">
                       <IndicatorCard label="ROE" value={asset.roe ? `${asset.roe}%` : null} tooltip={indicatorTooltips.roe} />
                       <IndicatorCard label="ROIC" value={asset.roic ? `${asset.roic}%` : null} tooltip={indicatorTooltips.roic} />
@@ -843,8 +961,10 @@ const AssetDetail = () => {
                 </AnimatedCard>
 
                 <AnimatedCard delay={0.7}>
-                  <div className="glass-card p-5">
-                    <h3 className="text-base font-semibold mb-4">Indicadores de Endividamento</h3>
+                  <div className="glass-card p-6">
+                    <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                      Indicadores de Endividamento
+                    </h3>
                     <div className="grid grid-cols-2 gap-3">
                       <IndicatorCard label="Liq. Corrente" value={asset.liqCorrente?.toFixed(2) ?? null} tooltip={indicatorTooltips.liqCorrente} />
                       <IndicatorCard label="Div. Liq. / PL" value={asset.divLiqPl?.toFixed(2) ?? null} tooltip={indicatorTooltips.divLiqPl} />
