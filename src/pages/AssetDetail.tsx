@@ -109,7 +109,7 @@ const AssetDetail = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("YTD");
   const [chartAnimKey, setChartAnimKey] = useState(0);
   const [compareAnimKey, setCompareAnimKey] = useState(0);
-  const [chartsReady, setChartsReady] = useState(() => isRealDataLoaded());
+  const [chartsReady, setChartsReady] = useState(false);
   const [orderQtyInput, setOrderQtyInput] = useState("1");
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [investmentComparison, setInvestmentComparison] = useState<Record<string, any>[]>([]);
@@ -127,6 +127,7 @@ const AssetDetail = () => {
   const [sevenDayLoaded, setSevenDayLoaded] = useState(false);
   const [intradayCurrentPoint, setIntradayCurrentPoint] = useState<{ datetime: string; price: number } | null>(null);
   const [intradayLastUpdatedLabel, setIntradayLastUpdatedLabel] = useState<string | null>(null);
+  const [dailyPriceHydrated, setDailyPriceHydrated] = useState(false);
   const { addHolding, sellHolding, userHoldings } = useUserHoldings();
   const sevenDayLastUpdatedLabel = useMemo(() => {
     const last = sevenDayPriceHistory[sevenDayPriceHistory.length - 1];
@@ -258,24 +259,29 @@ const AssetDetail = () => {
 
   useEffect(() => {
     setIntradayCurrentPoint(null);
+    setDailyPriceHydrated(false);
   }, [asset.symbol]);
 
   useEffect(() => {
     let mounted = true;
     if (!chartsReady) {
+      setDailyPriceHydrated(false);
       return () => {
         mounted = false;
       };
     }
+    setDailyPriceHydrated(false);
 
     getLatestIntradayPointForCurrentSession(asset.symbol)
       .then((last) => {
         if (!mounted) return;
         setIntradayCurrentPoint(last ?? null);
+        setDailyPriceHydrated(true);
       })
       .catch(() => {
         if (!mounted) return;
         setIntradayCurrentPoint(null);
+        setDailyPriceHydrated(true);
       });
 
     return () => {
@@ -347,7 +353,7 @@ const AssetDetail = () => {
   const dailyChangePercent = dailyPriceState.previousClose > 0
     ? Math.round((((dailyPriceState.lastPrice / dailyPriceState.previousClose) - 1) * 100) * 100) / 100
     : 0;
-  const isPriceReady = chartsReady && Number.isFinite(displayedPrice) && displayedPrice > 0;
+  const isPriceReady = chartsReady && dailyPriceHydrated && Number.isFinite(displayedPrice) && displayedPrice > 0;
   const displayedPriceLabel = isPriceReady
     ? `R$ ${displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
     : "—";
@@ -511,12 +517,15 @@ const AssetDetail = () => {
     }, 150);
     const onPricesUpdated = () => {
       invalidateIntradayHistoryCache();
+      setDailyPriceHydrated(false);
       getLatestIntradayPointForCurrentSession(asset.symbol)
         .then((last) => {
           setIntradayCurrentPoint(last ?? null);
+          setDailyPriceHydrated(true);
         })
         .catch(() => {
           setIntradayCurrentPoint(null);
+          setDailyPriceHydrated(true);
         });
 
       if (selectedPeriod === "DAILY") {

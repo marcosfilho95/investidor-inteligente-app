@@ -1547,9 +1547,10 @@ let _benchmarksApiInFlight: Promise<{
 }> | null = null;
 
 function shouldUseBenchmarksApi(): boolean {
-  // Frontend must remain stable without depending on external/server runtime route.
-  // Benchmarks are generated from loaded market + macro datasets in this app.
-  return false;
+  // Prefer API benchmarks when available (Vercel /api route).
+  // If unavailable (e.g. local static dev), fetchBenchmarksFromApi already
+  // falls back safely to local benchmark generation.
+  return true;
 }
 
 function parsePeriodToken(period: string): "1D" | "7D" | "30D" | "6M" | "YTD" | "1A" | "5A" {

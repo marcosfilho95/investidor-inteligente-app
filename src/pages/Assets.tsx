@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, TrendingUp, TrendingDown } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { getCachedIntradayLastPrice, getDailyPriceState, getLatestIntradayPointForCurrentSession, holdings, invalidateIntradayHistoryCache } from "@/data/investments";
+import { getDailyPriceState, getLatestIntradayPointForCurrentSession, holdings, invalidateIntradayHistoryCache } from "@/data/investments";
+import { isRealDataLoaded } from "@/data/csvLoader";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
@@ -10,19 +11,9 @@ import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
 const Assets = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("Todos");
-  const [livePoints, setLivePoints] = useState<Record<string, { price: number; datetime: string }>>(() => {
-    const initial: Record<string, { price: number; datetime: string }> = {};
-    for (const h of holdings) {
-      const cached = getCachedIntradayLastPrice(h.symbol);
-      if (Number.isFinite(cached)) {
-        initial[h.symbol] = {
-          price: Number(cached),
-          datetime: "",
-        };
-      }
-    }
-    return initial;
-  });
+  const [livePoints, setLivePoints] = useState<Record<string, { price: number; datetime: string }>>({});
+  const [pricesReady, setPricesReady] = useState<boolean>(() => isRealDataLoaded());
+  const [livePointsHydrated, setLivePointsHydrated] = useState(false);
   const categories = ["Todos", ...Array.from(new Set(holdings.map((h) => h.sector)))];
 
   const normalizeSearchText = (value: string) =>
@@ -30,6 +21,25 @@ const Assets = () => {
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase();
+
+  useEffect(() => {
+    if (pricesReady) return;
+
+    const pollId = window.setInterval(() => {
+      if (isRealDataLoaded()) {
+        setPricesReady(true);
+        window.clearInterval(pollId);
+      }
+    }, 150);
+
+    const onPricesUpdated = () => setPricesReady(true);
+    window.addEventListener("ii:prices-data-updated", onPricesUpdated as EventListener);
+
+    return () => {
+      window.clearInterval(pollId);
+      window.removeEventListener("ii:prices-data-updated", onPricesUpdated as EventListener);
+    };
+  }, [pricesReady]);
 
   useEffect(() => {
     let mounted = true;
@@ -57,9 +67,15 @@ const Assets = () => {
         }
       }
       setLivePoints(next);
+      setLivePointsHydrated(true);
     };
 
     loadLivePrices();
+    const onPricesUpdated = () => {
+      invalidateIntradayHistoryCache();
+      loadLivePrices();
+    };
+    window.addEventListener("ii:prices-data-updated", onPricesUpdated as EventListener);
     const id = window.setInterval(() => {
       invalidateIntradayHistoryCache();
       loadLivePrices();
@@ -68,6 +84,7 @@ const Assets = () => {
     return () => {
       mounted = false;
       window.clearInterval(id);
+      window.removeEventListener("ii:prices-data-updated", onPricesUpdated as EventListener);
     };
   }, []);
 
@@ -117,6 +134,7 @@ const Assets = () => {
                   const dailyChangePercent = dailyState.previousClose > 0
                     ? Math.round((((dailyState.lastPrice / dailyState.previousClose) - 1) * 100) * 100) / 100
                     : 0;
+                  const showRealPrice = pricesReady && livePointsHydrated;
                   const isPositive = dailyChangePercent >= 0;
 
                   return (
@@ -133,15 +151,19 @@ const Assets = () => {
                   </div>
                   <div className="flex items-end justify-between">
                     <div>
-                      <p className="text-lg font-semibold font-mono">
-                        R$ {dailyState.lastPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      <p className={`text-lg font-semibold font-mono ${showRealPrice ? "" : "text-muted-foreground"}`}>
+                        {showRealPrice
+                          ? `R$ ${dailyState.lastPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                          : "—"}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">{asset.subsetor}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      {isPositive ? <TrendingUp className="h-3.5 w-3.5 text-gain" /> : <TrendingDown className="h-3.5 w-3.5 text-loss" />}
-                      <span className={`text-sm font-mono font-medium ${isPositive ? "text-gain" : "text-loss"}`}>
-                        {isPositive ? "+" : ""}{dailyChangePercent}%
+                      {showRealPrice ? (
+                        isPositive ? <TrendingUp className="h-3.5 w-3.5 text-gain" /> : <TrendingDown className="h-3.5 w-3.5 text-loss" />
+                      ) : null}
+                      <span className={`text-sm font-mono font-medium ${showRealPrice ? (isPositive ? "text-gain" : "text-loss") : "text-muted-foreground"}`}>
+                        {showRealPrice ? `${isPositive ? "+" : ""}${dailyChangePercent}%` : "—"}
                       </span>
                     </div>
                   </div>
