@@ -2,7 +2,7 @@
 import { ArrowLeft, TrendingUp, TrendingDown, LayoutDashboard, ShoppingCart, DollarSign } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getCachedIntradayLastPrice, getMarketHistory } from "@/data/investments";
+import { holdings, getDailyPriceState, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
@@ -82,7 +82,7 @@ const AssetDetail = () => {
     { month: string; price: number; datetime?: string; tooltipLabel?: string }[]
   >([]);
   const [sevenDayLoaded, setSevenDayLoaded] = useState(false);
-  const [intradayCurrentPrice, setIntradayCurrentPrice] = useState<number | null>(() => getCachedIntradayLastPrice(canonicalSymbol));
+  const [intradayCurrentPoint, setIntradayCurrentPoint] = useState<{ datetime: string; price: number } | null>(null);
   const [intradayLastUpdatedLabel, setIntradayLastUpdatedLabel] = useState<string | null>(null);
   const { addHolding, sellHolding, userHoldings } = useUserHoldings();
 
@@ -168,7 +168,7 @@ const AssetDetail = () => {
   }, [asset.symbol, selectedPeriod, chartsReady]);
 
   useEffect(() => {
-    setIntradayCurrentPrice(getCachedIntradayLastPrice(asset.symbol));
+    setIntradayCurrentPoint(null);
   }, [asset.symbol]);
 
   useEffect(() => {
@@ -182,11 +182,11 @@ const AssetDetail = () => {
     getLatestIntradayPointForCurrentSession(asset.symbol)
       .then((last) => {
         if (!mounted) return;
-        setIntradayCurrentPrice(last?.price ?? null);
+        setIntradayCurrentPoint(last ?? null);
       })
       .catch(() => {
         if (!mounted) return;
-        setIntradayCurrentPrice(null);
+        setIntradayCurrentPoint(null);
       });
 
     return () => {
@@ -210,8 +210,8 @@ const AssetDetail = () => {
           setIntradayLastUpdatedLabel(null);
         });
       getLatestIntradayPointForCurrentSession(asset.symbol)
-        .then((last) => setIntradayCurrentPrice(last?.price ?? null))
-        .catch(() => setIntradayCurrentPrice(null));
+        .then((last) => setIntradayCurrentPoint(last ?? null))
+        .catch(() => setIntradayCurrentPoint(null));
       getInvestmentComparisonData(asset.symbol, periodMap[selectedPeriod])
         .then((result) => {
           setInvestmentComparison(result.points);
@@ -230,9 +230,6 @@ const AssetDetail = () => {
     return () => window.clearInterval(id);
   }, [asset.symbol, selectedPeriod, chartsReady]);
 
-  const marketSeries = useMemo(() => getMarketHistory()[asset.symbol] || [], [asset.symbol]);
-  const latestClose = marketSeries.length > 0 ? Number(marketSeries[marketSeries.length - 1].close) : Number(asset.price);
-  const prevCloseFallback = marketSeries.length > 1 ? Number(marketSeries[marketSeries.length - 2].close) : latestClose;
   const dailyFallbackHistory = useMemo(() => getFilteredPriceHistory(asset.symbol, "7D"), [asset.symbol]);
 
   const priceHistory = useMemo(() => {
@@ -249,11 +246,13 @@ const AssetDetail = () => {
     return getFilteredPriceHistory(asset.symbol, periodMap[selectedPeriod]);
   }, [asset.symbol, selectedPeriod, chartsReady, intradayPriceHistory, sevenDayPriceHistory, sevenDayLoaded, dailyFallbackHistory]);
 
-  const hasIntradayPrice = Number.isFinite(intradayCurrentPrice);
-  const displayedPrice = hasIntradayPrice ? Number(intradayCurrentPrice) : latestClose;
-  const referenceClose = hasIntradayPrice ? latestClose : prevCloseFallback;
-  const dailyChangePercent = referenceClose > 0
-    ? Math.round((((displayedPrice / referenceClose) - 1) * 100) * 100) / 100
+  const dailyPriceState = useMemo(
+    () => getDailyPriceState(asset.symbol, intradayCurrentPoint),
+    [asset.symbol, intradayCurrentPoint]
+  );
+  const displayedPrice = dailyPriceState.lastPrice;
+  const dailyChangePercent = dailyPriceState.previousClose > 0
+    ? Math.round((((dailyPriceState.lastPrice / dailyPriceState.previousClose) - 1) * 100) * 100) / 100
     : 0;
   const isPositive = dailyChangePercent >= 0;
 
@@ -412,10 +411,10 @@ const AssetDetail = () => {
       invalidateIntradayHistoryCache();
       getLatestIntradayPointForCurrentSession(asset.symbol)
         .then((last) => {
-          setIntradayCurrentPrice(last?.price ?? null);
+          setIntradayCurrentPoint(last ?? null);
         })
         .catch(() => {
-          setIntradayCurrentPrice(null);
+          setIntradayCurrentPoint(null);
         });
 
       if (selectedPeriod === "Daily") {
