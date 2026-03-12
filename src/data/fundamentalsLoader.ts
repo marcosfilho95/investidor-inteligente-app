@@ -34,7 +34,7 @@ const STORAGE_PATH = SUPABASE_URL
   : "";
 const LOCAL_PATH = "/data/fundamentals_latest.json";
 const DYNAMIC_FUNDAMENTALS_ENABLED = !["0", "false", "no", "off"].includes(
-  String(import.meta.env.VITE_DYNAMIC_FUNDAMENTALS_ENABLED ?? "true").trim().toLowerCase()
+  String(import.meta.env.VITE_DYNAMIC_FUNDAMENTALS_ENABLED ?? "false").trim().toLowerCase()
 );
 
 let _cache: FundamentalsCachePayload | null = null;
