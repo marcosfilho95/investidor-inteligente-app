@@ -516,6 +516,68 @@ export async function getLatestIntradayPointForCurrentSession(
   return { datetime: last.datetime, price: last.price };
 }
 
+export type DailyPriceState = {
+  lastPrice: number;
+  previousClose: number;
+  sessionClose: number;
+  previousSessionClose: number;
+  tradingDate: string | null;
+  sessionDate: string | null;
+  intradayDate: string | null;
+  hasIntradayForNewSession: boolean;
+};
+
+export function getDailyPriceState(
+  symbol: string,
+  intradayPoint?: { datetime: string; price: number } | null
+): DailyPriceState {
+  const series = getMarketHistory()[symbol] || [];
+  const lastSession = series.length > 0 ? series[series.length - 1] : null;
+  const prevSession = series.length > 1 ? series[series.length - 2] : lastSession;
+
+  const sessionClose = Number(lastSession?.close ?? Number.NaN);
+  const previousSessionClose = Number(prevSession?.close ?? sessionClose);
+  const sessionDate = lastSession?.date ?? null;
+  const intradayDate = intradayPoint?.datetime?.slice(0, 10) ?? null;
+  const intradayPrice = Number(intradayPoint?.price ?? Number.NaN);
+
+  // A referencia (previousClose) so "vira" quando chega intraday valido de um novo pregao.
+  const hasIntradayForNewSession =
+    Number.isFinite(intradayPrice) &&
+    !!intradayDate &&
+    !!sessionDate &&
+    intradayDate > sessionDate;
+
+  if (hasIntradayForNewSession) {
+    return {
+      lastPrice: intradayPrice,
+      previousClose: sessionClose,
+      sessionClose,
+      previousSessionClose,
+      tradingDate: intradayDate,
+      sessionDate,
+      intradayDate,
+      hasIntradayForNewSession,
+    };
+  }
+
+  const safeSessionClose = Number.isFinite(sessionClose) ? sessionClose : 0;
+  const safePreviousSessionClose = Number.isFinite(previousSessionClose)
+    ? previousSessionClose
+    : safeSessionClose;
+
+  return {
+    lastPrice: safeSessionClose,
+    previousClose: safePreviousSessionClose,
+    sessionClose: safeSessionClose,
+    previousSessionClose: safePreviousSessionClose,
+    tradingDate: sessionDate,
+    sessionDate,
+    intradayDate,
+    hasIntradayForNewSession: false,
+  };
+}
+
 function formatDdMm(dateKey: string): string {
   const [yyyy, mm, dd] = dateKey.split("-");
   if (!yyyy || !mm || !dd) return dateKey;

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, TrendingUp, TrendingDown } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { getCachedIntradayLastPrice, getLatestIntradayPointForCurrentSession, getMarketHistory, holdings, invalidateIntradayHistoryCache } from "@/data/investments";
+import { getCachedIntradayLastPrice, getDailyPriceState, getLatestIntradayPointForCurrentSession, holdings, invalidateIntradayHistoryCache } from "@/data/investments";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
@@ -10,16 +10,20 @@ import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
 const Assets = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("Todos");
-  const [livePrices, setLivePrices] = useState<Record<string, number>>(() => {
-    const initial: Record<string, number> = {};
+  const [livePoints, setLivePoints] = useState<Record<string, { price: number; datetime: string }>>(() => {
+    const initial: Record<string, { price: number; datetime: string }> = {};
     for (const h of holdings) {
       const cached = getCachedIntradayLastPrice(h.symbol);
-      if (Number.isFinite(cached)) initial[h.symbol] = Number(cached);
+      if (Number.isFinite(cached)) {
+        initial[h.symbol] = {
+          price: Number(cached),
+          datetime: "",
+        };
+      }
     }
     return initial;
   });
   const categories = ["Todos", ...Array.from(new Set(holdings.map((h) => h.sector)))];
-  const marketHistory = getMarketHistory();
 
   const normalizeSearchText = (value: string) =>
     value
@@ -35,7 +39,7 @@ const Assets = () => {
         holdings.map(async (h) => {
           try {
             const row = await getLatestIntradayPointForCurrentSession(h.symbol);
-            return [h.symbol, row?.price ?? null] as const;
+            return [h.symbol, row] as const;
           } catch {
             return [h.symbol, null] as const;
           }
@@ -43,11 +47,16 @@ const Assets = () => {
       );
 
       if (!mounted) return;
-      const next: Record<string, number> = {};
-      for (const [symbol, price] of entries) {
-        if (Number.isFinite(price)) next[symbol] = Number(price);
+      const next: Record<string, { price: number; datetime: string }> = {};
+      for (const [symbol, point] of entries) {
+        if (Number.isFinite(point?.price)) {
+          next[symbol] = {
+            price: Number(point.price),
+            datetime: String(point.datetime || ""),
+          };
+        }
       }
-      setLivePrices(next);
+      setLivePoints(next);
     };
 
     loadLivePrices();
@@ -103,14 +112,10 @@ const Assets = () => {
             {filtered.map((asset, i) => (
               <AnimatedCard key={asset.symbol} delay={i * 0.04}>
                 {(() => {
-                  const series = marketHistory[asset.symbol] || [];
-                  const latestClose = series.length > 0 ? Number(series[series.length - 1].close) : Number(asset.price);
-                  const prevClose = series.length > 1 ? Number(series[series.length - 2].close) : latestClose;
-                  const hasLivePrice = Number.isFinite(livePrices[asset.symbol]);
-                  const displayedPrice = hasLivePrice ? Number(livePrices[asset.symbol]) : latestClose;
-                  const referenceClose = hasLivePrice ? latestClose : prevClose;
-                  const dailyChangePercent = referenceClose > 0
-                    ? Math.round((((displayedPrice / referenceClose) - 1) * 100) * 100) / 100
+                  const intradayPoint = livePoints[asset.symbol] ?? null;
+                  const dailyState = getDailyPriceState(asset.symbol, intradayPoint);
+                  const dailyChangePercent = dailyState.previousClose > 0
+                    ? Math.round((((dailyState.lastPrice / dailyState.previousClose) - 1) * 100) * 100) / 100
                     : 0;
                   const isPositive = dailyChangePercent >= 0;
 
@@ -129,7 +134,7 @@ const Assets = () => {
                   <div className="flex items-end justify-between">
                     <div>
                       <p className="text-lg font-semibold font-mono">
-                        R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        R$ {dailyState.lastPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">{asset.subsetor}</p>
                     </div>
