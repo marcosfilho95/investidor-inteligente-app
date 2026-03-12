@@ -132,16 +132,17 @@ const AssetDetail = () => {
     const last = sevenDayPriceHistory[sevenDayPriceHistory.length - 1];
     if (!last) return null;
     if (last.tooltipLabel && /\d{2}\/\d{2}\s\d{2}:\d{2}$/.test(last.tooltipLabel)) {
-      return last.tooltipLabel;
+      return last.tooltipLabel.slice(-5);
     }
     if (last.datetime && last.datetime.includes(" ")) {
-      const [datePart, timePart] = last.datetime.split(" ");
-      const dd = datePart?.slice(8, 10);
-      const mm = datePart?.slice(5, 7);
+      const [, timePart] = last.datetime.split(" ");
       const hhmm = timePart?.slice(0, 5);
-      if (dd && mm && hhmm) return `${dd}/${mm} ${hhmm}`;
+      if (hhmm) return hhmm;
     }
-    return last.tooltipLabel ?? null;
+    if (last.tooltipLabel && /\d{2}:\d{2}$/.test(last.tooltipLabel)) {
+      return last.tooltipLabel.slice(-5);
+    }
+    return null;
   }, [sevenDayPriceHistory]);
 
   useEffect(() => {
@@ -346,6 +347,13 @@ const AssetDetail = () => {
   const dailyChangePercent = dailyPriceState.previousClose > 0
     ? Math.round((((dailyPriceState.lastPrice / dailyPriceState.previousClose) - 1) * 100) * 100) / 100
     : 0;
+  const isPriceReady = chartsReady && Number.isFinite(displayedPrice) && displayedPrice > 0;
+  const displayedPriceLabel = isPriceReady
+    ? `R$ ${displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+    : "—";
+  const dailyChangeLabel = isPriceReady
+    ? `${dailyChangePercent >= 0 ? "+" : ""}${dailyChangePercent}%`
+    : "—";
   const isPositive = dailyChangePercent >= 0;
   const r12mPositive = return12m !== null && return12m >= 0;
   const r12mColor = return12m !== null ? (r12mPositive ? "text-gain" : "text-loss") : undefined;
@@ -582,13 +590,13 @@ const AssetDetail = () => {
               </div>
 
               <div className="text-center md:absolute md:right-40 md:text-right">
-                <p className="text-[1.95rem] font-bold tracking-tight font-mono leading-none">
-                  R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                <p className={`text-[1.95rem] font-bold tracking-tight font-mono leading-none ${isPriceReady ? "" : "text-muted-foreground"}`}>
+                  {displayedPriceLabel}
                 </p>
                 <div className="mt-2 flex items-center justify-center gap-2 md:justify-end">
-                  <div className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold font-mono ${isPositive ? "bg-gain/10 text-gain" : "bg-loss/10 text-loss"}`}>
-                    {isPositive ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                    {isPositive ? "+" : ""}{dailyChangePercent}%
+                  <div className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold font-mono ${isPriceReady ? (isPositive ? "bg-gain/10 text-gain" : "bg-loss/10 text-loss") : "bg-muted/30 text-muted-foreground"}`}>
+                    {isPriceReady && (isPositive ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />)}
+                    {dailyChangeLabel}
                   </div>
                   <span className="text-sm font-semibold text-muted-foreground">hoje</span>
                 </div>
@@ -676,7 +684,7 @@ const AssetDetail = () => {
                     <div className="grid grid-cols-1 min-[394px]:grid-cols-2 min-[560px]:grid-cols-3 gap-4">
                       <div className="bg-muted/50 rounded-xl p-5 text-center">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preco atual</p>
-                        <p className="text-lg font-mono font-bold mt-2.5">R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        <p className={`text-lg font-mono font-bold mt-2.5 ${isPriceReady ? "" : "text-muted-foreground"}`}>{displayedPriceLabel}</p>
                       </div>
                       <div className="bg-card/50 rounded-xl p-5 text-center border border-primary/30">
                         <p className="text-[10px] text-primary uppercase tracking-wider font-medium">Valor Intrínseco</p>
@@ -706,7 +714,7 @@ const AssetDetail = () => {
                     <div className="grid grid-cols-1 min-[394px]:grid-cols-2 min-[560px]:grid-cols-3 gap-4">
                       <div className="bg-muted/50 rounded-xl p-6 text-center">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preco atual</p>
-                        <p className="text-lg font-mono font-bold mt-2.5">R$ {displayedPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                        <p className={`text-lg font-mono font-bold mt-2.5 ${isPriceReady ? "" : "text-muted-foreground"}`}>{displayedPriceLabel}</p>
                       </div>
                       <div className="bg-card/50 rounded-xl p-6 text-center border border-warning/30">
                         <p className="text-[10px] text-warning uppercase tracking-wider font-medium">Preço Justo Estimado</p>
