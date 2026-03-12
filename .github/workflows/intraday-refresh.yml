@@ -1,11 +1,8 @@
 ﻿name: Intraday Refresh (OpenBB -> Supabase)
 
 on:
-  schedule:
-    # 12:37-20:07 UTC = 09:37-17:07 America/Fortaleza (segunda a sexta, intervalo de 15 min)
-    - cron: "37,52 12 * * 1-5"
-    - cron: "7,22,37,52 13-19 * * 1-5"
-    - cron: "7 20 * * 1-5"
+  # Intencionalmente sem schedule.
+  # O intraday deve ser acionado por scheduler externo.
   workflow_dispatch: {}
 
 concurrency:
