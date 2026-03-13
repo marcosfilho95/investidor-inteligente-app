@@ -34,6 +34,14 @@ const chartColors = [
   "hsl(250, 65%, 55%)",
 ];
 
+function getTradeTimeMs(tradedAt: string, createdAt?: string): number {
+  const tradedMs = new Date(tradedAt || "").getTime();
+  if (Number.isFinite(tradedMs)) return tradedMs;
+  const createdMs = new Date(createdAt || "").getTime();
+  if (Number.isFinite(createdMs)) return createdMs;
+  return 0;
+}
+
 const Portfolio = () => {
   const [viewMode, setViewMode] = useState<"ativos" | "setor">("ativos");
   const [isTradeHistoryOpen, setIsTradeHistoryOpen] = useState(false);
@@ -55,7 +63,7 @@ const Portfolio = () => {
   const [showHoldingsScrollHint, setShowHoldingsScrollHint] = useState(false);
   const [showHoldingsMobileScrollbar, setShowHoldingsMobileScrollbar] = useState(false);
   const holdingsScrollRef = useRef<HTMLDivElement | null>(null);
-  const { enrichedHoldings, loading, userTrades, addHolding, sellHolding } = useUserHoldings();
+  const { enrichedHoldings, loading, userTrades, addHolding, sellHolding, portfolioMetrics } = useUserHoldings();
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
 
@@ -87,19 +95,22 @@ const Portfolio = () => {
   const currentData = viewMode === "ativos" ? assetAllocation : sectorAllocation;
 
   const metrics = useMemo(() => {
-    const totalInvested = enrichedHoldings.reduce((s, h) => s + h.avgPrice * h.shares, 0);
-    const totalCloseValue = enrichedHoldings.reduce((s, h) => s + (h.closeValue ?? h.value), 0);
-    const totalGain = enrichedHoldings.reduce((s, h) => s + (h.totalGainCloseValue ?? h.totalGainValue ?? (h.price - h.avgPrice) * h.shares), 0);
-    const dailyChange = enrichedHoldings.reduce((s, h) => s + (h.dayChangeCloseValue ?? h.dayChangeValue ?? h.change * h.shares), 0);
-    const previousValue = enrichedHoldings.reduce((s, h) => s + (h.prevClose ?? h.price) * h.shares, 0);
-    const variacao = previousValue > 0 ? Math.round((dailyChange / previousValue) * 10000) / 100 : 0;
-    const rentabilidade = totalInvested > 0 ? Math.round((totalGain / totalInvested) * 10000) / 100 : 0;
     const proventos =
-      totalCloseValue > 0
-        ? Math.round(enrichedHoldings.reduce((sum, h) => sum + (h.closeValue ?? h.value) * ((h.dividend || 0) / 100), 0) * 100) / 100
+      portfolioMetrics.totalCloseValue > 0
+        ? Math.round(
+            enrichedHoldings.reduce((sum, h) => sum + (h.closeValue ?? h.value) * ((h.dividend || 0) / 100), 0) * 100
+          ) / 100
         : 0;
-    return { totalInvested, totalCloseValue, totalGain, dailyChange, variacao, rentabilidade, proventos };
-  }, [enrichedHoldings]);
+    return {
+      totalInvested: portfolioMetrics.totalInvestedOpen,
+      totalCloseValue: portfolioMetrics.totalCloseValue,
+      totalGain: portfolioMetrics.totalGain,
+      dailyChange: portfolioMetrics.dailyChange,
+      variacao: portfolioMetrics.dailyChangePercent,
+      rentabilidade: portfolioMetrics.totalGainPercent,
+      proventos,
+    };
+  }, [enrichedHoldings, portfolioMetrics]);
 
   const sortedHoldings = useMemo(
     () => [...enrichedHoldings].sort((a, b) => b.value - a.value),
@@ -107,7 +118,12 @@ const Portfolio = () => {
   );
 
   const tradeHistoryRows = useMemo(() => {
-    const orderedAsc = [...userTrades].sort((a, b) => a.traded_at.localeCompare(b.traded_at));
+    const orderedAsc = [...userTrades].sort((a, b) => {
+      const aMs = getTradeTimeMs(a.traded_at, a.created_at);
+      const bMs = getTradeTimeMs(b.traded_at, b.created_at);
+      if (aMs !== bMs) return aMs - bMs;
+      return a.id.localeCompare(b.id);
+    });
     const positions: Record<string, { qty: number; avgCost: number }> = {};
 
     const computed = orderedAsc.map((t, orderIndex) => {
@@ -122,8 +138,14 @@ const Portfolio = () => {
           : 0;
         positions[t.symbol] = { qty: newQty, avgCost: newAvgCost };
       } else {
-        const sellQty = Math.min(t.shares, Math.max(0, state.qty || t.shares));
-        const costBasis = state.avgCost * sellQty;
+        const fallbackAvgCost = Number.isFinite(t.avg_cost ?? Number.NaN)
+          ? Number(t.avg_cost)
+          : 0;
+        const sellQty = state.qty > 0
+          ? Math.min(t.shares, Math.max(0, state.qty))
+          : t.shares;
+        const unitCost = state.qty > 0 ? state.avgCost : fallbackAvgCost;
+        const costBasis = unitCost * sellQty;
         const saleValue = t.price * sellQty;
         realizedPnl = saleValue - costBasis;
         realizedPnlPct = costBasis > 0 ? (realizedPnl / costBasis) * 100 : null;
@@ -186,7 +208,7 @@ const Portfolio = () => {
 
     const success = orderType === "buy"
       ? await addHolding(selectedTradeAsset.symbol, parsedOrderQty, selectedTradeAsset.price, tradedAt)
-      : await sellHolding(selectedTradeAsset.symbol, parsedOrderQty, tradedAt);
+      : await sellHolding(selectedTradeAsset.symbol, parsedOrderQty, tradedAt, selectedTradeAsset.price);
 
     if (success) setShowOrderModal(false);
   };

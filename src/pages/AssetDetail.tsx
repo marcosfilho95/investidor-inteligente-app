@@ -481,7 +481,7 @@ const AssetDetail = () => {
       const success = await addHolding(asset.symbol, parsedOrderQty, asset.price, tradedAt);
       if (success) setShowBuyModal(false);
     } else {
-      const success = await sellHolding(asset.symbol, parsedOrderQty, tradedAt);
+      const success = await sellHolding(asset.symbol, parsedOrderQty, tradedAt, asset.price);
       if (success) setShowBuyModal(false);
     }
   };

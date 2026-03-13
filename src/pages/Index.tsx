@@ -14,7 +14,7 @@ const Index = () => {
   const [userName, setUserName] = useState(() => localStorage.getItem("ii_user_name") || "Investidor");
   const [minDelayDone, setMinDelayDone] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
-  const { enrichedHoldings, loading, userTrades } = useUserHoldings();
+  const { enrichedHoldings, loading, userTrades, portfolioMetrics } = useUserHoldings();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -59,16 +59,6 @@ const Index = () => {
     greeting = "Boa noite";
   }
 
-  const metrics = useMemo(() => {
-    const totalInvested = enrichedHoldings.reduce((s, h) => s + h.avgPrice * h.shares, 0);
-    const totalCloseValue = enrichedHoldings.reduce((s, h) => s + (h.closeValue ?? h.value), 0);
-    const totalGain = enrichedHoldings.reduce((s, h) => s + (h.totalGainCloseValue ?? h.totalGainValue ?? (h.price - h.avgPrice) * h.shares), 0);
-    const totalGainPercent = totalInvested > 0 ? Math.round((totalGain / totalInvested) * 10000) / 100 : 0;
-    const dailyChange = enrichedHoldings.reduce((s, h) => s + (h.dayChangeCloseValue ?? h.dayChangeValue ?? h.change * h.shares), 0);
-    const previousValue = enrichedHoldings.reduce((s, h) => s + (h.prevClose ?? h.price) * h.shares, 0);
-    const dailyChangePercent = previousValue > 0 ? Math.round((dailyChange / previousValue) * 10000) / 100 : 0;
-    return { totalInvested, totalCloseValue, totalGain, totalGainPercent, dailyChange, dailyChangePercent };
-  }, [enrichedHoldings]);
   const formatSignedCurrency = (value: number) => {
     const abs = Math.abs(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
     if (value > 0) return `+R$ ${abs}`;
@@ -139,33 +129,33 @@ Você pode começar com:
                 {[
               {
                 title: "Valor Total",
-                value: `R$ ${metrics.totalCloseValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-                change: metrics.dailyChangePercent,
+                value: `R$ ${portfolioMetrics.totalCloseValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                change: portfolioMetrics.dailyChangePercent,
                 changeLabel: "hoje",
                 icon: "dollar" as const,
-                positive: metrics.dailyChangePercent >= 0,
+                positive: portfolioMetrics.dailyChangePercent >= 0,
               },
               {
-                title: "Ganho Diário",
-                value: formatSignedCurrency(metrics.dailyChange),
-                change: metrics.dailyChangePercent,
+                title: "Lucro diário",
+                value: formatSignedCurrency(portfolioMetrics.dailyChange),
+                change: portfolioMetrics.dailyChangePercent,
                 icon: "activity" as const,
-                positive: metrics.dailyChangePercent >= 0,
+                positive: portfolioMetrics.dailyChangePercent >= 0,
               },
               {
-                title: "Ganho Total",
-                value: formatSignedCurrency(metrics.totalGain),
-                change: metrics.totalGainPercent,
-                icon: "chart" as const,
-                positive: metrics.totalGainPercent >= 0,
+                title: "Lucro Total",
+                value: formatSignedCurrency(portfolioMetrics.totalGain),
+                change: portfolioMetrics.totalGainPercent,
+                icon: "activity" as const,
+                positive: portfolioMetrics.totalGainPercent >= 0,
               },
               {
                 title: "Rentabilidade",
-                value: `${metrics.totalGainPercent}%`,
-                change: metrics.totalGainPercent,
+                value: `${portfolioMetrics.totalGainPercent}%`,
+                change: portfolioMetrics.totalGainPercent,
                 changeLabel: "desde o início",
                 icon: "percent" as const,
-                positive: metrics.totalGainPercent >= 0,
+                positive: portfolioMetrics.totalGainPercent >= 0,
               },
               ].map((card, i) => (
                 <AnimatedCard key={card.title} delay={i * 0.08}>
@@ -186,7 +176,7 @@ Você pode começar com:
               <AnimatedCard delay={0.3} className="h-full min-h-[460px] flex flex-col">
                 <div className="h-full flex flex-col">
                   <div className="flex-1">
-                    <PerformanceChart userHoldings={enrichedHoldings} totalValue={metrics.totalCloseValue} firstBuyDate={firstBuyDate} />
+                    <PerformanceChart userHoldings={enrichedHoldings} totalValue={portfolioMetrics.totalCloseValue} firstBuyDate={firstBuyDate} />
                   </div>
                 </div>
               </AnimatedCard>
