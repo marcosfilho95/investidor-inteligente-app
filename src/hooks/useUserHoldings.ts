@@ -242,12 +242,14 @@ function computeTimeWeightedReturnPct(
     const dayTrades = tradesByDate[date] || [];
     let netFlow = 0;
     for (const tr of dayTrades) {
+      const markPx = getCloseOnOrBefore(tr.symbol, date);
+      const flowPx = Number.isFinite(markPx ?? Number.NaN) ? Number(markPx) : tr.price;
       if (tr.side === "buy") {
         sharesBySymbol[tr.symbol] = (sharesBySymbol[tr.symbol] || 0) + tr.shares;
-        netFlow += tr.shares * tr.price;
+        netFlow += tr.shares * flowPx;
       } else {
         sharesBySymbol[tr.symbol] = Math.max(0, (sharesBySymbol[tr.symbol] || 0) - tr.shares);
-        netFlow -= tr.shares * tr.price;
+        netFlow -= tr.shares * flowPx;
       }
     }
 
@@ -537,6 +539,7 @@ export function useUserHoldings() {
   const syntheticOpeningBuys = buildSyntheticOpeningBuys(userHoldings, userTrades);
   const effectiveTrades: UserTrade[] = [...userTrades, ...syntheticOpeningBuys]
     .sort(compareTradesAsc);
+  const orderedUserTrades = [...userTrades].sort(compareTradesAsc);
 
   const firstBuyDateBySymbol = effectiveTrades.reduce<Record<string, string>>((acc, trade) => {
     if (trade.side !== "buy") return acc;
@@ -613,7 +616,6 @@ export function useUserHoldings() {
     const orderedTrades = [...effectiveTrades].sort(compareTradesAsc);
     const stateBySymbol: Record<string, { qty: number; avgCost: number }> = {};
     let realizedGain = 0;
-    let closedCostBasis = 0;
 
     for (const trade of orderedTrades) {
       const state = stateBySymbol[trade.symbol] ?? { qty: 0, avgCost: 0 };
@@ -638,7 +640,6 @@ export function useUserHoldings() {
       const costBasis = unitCost * sellQty;
       const saleValue = trade.price * sellQty;
       realizedGain += saleValue - costBasis;
-      closedCostBasis += costBasis;
 
       const remainingQty = state.qty - sellQty;
       stateBySymbol[trade.symbol] = {
@@ -687,11 +688,7 @@ export function useUserHoldings() {
       ? Math.round((dailyChange / dailyReferenceValue) * 10000) / 100
       : 0;
 
-    const totalHistoricalGain = realizedGain + unrealizedGain;
-    const historicalCostBasis = totalInvestedOpen + closedCostBasis;
-    const totalGainPercent = historicalCostBasis > 0
-      ? Math.round((totalHistoricalGain / historicalCostBasis) * 10000) / 100
-      : 0;
+    const totalGainPercent = computeTimeWeightedReturnPct(effectiveTrades, userHoldings);
 
     return {
       totalInvestedOpen: Math.round(totalInvestedOpen * 100) / 100,
@@ -707,7 +704,7 @@ export function useUserHoldings() {
 
   return {
     userHoldings,
-    userTrades: effectiveTrades,
+    userTrades: orderedUserTrades,
     enrichedHoldings,
     totalValue,
     portfolioMetrics,

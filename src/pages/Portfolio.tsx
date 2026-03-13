@@ -42,6 +42,31 @@ function getTradeTimeMs(tradedAt: string, createdAt?: string): number {
   return 0;
 }
 
+function getRecordedTradeTimeMs(tradedAt: string, createdAt?: string): number {
+  const createdMs = new Date(createdAt || "").getTime();
+  if (Number.isFinite(createdMs)) return createdMs;
+  const tradedMs = new Date(tradedAt || "").getTime();
+  if (Number.isFinite(tradedMs)) return tradedMs;
+  return 0;
+}
+
+function formatTradeDateTime(tradedAt: string): string {
+  const dt = new Date(tradedAt || "");
+  if (!Number.isFinite(dt.getTime())) return "-";
+  const datePart = dt.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  });
+  const timePart = dt.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  return `${datePart} ${timePart}`;
+}
+
 const Portfolio = () => {
   const [viewMode, setViewMode] = useState<"ativos" | "setor">("ativos");
   const [isTradeHistoryOpen, setIsTradeHistoryOpen] = useState(false);
@@ -161,19 +186,11 @@ const Portfolio = () => {
     });
 
     return computed.sort((a, b) => {
-      const aTs = new Date(a.traded_at).getTime();
-      const bTs = new Date(b.traded_at).getTime();
-      if (Number.isFinite(aTs) && Number.isFinite(bTs) && aTs !== bTs) {
-        return bTs - aTs;
-      }
-
-      const aCreatedTs = a.created_at ? new Date(a.created_at).getTime() : Number.NaN;
-      const bCreatedTs = b.created_at ? new Date(b.created_at).getTime() : Number.NaN;
-      if (Number.isFinite(aCreatedTs) && Number.isFinite(bCreatedTs) && aCreatedTs !== bCreatedTs) {
-        return bCreatedTs - aCreatedTs;
-      }
-
-      // Final tie-breaker: most recently processed trade first.
+      const aTs = getRecordedTradeTimeMs(a.traded_at, a.created_at);
+      const bTs = getRecordedTradeTimeMs(b.traded_at, b.created_at);
+      if (aTs !== bTs) return bTs - aTs;
+      const idCmp = b.id.localeCompare(a.id);
+      if (idCmp !== 0) return idCmp;
       return b.orderIndex - a.orderIndex;
     });
   }, [userTrades]);
@@ -204,7 +221,8 @@ const Portfolio = () => {
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
     const ss = String(now.getSeconds()).padStart(2, "0");
-    const tradedAt = orderDate ? `${orderDate}T${hh}:${mm}:${ss}` : undefined;
+    const ms = String(now.getMilliseconds()).padStart(3, "0");
+    const tradedAt = orderDate ? `${orderDate}T${hh}:${mm}:${ss}.${ms}` : undefined;
 
     const success = orderType === "buy"
       ? await addHolding(selectedTradeAsset.symbol, parsedOrderQty, selectedTradeAsset.price, tradedAt)
@@ -229,7 +247,7 @@ const Portfolio = () => {
 
   useEffect(() => {
     setTradePage(1);
-  }, [tradeHistoryRows.length, tradeHistoryRows[0]?.id, tradeHistoryRows[0]?.traded_at]);
+  }, [tradeHistoryRows.length, tradeHistoryRows[0]?.id, tradeHistoryRows[0]?.traded_at, tradeHistoryRows[0]?.created_at]);
 
   useEffect(() => {
     setHoldingsPage(1);
@@ -356,7 +374,7 @@ const Portfolio = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Rentabilidade</span>
                 </div>
-                <div className="flex items-center justify-end mt-1">
+                <div className="flex items-center justify-start mt-1">
                   <div className="flex items-center gap-1">
                     <span className={`text-lg font-semibold font-mono ${metrics.rentabilidade >= 0 ? "text-gain" : "text-loss"}`}>
                       {metrics.rentabilidade}%
@@ -709,7 +727,7 @@ const Portfolio = () => {
                             >
                             {pagedTradeRows.map((t) => (
                                 <tr key={t.id} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
-                                  <td className="px-5 py-3 text-sm">{new Date(t.traded_at).toLocaleDateString("pt-BR")}</td>
+                                  <td className="px-5 py-3 text-sm">{formatTradeDateTime(t.created_at ?? t.traded_at)}</td>
                                   <td className="px-4 py-3">
                                     <span className={`text-xs font-medium ${t.side === "buy" ? "text-gain" : "text-loss"}`}>
                                       {t.side === "buy" ? "Compra" : "Venda"}

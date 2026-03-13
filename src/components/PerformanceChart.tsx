@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Holding, getFilteredBenchmarks, getLatestMarketDateKey } from "@/data/investments";
+import { Holding, getFilteredBenchmarks, getLatestMarketDateKey, getMarketHistory } from "@/data/investments";
 
 const benchmarks = [
   { key: "carteira", label: "Carteira", color: "hsl(142, 72%, 48%)" },
@@ -14,6 +14,7 @@ const periods = ["DESDE O INÍCIO", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANO
 
 interface PerformanceChartProps {
   userHoldings?: (Holding & { avgPrice?: number; firstBuyDate?: string | null })[];
+  userTrades?: Array<{ symbol: string; side: "buy" | "sell"; shares: number; traded_at: string }>;
   totalValue?: number;
   firstBuyDate?: string | null;
 }
@@ -22,7 +23,136 @@ type BenchmarkKey = "carteira" | "ibovespa" | "cdi" | "ipca";
 
 const benchmarkCache = new Map<string, ReturnType<typeof getFilteredBenchmarks>>();
 
-export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: PerformanceChartProps) {
+type TwrPoint = { date: string; pct: number };
+type PortfolioPoint = { symbol: string; shares: number; avgPrice?: number; firstBuyDate?: string | null };
+
+function buildSyntheticOpeningTrades(
+  holdings: PortfolioPoint[],
+  trades: Array<{ symbol: string; side: "buy" | "sell"; shares: number; traded_at: string }>
+) {
+  const qtyBySymbol = trades.reduce<Record<string, number>>((acc, t) => {
+    const delta = t.side === "buy" ? t.shares : -t.shares;
+    acc[t.symbol] = (acc[t.symbol] || 0) + delta;
+    return acc;
+  }, {});
+
+  return holdings
+    .filter((h) => h.shares > 0)
+    .map((h) => {
+      const tradedQty = qtyBySymbol[h.symbol] || 0;
+      const missingQty = h.shares - tradedQty;
+      if (missingQty <= 0) return null;
+      return {
+        symbol: h.symbol,
+        side: "buy" as const,
+        shares: missingQty,
+        traded_at: (h.firstBuyDate || "").slice(0, 10)
+          ? `${(h.firstBuyDate || "").slice(0, 10)}T00:00:00`
+          : new Date().toISOString(),
+      };
+    })
+    .filter(Boolean) as Array<{ symbol: string; side: "buy" | "sell"; shares: number; traded_at: string }>;
+}
+
+function computePortfolioTwrSeries(
+  trades: Array<{ symbol: string; side: "buy" | "sell"; shares: number; traded_at: string }>,
+  currentHoldings: Array<{ symbol: string; shares: number }>
+): TwrPoint[] {
+  const market = getMarketHistory();
+  const relevantSymbols = new Set<string>([
+    ...trades.map((t) => t.symbol),
+    ...currentHoldings.map((h) => h.symbol),
+  ]);
+  if (!relevantSymbols.size) return [];
+
+  const closeBySymbol = new Map<string, Array<{ date: string; close: number }>>();
+  for (const symbol of relevantSymbols) {
+    const rows = (market[symbol] || [])
+      .filter((r) => Number.isFinite(r.close))
+      .map((r) => ({ date: r.date, close: Number(r.close) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (rows.length) closeBySymbol.set(symbol, rows);
+  }
+  if (!closeBySymbol.size) return [];
+
+  const allDates = Array.from(new Set(Array.from(closeBySymbol.values()).flatMap((rows) => rows.map((r) => r.date))))
+    .sort((a, b) => a.localeCompare(b));
+  if (!allDates.length) return [];
+
+  const orderedTrades = [...trades].sort((a, b) => a.traded_at.localeCompare(b.traded_at));
+  const tradesByDate = orderedTrades.reduce<Record<string, typeof orderedTrades>>((acc, t) => {
+    const d = (t.traded_at || "").slice(0, 10);
+    if (!d) return acc;
+    if (!acc[d]) acc[d] = [];
+    acc[d].push(t);
+    return acc;
+  }, {});
+
+  const getCloseOnOrBefore = (symbol: string, date: string): number | null => {
+    const rows = closeBySymbol.get(symbol);
+    if (!rows || rows.length === 0) return null;
+    let found: number | null = null;
+    for (const r of rows) {
+      if (r.date > date) break;
+      found = r.close;
+    }
+    return Number.isFinite(found ?? Number.NaN) ? Number(found) : null;
+  };
+
+  const sharesBySymbol: Record<string, number> = {};
+  for (const symbol of relevantSymbols) sharesBySymbol[symbol] = 0;
+
+  let twr = 1;
+  let hasBase = false;
+  let prevCloseValue = 0;
+  const out: TwrPoint[] = [];
+
+  for (const date of allDates) {
+    const dayTrades = tradesByDate[date] || [];
+    let netFlow = 0;
+    for (const tr of dayTrades) {
+      const markPx = getCloseOnOrBefore(tr.symbol, date);
+      const flowPx = Number.isFinite(markPx ?? Number.NaN) ? Number(markPx) : 0;
+      if (tr.side === "buy") {
+        sharesBySymbol[tr.symbol] = (sharesBySymbol[tr.symbol] || 0) + tr.shares;
+        netFlow += tr.shares * flowPx;
+      } else {
+        sharesBySymbol[tr.symbol] = Math.max(0, (sharesBySymbol[tr.symbol] || 0) - tr.shares);
+        netFlow -= tr.shares * flowPx;
+      }
+    }
+
+    let closeValue = 0;
+    for (const symbol of relevantSymbols) {
+      const qty = sharesBySymbol[symbol] || 0;
+      if (qty <= 0) continue;
+      const px = getCloseOnOrBefore(symbol, date);
+      if (!Number.isFinite(px ?? Number.NaN)) continue;
+      closeValue += qty * Number(px);
+    }
+
+    if (!hasBase) {
+      if (closeValue > 0) {
+        hasBase = true;
+        prevCloseValue = closeValue;
+        out.push({ date, pct: 0 });
+      }
+      continue;
+    }
+
+    if (prevCloseValue > 0) {
+      const gross = closeValue - netFlow;
+      const dayReturn = gross / prevCloseValue - 1;
+      if (Number.isFinite(dayReturn)) twr *= 1 + dayReturn;
+    }
+    prevCloseValue = closeValue;
+    out.push({ date, pct: Math.round(((twr - 1) * 100) * 100) / 100 });
+  }
+
+  return out;
+}
+
+export function PerformanceChart({ userHoldings, userTrades, totalValue, firstBuyDate }: PerformanceChartProps) {
   const [showIbovespa, setShowIbovespa] = useState(true);
   const [showCdi, setShowCdi] = useState(true);
   const [showIpca, setShowIpca] = useState(true);
@@ -68,17 +198,38 @@ export function PerformanceChart({ userHoldings, totalValue, firstBuyDate }: Per
     return invested > 0 ? invested : Math.max(1, baseValue);
   }, [userPortfolio, baseValue]);
 
+  const twrSeries = useMemo(
+    () => {
+      const realTrades = userTrades || [];
+      const synthetic = buildSyntheticOpeningTrades(userPortfolio, realTrades);
+      const effectiveTrades = [...realTrades, ...synthetic].sort((a, b) => a.traded_at.localeCompare(b.traded_at));
+      return computePortfolioTwrSeries(
+        effectiveTrades,
+        userPortfolio.map((p) => ({ symbol: p.symbol, shares: p.shares }))
+      );
+    },
+    [userTrades, userPortfolio]
+  );
+
   const chartData = useMemo(
     () =>
       rawData.map((d) => ({
+        date: (d as any).date as string | undefined,
         month: d.month,
         tooltipLabel: d.tooltipLabel ?? d.month,
-        carteira: (d.carteira / investedBase) * 100,
+        carteira: (() => {
+          const dateKey = (d as any).date as string | undefined;
+          if (!dateKey || twrSeries.length === 0) return (d.carteira / investedBase) * 100;
+          const exact = twrSeries.find((p) => p.date === dateKey);
+          if (exact) return exact.pct;
+          const previous = [...twrSeries].reverse().find((p) => p.date <= dateKey);
+          return previous ? previous.pct : (d.carteira / investedBase) * 100;
+        })(),
         ibovespa: (d.ibovespa / investedBase) * 100,
         cdi: (d.cdi / investedBase) * 100,
         ipca: (d.ipca / investedBase) * 100,
       })),
-    [rawData, investedBase]
+    [rawData, investedBase, twrSeries]
   );
 
   const tickInterval = Math.max(0, Math.floor(chartData.length / 8));

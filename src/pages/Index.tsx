@@ -69,11 +69,20 @@ const Index = () => {
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
   const firstBuyDate = useMemo(() => {
-    const buys = userTrades.filter((t) => t.side === "buy");
-    if (buys.length === 0) return null;
-    buys.sort((a, b) => a.traded_at.localeCompare(b.traded_at));
-    return buys[0].traded_at.slice(0, 10);
-  }, [userTrades]);
+    const holdingDates = enrichedHoldings
+      .map((h) => (h.firstBuyDate || "").slice(0, 10))
+      .filter(Boolean)
+      .sort();
+    if (holdingDates.length > 0) return holdingDates[0];
+
+    const buys = userTrades
+      .filter((t) => t.side === "buy")
+      .map((t) => (t.traded_at || "").slice(0, 10))
+      .filter(Boolean)
+      .sort();
+    return buys[0] ?? null;
+  }, [enrichedHoldings, userTrades]);
+
   const aiDashboardWelcome = useMemo(() => `${greeting}, ${userName}! Sou o Hodl, seu assistente de investimentos.
 
 Meu foco aqui no Dashboard é:
@@ -154,6 +163,8 @@ Você pode começar com:
                 value: `${portfolioMetrics.totalGainPercent}%`,
                 change: portfolioMetrics.totalGainPercent,
                 changeLabel: "desde o início",
+                showChangeValue: false,
+                colorChangeLabelBySign: true,
                 icon: "percent" as const,
                 positive: portfolioMetrics.totalGainPercent >= 0,
               },
@@ -176,7 +187,12 @@ Você pode começar com:
               <AnimatedCard delay={0.3} className="h-full min-h-[460px] flex flex-col">
                 <div className="h-full flex flex-col">
                   <div className="flex-1">
-                    <PerformanceChart userHoldings={enrichedHoldings} totalValue={portfolioMetrics.totalCloseValue} firstBuyDate={firstBuyDate} />
+                    <PerformanceChart
+                      userHoldings={enrichedHoldings}
+                      userTrades={userTrades}
+                      totalValue={portfolioMetrics.totalCloseValue}
+                      firstBuyDate={firstBuyDate}
+                    />
                   </div>
                 </div>
               </AnimatedCard>

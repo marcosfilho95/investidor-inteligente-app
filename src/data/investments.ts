@@ -1376,9 +1376,10 @@ export function getFilteredBenchmarks(
   baseValue: number,
   minStartDate?: string,
   userPortfolio?: Array<{ symbol: string; shares: number; avgPrice?: number; firstBuyDate?: string | null }>
-): { month: string; tooltipLabel?: string; carteira: number; ibovespa: number; cdi: number; ipca: number }[] {
+): { date: string; month: string; tooltipLabel?: string; carteira: number; ibovespa: number; cdi: number; ipca: number }[] {
   const benchmarks = getBenchmarkHistory();
   const now = getLatestMarketDate();
+  const latestMarketDateKey = getLatestMarketDateKey();
   let startDate: Date;
   
   switch (period) {
@@ -1398,15 +1399,24 @@ export function getFilteredBenchmarks(
   // Unified rule for every period:
   // effectiveStart = max(periodStart, portfolioStart)
   let startStr = startStrFromPeriod;
-  if (minStartDate && minStartDate > startStr) {
-    startStr = minStartDate;
+  const clampedMinStartDate = minStartDate
+    ? minStartDate.slice(0, 10) > latestMarketDateKey
+      ? latestMarketDateKey
+      : minStartDate.slice(0, 10)
+    : undefined;
+  if (clampedMinStartDate && clampedMinStartDate > startStr) {
+    startStr = clampedMinStartDate;
   }
   
   const ibovFromMarket = getIbovSeriesFromMarketData(getMarketHistory());
   const ibovSource = ibovFromMarket.length > 0 ? ibovFromMarket : benchmarks.IBOV;
   let ibovData = ibovSource.filter(d => d.date >= startStr);
-  if (minStartDate) {
-    ibovData = ibovData.filter((d) => d.date >= minStartDate);
+  if (clampedMinStartDate) {
+    ibovData = ibovData.filter((d) => d.date >= clampedMinStartDate);
+  }
+  if (ibovData.length === 0 && ibovSource.length > 0) {
+    // Fallback: keep at least the latest available market point to avoid empty chart.
+    ibovData = [ibovSource[ibovSource.length - 1]];
   }
   const benchmarkStart = ibovData[0]?.date ?? startStr;
   const cdiData = benchmarks.CDI.filter(d => d.date >= benchmarkStart);
@@ -1491,6 +1501,7 @@ export function getFilteredBenchmarks(
       const tooltipLabel = `${day}/${month}`;
       
       return {
+        date: ibov.date,
         month: label,
         tooltipLabel,
         carteira: Number((portfolioVal - (investedAtDate > 0 ? investedAtDate : referenceBase)).toFixed(2)),
