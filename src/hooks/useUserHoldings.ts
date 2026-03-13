@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { holdings as allAssets, getLatestMarketDateKey, getMarketHistory } from "@/data/investments";
+import { holdings as allAssets, getMarketHistory } from "@/data/investments";
 import { useToast } from "@/hooks/use-toast";
+import { computePortfolioPerformance } from "@/lib/portfolioPerformance";
 
 export interface UserHolding {
   symbol: string;
@@ -27,6 +28,7 @@ export interface PortfolioMetrics {
   realizedGain: number;
   unrealizedGain: number;
   totalGain: number;
+  openGainPercent: number;
   dailyChange: number;
   dailyChangePercent: number;
   totalGainPercent: number;
@@ -171,121 +173,10 @@ function buildSyntheticOpeningBuys(holdings: UserHolding[], trades: UserTrade[])
     .filter(Boolean) as UserTrade[];
 }
 
-function getBrtDateKey(date = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
-
-function computeTimeWeightedReturnPct(
-  trades: UserTrade[],
-  currentHoldings: UserHolding[]
-): number {
-  const market = getMarketHistory();
-  const latestDate = getLatestMarketDateKey();
-  const relevantSymbols = new Set<string>([
-    ...trades.map((t) => t.symbol),
-    ...currentHoldings.map((h) => h.symbol),
-  ]);
-  if (!relevantSymbols.size) return 0;
-
-  const closeBySymbol = new Map<string, Array<{ date: string; close: number }>>();
-  for (const symbol of relevantSymbols) {
-    const rows = (market[symbol] || [])
-      .filter((r) => Number.isFinite(r.close))
-      .map((r) => ({ date: r.date, close: Number(r.close) }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-    if (rows.length) closeBySymbol.set(symbol, rows);
-  }
-  if (!closeBySymbol.size) return 0;
-
-  const allDates = Array.from(
-    new Set(
-      Array.from(closeBySymbol.values())
-        .flatMap((rows) => rows.map((r) => r.date))
-        .filter((d) => d <= latestDate)
-    )
-  ).sort((a, b) => a.localeCompare(b));
-  if (!allDates.length) return 0;
-
-  const orderedTrades = [...trades].sort((a, b) => a.traded_at.localeCompare(b.traded_at));
-  const tradesByDate = orderedTrades.reduce<Record<string, UserTrade[]>>((acc, t) => {
-    const d = (t.traded_at || "").slice(0, 10);
-    if (!d) return acc;
-    if (!acc[d]) acc[d] = [];
-    acc[d].push(t);
-    return acc;
-  }, {});
-
-  const getCloseOnOrBefore = (symbol: string, date: string): number | null => {
-    const rows = closeBySymbol.get(symbol);
-    if (!rows || rows.length === 0) return null;
-    let found: number | null = null;
-    for (const r of rows) {
-      if (r.date > date) break;
-      found = r.close;
-    }
-    return Number.isFinite(found ?? Number.NaN) ? Number(found) : null;
-  };
-
-  const sharesBySymbol: Record<string, number> = {};
-  for (const symbol of relevantSymbols) sharesBySymbol[symbol] = 0;
-
-  let twr = 1;
-  let hasBase = false;
-  let prevCloseValue = 0;
-
-  for (const date of allDates) {
-    const dayTrades = tradesByDate[date] || [];
-    let netFlow = 0;
-    for (const tr of dayTrades) {
-      const markPx = getCloseOnOrBefore(tr.symbol, date);
-      const flowPx = Number.isFinite(markPx ?? Number.NaN) ? Number(markPx) : tr.price;
-      if (tr.side === "buy") {
-        sharesBySymbol[tr.symbol] = (sharesBySymbol[tr.symbol] || 0) + tr.shares;
-        netFlow += tr.shares * flowPx;
-      } else {
-        sharesBySymbol[tr.symbol] = Math.max(0, (sharesBySymbol[tr.symbol] || 0) - tr.shares);
-        netFlow -= tr.shares * flowPx;
-      }
-    }
-
-    let closeValue = 0;
-    for (const symbol of relevantSymbols) {
-      const qty = sharesBySymbol[symbol] || 0;
-      if (qty <= 0) continue;
-      const px = getCloseOnOrBefore(symbol, date);
-      if (!Number.isFinite(px ?? Number.NaN)) continue;
-      closeValue += qty * Number(px);
-    }
-
-    if (!hasBase) {
-      if (closeValue > 0) {
-        hasBase = true;
-        prevCloseValue = closeValue;
-      }
-      continue;
-    }
-
-    if (prevCloseValue > 0) {
-      const gross = closeValue - netFlow;
-      const dayReturn = gross / prevCloseValue - 1;
-      if (Number.isFinite(dayReturn)) twr *= 1 + dayReturn;
-    }
-    prevCloseValue = closeValue;
-  }
-
-  if (!hasBase) return 0;
-  return Math.round(((twr - 1) * 100) * 100) / 100;
-}
-
 export function useUserHoldings() {
   const [userHoldings, setUserHoldings] = useState<UserHolding[]>(() => activeUserCache?.holdings ?? []);
   const [userTrades, setUserTrades] = useState<UserTrade[]>([]);
-  const [loading, setLoading] = useState(() => !activeUserCache);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const getCurrentUserId = useCallback(async (): Promise<string | null> => {
@@ -346,9 +237,9 @@ export function useUserHoldings() {
 
     if (!forceRefresh && bestCache) {
       setUserHoldings(bestCache.holdings);
-      setLoading(false);
       if (isFresh(bestCache)) {
         await loadTrades();
+        setLoading(false);
         return;
       }
     } else if (!bestCache) {
@@ -653,42 +544,23 @@ export function useUserHoldings() {
       0
     );
     const totalGain = unrealizedGain;
-
-    const todayKey = getBrtDateKey(new Date());
-    const todaysBuyBySymbol = orderedTrades.reduce<Record<string, { qty: number; notional: number }>>((acc, t) => {
-      if (t.side !== "buy") return acc;
-      if ((t.traded_at || "").slice(0, 10) !== todayKey) return acc;
-      const bucket = acc[t.symbol] ?? { qty: 0, notional: 0 };
-      bucket.qty += t.shares;
-      bucket.notional += t.shares * t.price;
-      acc[t.symbol] = bucket;
-      return acc;
-    }, {});
-
-    let dailyChange = 0;
-    let dailyReferenceValue = 0;
-    for (const h of enrichedHoldings) {
-      const closePrice = Number(h.closePrice ?? h.price);
-      const prevClose = Number(h.prevClose ?? closePrice);
-      const buyFlow = todaysBuyBySymbol[h.symbol] ?? { qty: 0, notional: 0 };
-
-      // Shares opened today must be compared against execution cost (not yesterday close)
-      // to avoid artificial daily gain/loss on pure buy/sell operations.
-      const openedTodayQty = Math.min(h.shares, Math.max(0, buyFlow.qty));
-      const carriedQty = Math.max(0, h.shares - openedTodayQty);
-      const avgOpenCostToday = buyFlow.qty > 0 ? buyFlow.notional / buyFlow.qty : closePrice;
-
-      dailyChange += carriedQty * (closePrice - prevClose);
-      dailyChange += openedTodayQty * (closePrice - avgOpenCostToday);
-      dailyReferenceValue += carriedQty * prevClose;
-      dailyReferenceValue += openedTodayQty * avgOpenCostToday;
-    }
-
-    const dailyChangePercent = dailyReferenceValue > 0
-      ? Math.round((dailyChange / dailyReferenceValue) * 10000) / 100
+    const openGainPercent = totalInvestedOpen > 0
+      ? Math.round((totalGain / totalInvestedOpen) * 10000) / 100
       : 0;
 
-    const totalGainPercent = computeTimeWeightedReturnPct(effectiveTrades, userHoldings);
+    const perf = computePortfolioPerformance(
+      effectiveTrades.map((t) => ({
+        symbol: t.symbol,
+        side: t.side,
+        shares: t.shares,
+        traded_at: t.traded_at,
+        price: t.price,
+      })),
+      userHoldings.map((h) => ({ symbol: h.symbol, shares: h.shares }))
+    );
+    const dailyChange = perf.lastDayPnl;
+    const dailyChangePercent = perf.lastDayReturnPct;
+    const totalGainPercent = perf.cumulativeReturnPct;
 
     return {
       totalInvestedOpen: Math.round(totalInvestedOpen * 100) / 100,
@@ -696,6 +568,7 @@ export function useUserHoldings() {
       realizedGain: Math.round(realizedGain * 100) / 100,
       unrealizedGain: Math.round(unrealizedGain * 100) / 100,
       totalGain: Math.round(totalGain * 100) / 100,
+      openGainPercent,
       dailyChange: Math.round(dailyChange * 100) / 100,
       dailyChangePercent,
       totalGainPercent,

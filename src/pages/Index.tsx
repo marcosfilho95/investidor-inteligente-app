@@ -154,9 +154,9 @@ Você pode começar com:
               {
                 title: "Lucro Total",
                 value: formatSignedCurrency(portfolioMetrics.totalGain),
-                change: portfolioMetrics.totalGainPercent,
+                change: portfolioMetrics.openGainPercent,
                 icon: "activity" as const,
-                positive: portfolioMetrics.totalGainPercent >= 0,
+                positive: portfolioMetrics.openGainPercent >= 0,
               },
               {
                 title: "Rentabilidade",
@@ -164,7 +164,7 @@ Você pode começar com:
                 change: portfolioMetrics.totalGainPercent,
                 changeLabel: "desde o início",
                 showChangeValue: false,
-                colorChangeLabelBySign: true,
+                colorChangeLabelBySign: false,
                 icon: "percent" as const,
                 positive: portfolioMetrics.totalGainPercent >= 0,
               },
