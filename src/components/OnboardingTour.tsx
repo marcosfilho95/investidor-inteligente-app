@@ -101,7 +101,8 @@ const mobileSteps: TourStep[] = [
   {
     selector: "__welcome__",
     title: "Bem-vindo ao Investidor Inteligente! 🚀",
-    description: "Tour rápido no mobile. Você pode pular ou fechar quando quiser.",
+    description:
+      "Vamos fazer um tour rápido pela plataforma. Vou te mostrar cada seção para você aproveitar tudo ao máximo!",
     position: "center",
   },
   {
@@ -114,8 +115,9 @@ const mobileSteps: TourStep[] = [
   },
   {
     selector: '[data-tour="nav-dashboard"]',
-    title: "Dashboard",
-    description: "Ao selecionar Dashboard, você vê os principais indicadores e o resumo da carteira.",
+    title: "📊 Dashboard",
+    description:
+      "Aqui é sua visão geral: valor da carteira, ganhos, rentabilidade, posições dos ativos e gráficos de performance vs benchmarks (Ibovespa, CDI e IPCA).",
     position: "bottom",
     route: "/dashboard",
     requiresMobileMenu: true,
@@ -123,8 +125,9 @@ const mobileSteps: TourStep[] = [
   },
   {
     selector: '[data-tour="nav-carteira"]',
-    title: "👛 Carteira",
-    description: "Aqui você acompanha posições, alocação, desempenho e histórico de compra/venda dos seus ativos.",
+    title: "💼 Carteira",
+    description:
+      "Gerencie seus investimentos! Veja alocação por ativo e setor, preço médio, variação, peso de cada posição e histórico de compra/venda.",
     position: "bottom",
     route: "/carteira",
     requiresMobileMenu: true,
@@ -132,8 +135,9 @@ const mobileSteps: TourStep[] = [
   },
   {
     selector: '[data-tour="nav-ativos"]',
-    title: "Ativos",
-    description: "Nesta página você analisa os ativos antes de investir.",
+    title: "📈 Ativos",
+    description:
+      "Explore ações com indicadores fundamentalistas (P/L, P/VP, ROE, DY). Analise antes de comprar.",
     position: "bottom",
     route: "/ativos",
     requiresMobileMenu: true,
@@ -141,8 +145,9 @@ const mobileSteps: TourStep[] = [
   },
   {
     selector: '[data-tour="nav-aprender"]',
-    title: "Aprender",
-    description: "Acesse trilhas educativas. Esta seção é fundamental para evoluir como investidor.",
+    title: "🎓 Aprender",
+    description:
+      "Conteúdos sobre mercado, análise fundamentalista e estratégia para você investir com mais inteligência.",
     position: "bottom",
     route: "/aprender",
     requiresMobileMenu: true,
@@ -150,36 +155,39 @@ const mobileSteps: TourStep[] = [
   },
   {
     selector: '[data-tour="notifications"]',
-    title: "Notificações",
-    description: "Acompanhe eventos e alertas importantes da plataforma.",
+    title: "🔔 Notificações",
+    description:
+      "Veja alertas relevantes, dividendos creditados e novidades da plataforma.",
     position: "bottom",
     route: "/dashboard",
   },
   {
     selector: '[data-tour="help-tutorial"]',
-    title: "Ajuda e Tutorial",
-    description: "Use o botão ? (igual no Dashboard) para abrir o tutorial quando quiser.",
+    title: "❓ Ajuda e Tutorial",
+    description: "Clique aqui sempre que quiser rever o tutorial da plataforma.",
     position: "bottom",
     route: "/dashboard",
   },
   {
     selector: '[data-tour="user-menu"]',
-    title: "Seu Perfil",
-    description: "Perfil e configurações da conta ficam aqui.",
+    title: "👤 Seu Perfil",
+    description: "Acesse seu perfil, configurações e opção de logout aqui.",
     position: "bottom",
     route: "/dashboard",
   },
   {
     selector: '[data-tour="ai-chat"]',
-    title: "🤖 HODL AI",
-    description: "Aqui está o bot da plataforma para tirar dúvidas e receber análises.",
+    title: "🤖 HODL — Seu Assistente IA",
+    description:
+      "O HODL está em todas as páginas. Pergunte sobre indicadores, peça análises ou tire dúvidas sobre sua carteira.",
     position: "top",
     route: "/dashboard",
   },
   {
     selector: "__finish__",
     title: "Tudo pronto! 🎉",
-    description: "Tour concluído. Você já pode navegar normalmente pela plataforma.",
+    description:
+      "Agora é com você! Explore o Dashboard, adicione ações pela página de Ativos e use o HODL sempre que precisar.",
     position: "center",
     route: "/dashboard",
   },

@@ -627,7 +627,15 @@ export async function getFilteredIntradayPriceHistory(symbol: string): Promise<I
   const sessionRows = currentSessionRows.length > 0 ? currentSessionRows : getRowsForLatestSession(rows);
   if (!sessionRows.length) return [];
 
-  return sessionRows
+  const sortedSessionRows = [...sessionRows].sort((a, b) => a.datetime.localeCompare(b.datetime));
+  const sessionDate = sortedSessionRows[0]?.datetime?.slice(0, 10) || "";
+  const lastDatetime = sortedSessionRows[sortedSessionRows.length - 1]?.datetime ?? null;
+  const closeAnchor = sessionDate ? maybeBuildClosingAnchorFor7d(symbol, sessionDate, lastDatetime) : null;
+  const rowsWithClose = closeAnchor
+    ? [...sortedSessionRows, closeAnchor].sort((a, b) => a.datetime.localeCompare(b.datetime))
+    : sortedSessionRows;
+
+  return rowsWithClose
     .map((row) => {
       const hm = row.datetime.includes(" ") ? row.datetime.split(" ")[1]?.slice(0, 5) : row.datetime.slice(11, 16);
       return {
