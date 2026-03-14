@@ -18,7 +18,7 @@ interface AiChatWidgetProps {
 }
 
 type Msg = { role: "user" | "assistant"; content: string };
-const HODL_AVATAR_SRC = "/images/hodl-avatar.png";
+const HODL_AVATAR_SRC = "/images/dffsfd.png";
 
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || import.meta.env.SUPABASE_PROJECT_ID;
 const SUPABASE_URL =
@@ -93,7 +93,7 @@ function HodlAvatar({ size = 20, rounded = "rounded-lg" }: { size?: number; roun
       src={HODL_AVATAR_SRC}
       alt="Hodl"
       style={{ width: size, height: size }}
-      className={`object-cover border border-primary/20 ${rounded}`}
+      className={`object-cover ${rounded}`}
       onError={() => setFailed(true)}
     />
   );

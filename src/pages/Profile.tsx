@@ -1,6 +1,6 @@
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Mail, Calendar, LogOut, ChevronRight, Wallet, TrendingUp, PieChart, Camera } from "lucide-react";
+import { User, Mail, Calendar, LogOut, ChevronRight, Wallet, TrendingUp, PieChart, Camera, GraduationCap } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
@@ -481,7 +481,7 @@ const Profile = () => {
                 {[
                   { label: "Minha Carteira", desc: "Ver ativos e alocação", href: "/carteira", icon: Wallet },
                   { label: "Explorar Ativos", desc: "Analisar ações da B3", href: "/ativos", icon: PieChart },
-                  { label: "Aprender", desc: "Trilhas educativas", href: "/aprender", icon: TrendingUp },
+                  { label: "Aprender", desc: "Trilhas educativas", href: "/aprender", icon: GraduationCap },
                 ].map((item) => (
                   <a
                     key={item.href}

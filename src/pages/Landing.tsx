@@ -264,9 +264,9 @@ const Landing = () => {
               </>
             )}
             <div className="relative z-10">
-              <motion.div variants={fadeUp} className="h-20 w-20 rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center mx-auto mb-6 p-1.5 overflow-hidden">
+              <motion.div variants={fadeUp} className="h-20 w-20 rounded-2xl bg-gradient-to-br from-black to-primary/10 border border-border/60 flex items-center justify-center mx-auto mb-6 p-1.5 overflow-hidden">
                 <img
-                  src="/images/hodl-avatar.png"
+                  src="/images/dffsfd.png"
                   alt="Hodl"
                   className="h-full w-full object-cover rounded-xl"
                 />
