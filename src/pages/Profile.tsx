@@ -62,6 +62,15 @@ const Profile = () => {
       .slice(0, 32);
 
   const handleSaveUsername = async () => {
+    const usernameLocked = username.trim().length > 0;
+    if (usernameLocked) {
+      toast({
+        title: "Nome de usuario bloqueado",
+        description: "O nome de usuario pode ser definido apenas uma vez.",
+      });
+      return;
+    }
+
     const normalized = normalizeUsername(usernameDraft.trim());
     if (!normalized || normalized.length < 3) {
       toast({
@@ -139,6 +148,7 @@ const Profile = () => {
   const memberSince = userCreatedAt
     ? new Date(userCreatedAt).toLocaleDateString("pt-BR", { year: "numeric", month: "long", day: "numeric" })
     : "-";
+  const usernameLocked = username.trim().length > 0;
 
   const totalInvested = enrichedHoldings.reduce((s, h) => s + h.avgPrice * h.shares, 0);
   const totalGain = enrichedHoldings.reduce((s, h) => s + (h.totalGainValue ?? (h.price - h.avgPrice) * h.shares), 0);
@@ -300,17 +310,25 @@ const Profile = () => {
                         value={usernameDraft}
                         onChange={(e) => setUsernameDraft(normalizeUsername(e.target.value))}
                         placeholder="ex: marcos123"
-                        className="w-full max-w-[220px] px-3 py-1.5 rounded-md bg-background/80 border border-border/50 text-sm"
+                        disabled={usernameLocked}
+                        className="w-full max-w-[220px] px-3 py-1.5 rounded-md bg-background/80 border border-border/50 text-sm disabled:opacity-70 disabled:cursor-not-allowed"
                       />
-                      <button
-                        type="button"
-                        onClick={handleSaveUsername}
-                        disabled={savingUsername || normalizeUsername(usernameDraft) === username}
-                        className="px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground disabled:opacity-50"
-                      >
-                        {savingUsername ? "Salvando..." : "Salvar"}
-                      </button>
+                      {!usernameLocked && (
+                        <button
+                          type="button"
+                          onClick={handleSaveUsername}
+                          disabled={savingUsername || normalizeUsername(usernameDraft) === username}
+                          className="px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground disabled:opacity-50"
+                        >
+                          {savingUsername ? "Salvando..." : "Salvar"}
+                        </button>
+                      )}
                     </div>
+                    {usernameLocked && (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Nome de usuario definido e bloqueado (edicao unica).
+                      </p>
+                    )}
                   </div>
                 </div>
 
