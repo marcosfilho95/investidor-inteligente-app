@@ -140,7 +140,7 @@ Você pode começar com:
                 title: "Valor Total",
                 value: `R$ ${portfolioMetrics.totalCloseValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
                 change: portfolioMetrics.dailyChangePercent,
-                changeLabel: "hoje",
+                changeLabel: "diária",
                 icon: "dollar" as const,
                 positive: portfolioMetrics.dailyChangePercent >= 0,
               },
@@ -160,7 +160,7 @@ Você pode começar com:
               },
               {
                 title: "Rentabilidade",
-                value: `${portfolioMetrics.totalGainPercent}%`,
+                value: `${portfolioMetrics.totalGainPercent}`,
                 change: portfolioMetrics.totalGainPercent,
                 changeLabel: "desde o início",
                 showChangeValue: false,

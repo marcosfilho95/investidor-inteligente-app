@@ -574,56 +574,94 @@ const AssetDetail = () => {
           <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-card/30 p-4 sm:p-6 md:p-8 backdrop-blur-xl">
             <div className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-primary/5 blur-3xl" />
-            <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between md:gap-6">
-              <div className="flex w-full items-start gap-4 sm:gap-5 md:w-auto">
-                <div className="relative">
-                  <div className="absolute inset-0 scale-125 rounded-2xl bg-primary/10 blur-lg" />
-                  <div className="relative">
-                    <AssetLogoWithFallback symbol={asset.symbol} size={92} />
+            <div className="relative flex flex-col gap-4 min-[804px]:flex-row min-[804px]:items-start min-[804px]:justify-between min-[804px]:gap-6">
+              <div className="w-full min-[804px]:grid min-[804px]:grid-cols-[minmax(0,1fr)_auto] min-[804px]:items-start min-[804px]:gap-6">
+                <div className="hidden max-[470px]:grid grid-cols-[64px_minmax(0,1fr)_auto] grid-rows-[auto_auto_auto] items-start gap-x-3 gap-y-1.5">
+                  <div className="relative row-span-2 shrink-0">
+                    <div className="absolute inset-0 scale-110 rounded-xl bg-primary/10 blur-md" />
+                    <div className="relative">
+                      <AssetLogoWithFallback symbol={asset.symbol} size={64} />
+                    </div>
                   </div>
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <h1 className="text-[1.8rem] leading-none font-bold tracking-tight">{displaySymbol}</h1>
-                    <span className="max-[450px]:hidden text-[11px] px-2.5 py-1 rounded-full bg-transparent text-primary font-semibold border border-primary/30">{asset.sector}</span>
-                    <span className="max-[450px]:hidden text-[11px] px-2.5 py-1 rounded-full bg-muted text-muted-foreground border border-border/30">{asset.subsetor}</span>
+
+                  <h1 className="min-w-0 truncate text-[1.95rem] max-[390px]:text-[1.6rem] leading-none font-bold tracking-tight">{displaySymbol}</h1>
+                  <p className={`text-[1.95rem] max-[390px]:text-[1.6rem] font-bold tracking-tight font-mono leading-none ${isPriceReady ? "" : "text-muted-foreground"}`}>
+                    {displayedPriceLabel}
+                  </p>
+
+                  <p className="min-w-0 truncate text-base max-[390px]:text-[0.95rem] leading-tight text-muted-foreground">{asset.name}</p>
+                  <div className="flex items-center gap-2 self-center justify-self-end">
+                    <div className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold font-mono ${isPriceReady ? (isPositive ? "bg-gain/10 text-gain" : "bg-loss/10 text-loss") : "bg-muted/30 text-muted-foreground"}`}>
+                      {isPriceReady && (isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />)}
+                      {dailyChangeLabel}
+                    </div>
+                    <span className="text-sm font-semibold text-muted-foreground">hoje</span>
                   </div>
-                  <p className="mt-1.5 text-base leading-tight text-muted-foreground">{asset.name}</p>
-                  {userHolding && (
-                    <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-primary">
+
+                  {userHolding ? (
+                    <p className="col-span-2 flex items-center gap-1.5 text-xs font-medium text-primary">
                       <Star className="h-3 w-3 fill-primary" />
-                      Você possui {userHolding.shares} ações
+                      Voce possui {userHolding.shares} acoes
                     </p>
+                  ) : (
+                    <div className="col-span-2" />
                   )}
+                  <div />
                 </div>
-              </div>
 
-              <div className="text-center md:absolute md:right-40 md:text-right">
-                <p className={`text-[1.95rem] font-bold tracking-tight font-mono leading-none ${isPriceReady ? "" : "text-muted-foreground"}`}>
-                  {displayedPriceLabel}
-                </p>
-                <div className="mt-2 flex items-center justify-center gap-2 md:justify-end">
-                  <div className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold font-mono ${isPriceReady ? (isPositive ? "bg-gain/10 text-gain" : "bg-loss/10 text-loss") : "bg-muted/30 text-muted-foreground"}`}>
-                    {isPriceReady && (isPositive ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />)}
-                    {dailyChangeLabel}
+                <div className="max-[470px]:hidden grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3 min-[804px]:flex min-[804px]:w-full min-[804px]:items-center min-[804px]:justify-between min-[804px]:gap-6">
+                  <div className="flex min-w-0 items-start gap-3 sm:gap-5 min-[804px]:w-auto">
+                    <div className="relative shrink-0">
+                      <div className="absolute inset-0 scale-125 rounded-2xl bg-primary/10 blur-lg" />
+                      <div className="relative">
+                        <AssetLogoWithFallback symbol={asset.symbol} size={92} />
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <h1 className="text-[1.8rem] leading-none font-bold tracking-tight">{displaySymbol}</h1>
+                        <span className="hidden min-[804px]:inline-flex text-[11px] px-2.5 py-1 rounded-full bg-transparent text-primary font-semibold border border-primary/30">{asset.sector}</span>
+                        <span className="hidden min-[804px]:inline-flex text-[11px] px-2.5 py-1 rounded-full bg-muted text-muted-foreground border border-border/30">{asset.subsetor}</span>
+                      </div>
+                      <p className="mt-1.5 text-base leading-tight text-muted-foreground">{asset.name}</p>
+                      {userHolding && (
+                        <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-primary">
+                          <Star className="h-3 w-3 fill-primary" />
+                          Voce possui {userHolding.shares} acoes
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-sm font-semibold text-muted-foreground">hoje</span>
-                </div>
-              </div>
 
-              <div className="flex flex-col items-stretch justify-center gap-2 md:self-center">
-                <button
-                  onClick={() => { setOrderType("buy"); setOrderQtyInput("1"); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }}
-                  className="flex w-36 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20"
-                >
-                  <ShoppingCart className="h-3.5 w-3.5" /> Comprar
-                </button>
-                <button
-                  onClick={() => { setOrderType("sell"); setOrderQtyInput("1"); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }}
-                  className="flex w-36 items-center justify-center gap-1.5 rounded-xl bg-destructive px-4 py-2.5 text-xs font-semibold text-destructive-foreground transition-all hover:bg-destructive/90 hover:shadow-lg hover:shadow-destructive/25"
-                >
-                  <DollarSign className="h-3.5 w-3.5" /> Vender
-                </button>
+                  <div className="grid grid-rows-[auto_auto_auto] justify-items-end text-right min-[804px]:items-end min-[804px]:self-center">
+                    <p className={`text-[1.95rem] font-bold tracking-tight font-mono leading-none ${isPriceReady ? "" : "text-muted-foreground"}`}>
+                      {displayedPriceLabel}
+                    </p>
+                    <div className="h-1.5 min-[804px]:h-2.5" />
+                    <div className="flex items-center gap-2">
+                      <div className={`flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold font-mono ${isPriceReady ? (isPositive ? "bg-gain/10 text-gain" : "bg-loss/10 text-loss") : "bg-muted/30 text-muted-foreground"}`}>
+                        {isPriceReady && (isPositive ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />)}
+                        {dailyChangeLabel}
+                      </div>
+                      <span className="text-sm font-semibold text-muted-foreground">hoje</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid w-full grid-cols-2 gap-2 min-[804px]:mt-0 min-[804px]:flex min-[804px]:w-auto min-[804px]:flex-col min-[804px]:items-stretch min-[804px]:self-center">
+                  <button
+                    onClick={() => { setOrderType("buy"); setOrderQtyInput("1"); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20 min-[804px]:w-36"
+                  >
+                    <ShoppingCart className="h-3.5 w-3.5" /> Comprar
+                  </button>
+                  <button
+                    onClick={() => { setOrderType("sell"); setOrderQtyInput("1"); setOrderDate(new Date().toISOString().slice(0, 10)); setShowBuyModal(true); }}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-destructive px-4 py-2.5 text-xs font-semibold text-destructive-foreground transition-all hover:bg-destructive/90 hover:shadow-lg hover:shadow-destructive/25 min-[804px]:w-36"
+                  >
+                    <DollarSign className="h-3.5 w-3.5" /> Vender
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -631,7 +669,7 @@ const AssetDetail = () => {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3 auto-rows-fr">
                 <MetricBadge
                   icon={Activity}
-                  label="Variação 12M"
+                  label="Variacao 12M"
                   value={return12m !== null ? `${return12m >= 0 ? "+" : ""}${return12m.toFixed(2).replace(".", ",")}%` : "N/D"}
                   color={r12mColor}
                   emphasized
@@ -977,7 +1015,7 @@ const AssetDetail = () => {
                   <h3 className="text-base font-semibold mb-1 flex items-center gap-2">
                     Indicadores de Valuation
                   </h3>
-                  <p className="text-xs text-muted-foreground mb-4">Passe o mouse sobre o ❓ para entender cada indicador</p>
+                  <p className="text-xs text-muted-foreground mb-4">Passe o mouse sobre o ? para entender cada indicador</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                     <IndicatorCard label="DY" value={`${asset.dividend}%`} tooltip={indicatorTooltips.dividend} />
                     <IndicatorCard label="P/L" value={asset.pe?.toFixed(1) ?? null} tooltip={indicatorTooltips.pe} />
@@ -1047,7 +1085,7 @@ const AssetDetail = () => {
           <div className="glass-card p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold">{orderType === "buy" ? "Comprar" : "Vender"} {displaySymbol}</h3>
             {orderType === "sell" && userHolding && (
-              <p className="text-xs text-muted-foreground">Você possui {userHolding.shares} ações</p>
+              <p className="text-xs text-muted-foreground">Voce possui {userHolding.shares} acoes</p>
             )}
             <div className="space-y-3">
               <div>
@@ -1095,6 +1133,8 @@ const AssetDetail = () => {
 };
 
 export default AssetDetail;
+
+
 
 
 

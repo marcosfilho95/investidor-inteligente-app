@@ -87,7 +87,12 @@ const Portfolio = () => {
   const [showHoldingsRightFade, setShowHoldingsRightFade] = useState(false);
   const [showHoldingsScrollHint, setShowHoldingsScrollHint] = useState(false);
   const [showHoldingsMobileScrollbar, setShowHoldingsMobileScrollbar] = useState(false);
+  const [showTradeLeftFade, setShowTradeLeftFade] = useState(false);
+  const [showTradeRightFade, setShowTradeRightFade] = useState(false);
+  const [showTradeScrollHint, setShowTradeScrollHint] = useState(false);
+  const [showTradeMobileScrollbar, setShowTradeMobileScrollbar] = useState(false);
   const holdingsScrollRef = useRef<HTMLDivElement | null>(null);
+  const tradeScrollRef = useRef<HTMLDivElement | null>(null);
   const { enrichedHoldings, loading, userTrades, addHolding, sellHolding, portfolioMetrics } = useUserHoldings();
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
@@ -273,14 +278,24 @@ const Portfolio = () => {
     };
 
     updateFades();
+    const rafA = window.requestAnimationFrame(updateFades);
+    const rafB = window.requestAnimationFrame(() => window.requestAnimationFrame(updateFades));
+    const t = window.setTimeout(updateFades, 180);
     container.addEventListener("scroll", updateFades, { passive: true });
+    container.addEventListener("touchstart", updateFades, { passive: true });
+    container.addEventListener("touchmove", updateFades, { passive: true });
     window.addEventListener("resize", updateFades);
 
     return () => {
+      window.cancelAnimationFrame(rafA);
+      window.cancelAnimationFrame(rafB);
+      window.clearTimeout(t);
       container.removeEventListener("scroll", updateFades);
+      container.removeEventListener("touchstart", updateFades);
+      container.removeEventListener("touchmove", updateFades);
       window.removeEventListener("resize", updateFades);
     };
-  }, [holdingsPage, pagedHoldings.length]);
+  }, [holdingsPage, pagedHoldings.length, loading]);
 
   useEffect(() => {
     if (typeof window === "undefined" || window.innerWidth > 768) return;
@@ -316,6 +331,62 @@ const Portfolio = () => {
       container.removeEventListener("scroll", hideScrollbarOnce);
     };
   }, [showHoldingsMobileScrollbar]);
+
+  useEffect(() => {
+    const container = tradeScrollRef.current;
+    if (!container || !isTradeHistoryOpen) return;
+
+    const updateFades = () => {
+      const maxScrollLeft = container.scrollWidth - container.clientWidth;
+      const hasOverflow = maxScrollLeft > 2;
+      setShowTradeLeftFade(container.scrollLeft > 2);
+      setShowTradeRightFade(hasOverflow && container.scrollLeft < maxScrollLeft - 2);
+    };
+
+    updateFades();
+    container.addEventListener("scroll", updateFades, { passive: true });
+    window.addEventListener("resize", updateFades);
+
+    return () => {
+      container.removeEventListener("scroll", updateFades);
+      window.removeEventListener("resize", updateFades);
+    };
+  }, [isTradeHistoryOpen, tradePage, pagedTradeRows.length]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth > 768) return;
+    const hintSeen = localStorage.getItem("ii_seen_trade_history_scroll_hint") === "1";
+    if (hintSeen) return;
+
+    setShowTradeScrollHint(true);
+    localStorage.setItem("ii_seen_trade_history_scroll_hint", "1");
+    const t = window.setTimeout(() => setShowTradeScrollHint(false), 3200);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth > 768) return;
+    const scrollbarSeen = localStorage.getItem("ii_seen_trade_history_scrollbar_once") === "1";
+    setShowTradeMobileScrollbar(!scrollbarSeen);
+  }, []);
+
+  useEffect(() => {
+    const container = tradeScrollRef.current;
+    if (!container || !showTradeMobileScrollbar || !isTradeHistoryOpen) return;
+
+    const hideScrollbarOnce = () => {
+      setShowTradeMobileScrollbar(false);
+      localStorage.setItem("ii_seen_trade_history_scrollbar_once", "1");
+    };
+
+    const timer = window.setTimeout(hideScrollbarOnce, 3600);
+    container.addEventListener("scroll", hideScrollbarOnce, { passive: true, once: true });
+
+    return () => {
+      window.clearTimeout(timer);
+      container.removeEventListener("scroll", hideScrollbarOnce);
+    };
+  }, [showTradeMobileScrollbar, isTradeHistoryOpen]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -523,12 +594,12 @@ const Portfolio = () => {
                   <div className="p-5 border-b border-border/50">
                     <h3 className="text-base font-semibold">Ativos na Carteira</h3>
                   </div>
-                  <div className="relative">
+                  <div className="relative overflow-hidden">
                     <div
                       ref={holdingsScrollRef}
                       className={`period-selector-scrollbar overflow-x-auto ${showHoldingsMobileScrollbar ? "" : "no-scrollbar"}`}
                     >
-                    <table className="w-full">
+                    <table className="w-full min-w-[980px]">
                       <thead>
                         <tr className="border-b border-border/50">
                           <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Ativo</th>
@@ -641,10 +712,10 @@ const Portfolio = () => {
                     </table>
                     </div>
                     {showHoldingsLeftFade && (
-                      <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-card to-transparent md:hidden" />
+                      <div className="pointer-events-none absolute top-px bottom-px left-[0px] w-8 rounded-l-xl bg-gradient-to-r from-card via-card/90 to-transparent md:hidden" />
                     )}
                     {showHoldingsRightFade && (
-                      <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent md:hidden" />
+                      <div className="pointer-events-none absolute inset-y-px right-px w-8 bg-gradient-to-l from-card to-transparent md:hidden" />
                     )}
                   </div>
                   {showHoldingsScrollHint && (
@@ -705,8 +776,13 @@ const Portfolio = () => {
                           <p className="text-sm text-muted-foreground">Sem transações registradas ainda.</p>
                         </div>
                       ) : (
-                        <div className="overflow-x-auto no-scrollbar">
-                        <table className="w-full">
+                        <>
+                        <div className="relative">
+                        <div
+                          ref={tradeScrollRef}
+                          className={`period-selector-scrollbar overflow-x-auto ${showTradeMobileScrollbar ? "" : "no-scrollbar"}`}
+                        >
+                        <table className="w-full min-w-[760px]">
                           <thead>
                             <tr className="border-b border-border/50">
                               <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Data</th>
@@ -755,6 +831,17 @@ const Portfolio = () => {
                             </motion.tbody>
                           </AnimatePresence>
                         </table>
+                        </div>
+                        {showTradeLeftFade && (
+                          <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-card to-transparent md:hidden" />
+                        )}
+                        {showTradeRightFade && (
+                          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-card to-transparent md:hidden" />
+                        )}
+                        </div>
+                        {showTradeScrollHint && (
+                          <p className="px-5 pt-2 text-[10px] text-muted-foreground md:hidden">Arraste para o lado para ver mais colunas</p>
+                        )}
                         <div className="flex items-center justify-between px-5 py-3 border-t border-border/40">
                           <span className="text-xs text-muted-foreground">Página {tradePage} de {totalTradePages}</span>
                           <div className="flex items-center gap-2">
@@ -780,7 +867,7 @@ const Portfolio = () => {
                             </button>
                           </div>
                         </div>
-                        </div>
+                        </>
                       )}
                       </motion.div>
                     ) : null}
