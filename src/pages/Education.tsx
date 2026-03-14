@@ -322,11 +322,30 @@ const Education = () => {
       <AppHeader activePage="aprender" />
       <PageTransition>
         <main className="max-w-[1400px] mx-auto px-6 py-8">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold">{fixMojibake("Conteúdo Educativo")}</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              {fixMojibake("Trilhas organizadas desde os primeiros passos até os fundamentos do investimento, baseadas na filosofia de mentes brilhantes como Graham, Buffett, Lynch, Bazin e outros mestres.")}
-            </p>
+          <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-primary/[0.03] p-6 md:p-8 mb-8">
+            <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/[0.06] blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-primary/[0.04] blur-3xl pointer-events-none" />
+            <div className="relative z-10 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="h-8 w-8 rounded-xl bg-primary/15 flex items-center justify-center">
+                  <GraduationCap className="h-4 w-4 text-primary" />
+                </div>
+                <h1 className="text-2xl font-bold">{fixMojibake("Conteúdo Educativo")}</h1>
+              </div>
+              <p className="text-muted-foreground text-sm mt-1 max-w-2xl mx-auto">
+                {fixMojibake("Trilhas organizadas desde os primeiros passos até os fundamentos do investimento, baseadas na filosofia de mentes brilhantes como Graham, Buffett, Lynch, Bazin e outros mestres.")}
+              </p>
+              <div className="flex items-center justify-center gap-4 mt-4">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  <span>{trails.length} trilhas</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  <span>{trails.reduce((s, t) => s + t.modules.length, 0)} módulos</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

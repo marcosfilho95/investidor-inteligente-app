@@ -97,29 +97,28 @@ ${loading
     : `Sua carteira tem ${enrichedHoldings.length} ativos. Posso apontar forças, riscos e oportunidades de rebalanceamento.`}
 
 Se quiser aprender do zero, posso te direcionar para a aba Aprender com trilhas sobre:
-Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estratégia vs Especulação, Psicologia do Investidor e Gestão de Risco.
-
-Você pode começar com:
-1) "Analise minha carteira"
-2) "Quais ativos parecem caros pelos fundamentos?"
-3) "Como reduzir risco sem perder tanto potencial?"`, [greeting, userName, loading, isEmpty, enrichedHoldings.length]);
+Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estratégia vs Especulação, Psicologia do Investidor e Gestão de Risco.`, [greeting, userName, loading, isEmpty, enrichedHoldings.length]);
 
   return (
     <div className="min-h-screen bg-background">
       <AppHeader activePage="dashboard" />
       <PageTransition>
         <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
-          <div>
-            <h1 className="text-xl font-semibold">
-              {greeting}, {userName}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {loading
-                ? "Carregando dados da sua carteira..."
-                : isEmpty
-                ? "Sua carteira está vazia. Vá em Ativos para adicionar ações!"
-                : "Aqui está o resumo do seu portfólio."}
-            </p>
+          <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-primary/[0.03] p-6 md:p-8">
+            <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/[0.06] blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-primary/[0.04] blur-3xl pointer-events-none" />
+            <div className="relative z-10">
+              <h1 className="text-2xl font-bold">
+                {greeting}, {userName} 👋
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {loading
+                  ? "Carregando dados da sua carteira..."
+                  : isEmpty
+                  ? "Sua carteira está vazia. Vá em Ativos para adicionar ações!"
+                  : "Aqui está o resumo do seu portfólio de investimentos."}
+              </p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, createElement } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { holdings as allAssets, getMarketHistory } from "@/data/investments";
 import { useToast } from "@/hooks/use-toast";
 import { computePortfolioPerformance } from "@/lib/portfolioPerformance";
+import { TradeOperationToast } from "@/components/TradeOperationToast";
 
 export interface UserHolding {
   symbol: string;
@@ -178,6 +179,16 @@ export function useUserHoldings() {
   const [userTrades, setUserTrades] = useState<UserTrade[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  const renderTradeToast = useCallback((side: "buy" | "sell", symbol: string, shares: number) => {
+    const isBuy = side === "buy";
+    const accentClass = isBuy ? "border-gain/35" : "border-loss/35";
+
+    toast({
+      className: `rounded-2xl border bg-card/95 p-3.5 pr-10 shadow-xl backdrop-blur-md ${accentClass}`,
+      description: createElement(TradeOperationToast, { side, symbol, shares }),
+    });
+  }, [toast]);
 
   const getCurrentUserId = useCallback(async (): Promise<string | null> => {
     const {
@@ -361,7 +372,7 @@ export function useUserHoldings() {
       });
     }
 
-    toast({ title: "Compra registrada", description: `${shares}x ${symbol} a R$ ${price.toFixed(2)}` });
+    renderTradeToast("buy", symbol, shares);
     await fetchHoldings(true);
     return true;
   };
@@ -422,7 +433,7 @@ export function useUserHoldings() {
       });
     }
 
-    toast({ title: "Venda registrada", description: `${shares}x ${symbol}` });
+    renderTradeToast("sell", symbol, shares);
     await fetchHoldings(true);
     return true;
   };

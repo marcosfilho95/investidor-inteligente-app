@@ -1,5 +1,5 @@
 ﻿import { Link } from "react-router-dom";
-import { ArrowDownRight, ArrowUpRight, ChevronDown, ChevronRight, DollarSign, ShoppingCart } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, ChevronDown, ChevronRight, DollarSign, ShoppingCart, Wallet } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import {
   PieChart as RechartsPie,
@@ -393,22 +393,33 @@ const Portfolio = () => {
       <AppHeader activePage="carteira" />
       <PageTransition>
         <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
-          <div>
-            <h1 className="text-xl font-semibold" data-tour="page-carteira">Minha Carteira</h1>
-            <p className="text-sm text-muted-foreground">
-              {loading
-                ? "Carregando sua carteira..."
-                : isEmpty
-                ? "Sua carteira esta vazia. Adicione ativos pela pagina de Ativos."
-                : (
-                  <>
-                    Visao completa do seu portfolio -{" "}
-                    <span className="portfolio-count-highlight">
-                      {enrichedHoldings.length} ativos
-                    </span>
-                  </>
-                )}
-            </p>
+          <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-primary/[0.03] p-6 md:p-8">
+            <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/[0.06] blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-primary/[0.04] blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-8 w-8 rounded-xl bg-primary/15 flex items-center justify-center">
+                    <Wallet className="h-4 w-4 text-primary" />
+                  </div>
+                  <h1 className="text-xl font-bold" data-tour="page-carteira">Minha Carteira</h1>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {loading
+                    ? "Carregando sua carteira..."
+                    : isEmpty
+                    ? "Sua carteira está vazia. Adicione ativos pela página de Ativos."
+                    : (
+                      <>
+                        Visão completa do seu portfólio —{" "}
+                        <span className="portfolio-count-highlight">
+                          {enrichedHoldings.length} ativos
+                        </span>
+                      </>
+                    )}
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

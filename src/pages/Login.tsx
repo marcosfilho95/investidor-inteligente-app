@@ -14,6 +14,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -53,7 +54,14 @@ const Login = () => {
   ];
 
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
-  const canSubmitSignup = !loading && !!name.trim() && !!email.trim() && password.length >= 6 && passwordsMatch;
+  const canSubmitSignup =
+    !loading && !!name.trim() && !!username.trim() && !!email.trim() && password.length >= 6 && passwordsMatch;
+
+  const normalizeUsername = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, "")
+      .slice(0, 32);
 
   const handleBackToHome = (e: MouseEvent<HTMLElement>) => {
     e.preventDefault();
@@ -68,7 +76,21 @@ const Login = () => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const loginValue = email.trim();
+        let emailForLogin = loginValue;
+
+        if (!loginValue.includes("@")) {
+          const { data: resolvedEmail, error: resolveError } = await supabase.rpc("get_email_by_username", {
+            p_username: loginValue,
+          });
+          if (resolveError) throw resolveError;
+          if (!resolvedEmail) {
+            throw new Error("Invalid login credentials");
+          }
+          emailForLogin = resolvedEmail;
+        }
+
+        const { error } = await supabase.auth.signInWithPassword({ email: emailForLogin, password });
         if (error) throw error;
         navigate("/dashboard");
       } else {
@@ -82,11 +104,21 @@ const Login = () => {
           setLoading(false);
           return;
         }
+        const normalizedUsername = normalizeUsername(username.trim());
+        if (!normalizedUsername || normalizedUsername.length < 3) {
+          toast({
+            title: "Nome de usuario invalido",
+            description: "Use ao menos 3 caracteres: letras, numeros, . _ -",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
 
         const { error } = await supabase.auth.signUp({
-          email,
+          email: email.trim(),
           password,
-          options: { data: { name } },
+          options: { data: { name: name.trim(), username: normalizedUsername } },
         });
 
         if (error) throw error;
@@ -97,7 +129,12 @@ const Login = () => {
     } catch (error: any) {
       toast({
         title: "Erro",
-        description: error.message === "Invalid login credentials" ? "E-mail ou senha incorretos" : error.message,
+        description:
+          error.message === "Invalid login credentials"
+            ? "E-mail/usuario ou senha incorretos"
+            : error.message.includes("profiles_username_unique_idx")
+              ? "Esse nome de usuario ja esta em uso."
+              : error.message,
         variant: "destructive",
       });
     } finally {
@@ -213,17 +250,43 @@ const Login = () => {
                   )}
                 </AnimatePresence>
 
+                <AnimatePresence initial={false}>
+                  {!isLogin && (
+                    <motion.div
+                      key="username-field"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Nome de usuario</label>
+                      <div className={`relative rounded-lg transition-all duration-300 ${focused === "username" ? "ring-2 ring-primary/40 shadow-lg shadow-primary/10" : ""}`}>
+                        <User className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focused === "username" ? "text-primary" : "text-muted-foreground"}`} />
+                        <input
+                          type="text"
+                          value={username}
+                          onChange={(e) => setUsername(normalizeUsername(e.target.value))}
+                          onFocus={() => setFocused("username")}
+                          onBlur={() => setFocused(null)}
+                          placeholder="ex: marcos123"
+                          className="w-full pl-10 pr-4 py-3.5 rounded-lg bg-card border border-border/50 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">E-mail</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{isLogin ? "Usuario ou E-mail" : "E-mail"}</label>
                   <div className={`relative rounded-lg transition-all duration-300 ${focused === "email" ? "ring-2 ring-primary/40 shadow-lg shadow-primary/10" : ""}`}>
                     <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focused === "email" ? "text-primary" : "text-muted-foreground"}`} />
                     <input
-                      type="email"
+                      type={isLogin ? "text" : "email"}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       onFocus={() => setFocused("email")}
                       onBlur={() => setFocused(null)}
-                      placeholder="seu@email.com"
+                      placeholder={isLogin ? "Digite seu nome de usuario OU e-mail" : "seu@email.com"}
                       required
                       className="w-full pl-10 pr-4 py-3.5 rounded-lg bg-card border border-border/50 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
                     />

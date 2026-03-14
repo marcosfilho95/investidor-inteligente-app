@@ -17,6 +17,7 @@ import Portfolio from "./pages/Portfolio";
 import Assets from "./pages/Assets";
 import AssetDetail from "./pages/AssetDetail";
 import Education from "./pages/Education";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -167,6 +168,7 @@ function AppContent() {
           <Route path="/ativos" element={<Assets />} />
           <Route path="/ativos/:symbol" element={<AssetDetail />} />
           <Route path="/aprender" element={<Education />} />
+          <Route path="/perfil" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AnimatePresence>

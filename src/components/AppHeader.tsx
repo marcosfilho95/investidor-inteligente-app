@@ -19,6 +19,15 @@ const navItems = [
 
 export function AppHeader({ activePage }: AppHeaderProps) {
   const [userName, setUserName] = useState(() => localStorage.getItem("ii_user_name") || "IN");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
+    const cachedAvatar = localStorage.getItem("ii_profile_avatar_current");
+    if (cachedAvatar) return cachedAvatar;
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith("ii_profile_avatar_"));
+    if (keys.length === 1) {
+      return localStorage.getItem(keys[0]);
+    }
+    return null;
+  });
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showTourMenu, setShowTourMenu] = useState(false);
@@ -47,9 +56,54 @@ export function AppHeader({ activePage }: AppHeaderProps) {
           : data.user?.email?.split("@")[0]) || "IN";
       setUserName(firstName);
       localStorage.setItem("ii_user_name", firstName);
+
+      const avatarKey = `ii_profile_avatar_${data.user?.email || firstName}`;
+      const persistedAvatar = localStorage.getItem(avatarKey);
+      setAvatarUrl(persistedAvatar);
+      if (persistedAvatar) {
+        localStorage.setItem("ii_profile_avatar_current", persistedAvatar);
+      } else {
+        localStorage.removeItem("ii_profile_avatar_current");
+      }
     });
     // Fetch data status
     fetchDataStatus().then(setDataStatus).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const refreshAvatar = async () => {
+      const { data } = await supabase.auth.getUser();
+      const name = data.user?.user_metadata?.name;
+      const firstName =
+        (typeof name === "string" && name.trim().length > 0
+          ? name.split(" ")[0]
+          : data.user?.email?.split("@")[0]) || "IN";
+      const avatarKey = `ii_profile_avatar_${data.user?.email || firstName}`;
+      const cached = localStorage.getItem(avatarKey);
+      setAvatarUrl(cached);
+      if (cached) {
+        localStorage.setItem("ii_profile_avatar_current", cached);
+      } else {
+        localStorage.removeItem("ii_profile_avatar_current");
+      }
+    };
+
+    const onAvatarUpdated = () => {
+      void refreshAvatar();
+    };
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key?.startsWith("ii_profile_avatar_")) {
+        void refreshAvatar();
+      }
+    };
+
+    window.addEventListener("ii:profile-avatar-updated", onAvatarUpdated as EventListener);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("ii:profile-avatar-updated", onAvatarUpdated as EventListener);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   useEffect(() => {
@@ -254,7 +308,15 @@ export function AppHeader({ activePage }: AppHeaderProps) {
           <div className="relative" ref={menuRef} data-tour="user-menu">
             <button onClick={() => { setShowUserMenu(!showUserMenu); setShowNotifications(false); }}
               className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center text-xs font-bold text-primary ml-1 hover:bg-primary/30 transition-colors cursor-pointer">
-              {userName.slice(0, 2).toUpperCase()}
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Avatar do usuário"
+                  className="h-full w-full rounded-lg object-cover"
+                />
+              ) : (
+                userName.slice(0, 2).toUpperCase()
+              )}
             </button>
             {showUserMenu && (
               <div className="absolute right-0 top-10 w-48 rounded-2xl border border-border bg-card p-2 shadow-xl animate-fade-in z-50">
@@ -262,7 +324,13 @@ export function AppHeader({ activePage }: AppHeaderProps) {
                   <p className="text-sm font-medium">{userName}</p>
                   <p className="text-[10px] text-muted-foreground">Investidor</p>
                 </div>
-                <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors">
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    navigate("/perfil");
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+                >
                   <User className="h-3.5 w-3.5" /> Meu perfil
                 </button>
                 <button onClick={handleLogout}

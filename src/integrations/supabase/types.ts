@@ -112,6 +112,7 @@ export type Database = {
           name: string
           updated_at: string
           user_id: string
+          username: string
         }
         Insert: {
           created_at?: string
@@ -120,6 +121,7 @@ export type Database = {
           name?: string
           updated_at?: string
           user_id: string
+          username?: string
         }
         Update: {
           created_at?: string
@@ -128,6 +130,7 @@ export type Database = {
           name?: string
           updated_at?: string
           user_id?: string
+          username?: string
         }
         Relationships: []
       }
@@ -199,7 +202,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_email_by_username: {
+        Args: {
+          p_username: string
+        }
+        Returns: string | null
+      }
     }
     Enums: {
       [_ in never]: never
