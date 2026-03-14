@@ -58,12 +58,27 @@ export function AppHeader({ activePage }: AppHeaderProps) {
       localStorage.setItem("ii_user_name", firstName);
 
       const avatarKey = `ii_profile_avatar_${data.user?.email || firstName}`;
-      const persistedAvatar = localStorage.getItem(avatarKey);
-      setAvatarUrl(persistedAvatar);
-      if (persistedAvatar) {
-        localStorage.setItem("ii_profile_avatar_current", persistedAvatar);
+      const localAvatar = localStorage.getItem(avatarKey);
+      if (localAvatar) {
+        setAvatarUrl(localAvatar);
+        localStorage.setItem("ii_profile_avatar_current", localAvatar);
       } else {
         localStorage.removeItem("ii_profile_avatar_current");
+      }
+
+      if (data.user?.id) {
+        supabase
+          .from("profiles")
+          .select("avatar_url")
+          .eq("user_id", data.user.id)
+          .maybeSingle()
+          .then(({ data: profileData }) => {
+            const dbAvatar = profileData?.avatar_url ?? null;
+            if (!dbAvatar) return;
+            setAvatarUrl(dbAvatar);
+            localStorage.setItem(avatarKey, dbAvatar);
+            localStorage.setItem("ii_profile_avatar_current", dbAvatar);
+          });
       }
     });
     // Fetch data status
@@ -79,12 +94,28 @@ export function AppHeader({ activePage }: AppHeaderProps) {
           ? name.split(" ")[0]
           : data.user?.email?.split("@")[0]) || "IN";
       const avatarKey = `ii_profile_avatar_${data.user?.email || firstName}`;
-      const cached = localStorage.getItem(avatarKey);
-      setAvatarUrl(cached);
-      if (cached) {
-        localStorage.setItem("ii_profile_avatar_current", cached);
+      const localAvatar = localStorage.getItem(avatarKey);
+      if (localAvatar) {
+        setAvatarUrl(localAvatar);
+        localStorage.setItem("ii_profile_avatar_current", localAvatar);
       } else {
         localStorage.removeItem("ii_profile_avatar_current");
+      }
+
+      if (data.user?.id) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("avatar_url")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+        const dbAvatar = profileData?.avatar_url ?? null;
+        if (dbAvatar) {
+          setAvatarUrl(dbAvatar);
+          localStorage.setItem(avatarKey, dbAvatar);
+          localStorage.setItem("ii_profile_avatar_current", dbAvatar);
+        } else if (!localAvatar) {
+          setAvatarUrl(null);
+        }
       }
     };
 
@@ -251,25 +282,33 @@ export function AppHeader({ activePage }: AppHeaderProps) {
               <Bell className="h-4 w-4" />
               <div className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary animate-pulse" />
             </button>
-            {showNotifications && (
-              <div className="absolute right-0 top-10 w-72 rounded-2xl border border-border bg-card p-4 shadow-xl animate-fade-in z-50">
-                <h4 className="text-sm font-semibold mb-3">Notificações</h4>
-                <div className="space-y-2">
-                  <div className="p-2.5 rounded-lg bg-muted/50 text-xs">
-                    <p className="font-medium">📈 PETR4 subiu 2.5% hoje</p>
-                    <p className="text-muted-foreground mt-0.5">Há 2 horas</p>
+            <AnimatePresence>
+              {showNotifications && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="absolute right-0 top-10 w-72 rounded-2xl border border-border bg-card p-4 shadow-xl z-50 origin-top-right"
+                >
+                  <h4 className="text-sm font-semibold mb-3">Notificações</h4>
+                  <div className="space-y-2">
+                    <div className="p-2.5 rounded-lg bg-muted/50 text-xs">
+                      <p className="font-medium">📈 PETR4 subiu 2.5% hoje</p>
+                      <p className="text-muted-foreground mt-0.5">Há 2 horas</p>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-muted/50 text-xs">
+                      <p className="font-medium">💰 Dividendos de BBAS3 creditados</p>
+                      <p className="text-muted-foreground mt-0.5">Há 1 dia</p>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-muted/50 text-xs">
+                      <p className="font-medium">📊 Novo conteúdo na aba Aprender</p>
+                      <p className="text-muted-foreground mt-0.5">Há 3 dias</p>
+                    </div>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-muted/50 text-xs">
-                    <p className="font-medium">💰 Dividendos de BBAS3 creditados</p>
-                    <p className="text-muted-foreground mt-0.5">Há 1 dia</p>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-muted/50 text-xs">
-                    <p className="font-medium">📊 Novo conteúdo na aba Aprender</p>
-                    <p className="text-muted-foreground mt-0.5">Há 3 dias</p>
-                  </div>
-                </div>
-              </div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Tutorial replay */}
@@ -280,22 +319,30 @@ export function AppHeader({ activePage }: AppHeaderProps) {
               className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
               <HelpCircle className="h-4 w-4" />
             </button>
-            {showTourMenu && (
-              <div className="absolute right-0 top-10 w-56 rounded-2xl border border-border bg-card p-2 shadow-xl animate-fade-in z-50">
-                <button
-                  onClick={() => {
-                    setShowTourMenu(false);
-                    localStorage.removeItem("onboarding_completed");
-                    sessionStorage.setItem("force_onboarding_tour", "1");
-                    window.dispatchEvent(new CustomEvent("ii:start-tour"));
-                    navigate("/dashboard");
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+            <AnimatePresence>
+              {showTourMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="absolute right-0 top-10 w-56 rounded-2xl border border-border bg-card p-2 shadow-xl z-50 origin-top-right"
                 >
-                  🎓 Gostaria de rever o tutorial?
-                </button>
-              </div>
-            )}
+                  <button
+                    onClick={() => {
+                      setShowTourMenu(false);
+                      localStorage.removeItem("onboarding_completed");
+                      sessionStorage.setItem("force_onboarding_tour", "1");
+                      window.dispatchEvent(new CustomEvent("ii:start-tour"));
+                      navigate("/dashboard");
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+                  >
+                    🎓 Gostaria de rever o tutorial?
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* User menu */}
@@ -312,27 +359,35 @@ export function AppHeader({ activePage }: AppHeaderProps) {
                 userName.slice(0, 2).toUpperCase()
               )}
             </button>
-            {showUserMenu && (
-              <div className="absolute right-0 top-10 w-48 rounded-2xl border border-border bg-card p-2 shadow-xl animate-fade-in z-50">
-                <div className="px-3 py-2 border-b border-border/50 mb-1">
-                  <p className="text-sm font-medium">{userName}</p>
-                  <p className="text-[10px] text-muted-foreground">Investidor</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    navigate("/perfil");
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+            <AnimatePresence>
+              {showUserMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="absolute right-0 top-10 w-48 rounded-2xl border border-border bg-card p-2 shadow-xl z-50 origin-top-right"
                 >
-                  <User className="h-3.5 w-3.5" /> Meu perfil
-                </button>
-                <button onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors">
-                  <LogOut className="h-3.5 w-3.5" /> Sair
-                </button>
-              </div>
-            )}
+                  <div className="px-3 py-2 border-b border-border/50 mb-1">
+                    <p className="text-sm font-medium">{userName}</p>
+                    <p className="text-[10px] text-muted-foreground">Investidor</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      navigate("/perfil");
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+                  >
+                    <User className="h-3.5 w-3.5" /> Meu perfil
+                  </button>
+                  <button onClick={handleLogout}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-md transition-colors">
+                    <LogOut className="h-3.5 w-3.5" /> Sair
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

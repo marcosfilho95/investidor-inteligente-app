@@ -435,7 +435,7 @@ const Portfolio = () => {
               ))
             ) : [
               <div className="glass-card p-4" key="1">
-                <span className="text-xs text-muted-foreground">Patrimonio total</span>
+                <span className="text-xs text-muted-foreground">Patrimônio total</span>
                 <p className="text-xl font-semibold font-mono">
                   R$ {metrics.totalCloseValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </p>

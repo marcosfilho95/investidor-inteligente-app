@@ -129,11 +129,11 @@ const Assets = () => {
                 </div>
                 <p className="text-sm text-muted-foreground max-w-lg">
                   <span className="md:hidden">
-                    Explore os {totalAssets} ativos da B3 disponiveis na plataforma. Analise fundamentos e compare
+                    Explore os {totalAssets} ativos da B3 disponíveis na plataforma. Analise fundamentos e compare
                     indicadores.
                   </span>
                   <span className="hidden md:inline">
-                    Explore os {totalAssets} ativos da B3 disponiveis na plataforma.
+                    Explore os {totalAssets} ativos da B3 disponíveis na plataforma.
                     <br />
                     Analise fundamentos e compare indicadores.
                   </span>
@@ -171,7 +171,7 @@ const Assets = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Buscar por nome ou simbolo..."
+                placeholder="Buscar por nome ou símbolo..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card/50 backdrop-blur-sm border border-border/40 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-all"

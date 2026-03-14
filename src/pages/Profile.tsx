@@ -26,6 +26,52 @@ const Profile = () => {
 
   const avatarStorageKey = `ii_profile_avatar_${userEmail || userName}`;
 
+  const normalizeUsername = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, "")
+      .slice(0, 32);
+
+  const buildFallbackUsername = () => {
+    const fromState = normalizeUsername(usernameDraft || username);
+    if (fromState) return fromState;
+    const fromEmail = normalizeUsername((userEmail || "").split("@")[0] || "usuario");
+    return fromEmail || "usuario";
+  };
+
+  const resizeImageToDataUrl = (file: File, maxSize = 320): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const src = typeof reader.result === "string" ? reader.result : null;
+        if (!src) {
+          reject(new Error("Falha ao ler imagem"));
+          return;
+        }
+
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+          const width = Math.max(1, Math.round(img.width * scale));
+          const height = Math.max(1, Math.round(img.height * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Falha ao processar imagem"));
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.82));
+        };
+        img.onerror = () => reject(new Error("Falha ao carregar imagem"));
+        img.src = src;
+      };
+      reader.onerror = () => reject(new Error("Falha ao ler arquivo"));
+      reader.readAsDataURL(file);
+    });
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) {
@@ -43,7 +89,7 @@ const Profile = () => {
 
       supabase
         .from("profiles")
-        .select("username")
+        .select("username, avatar_url")
         .eq("user_id", data.user.id)
         .maybeSingle()
         .then(({ data: profileData }) => {
@@ -51,24 +97,23 @@ const Profile = () => {
           setUsername(dbUsername);
           setUsernameDraft(dbUsername);
           setUsernameFinalized(dbUsername.trim().length > 0);
+          if (profileData?.avatar_url) {
+            setAvatarUrl(profileData.avatar_url);
+            localStorage.setItem(`ii_profile_avatar_${data.user.email || name}`, profileData.avatar_url);
+            localStorage.setItem("ii_profile_avatar_current", profileData.avatar_url);
+          }
         });
 
       setLoading(false);
     });
   }, [navigate]);
 
-  const normalizeUsername = (value: string) =>
-    value
-      .toLowerCase()
-      .replace(/[^a-z0-9._-]/g, "")
-      .slice(0, 32);
-
   const handleSaveUsername = async () => {
     const usernameLocked = usernameFinalized || username.trim().length > 0;
     if (usernameLocked) {
       toast({
-        title: "Nome de usuario bloqueado",
-        description: "O nome de usuario pode ser definido apenas uma vez.",
+        title: "Nome de usuário bloqueado",
+        description: "O nome de usuário pode ser definido apenas uma vez.",
       });
       return;
     }
@@ -76,8 +121,8 @@ const Profile = () => {
     const normalized = normalizeUsername(usernameDraft.trim());
     if (!normalized || normalized.length < 3) {
       toast({
-        title: "Nome de usuario invalido",
-        description: "Use ao menos 3 caracteres: letras, numeros, . _ -",
+        title: "Nome de usuário inválido",
+        description: "Use ao menos 3 caracteres: letras, números, . _ -",
         variant: "destructive",
       });
       return;
@@ -118,8 +163,8 @@ const Profile = () => {
 
       if (!persistedUsername) {
         toast({
-          title: "Nome de usuario bloqueado",
-          description: "Este usuario ja foi definido anteriormente e nao pode ser alterado.",
+          title: "Nome de usuário bloqueado",
+          description: "Este usuário já foi definido anteriormente e não pode ser alterado.",
         });
         setUsernameFinalized(true);
         return;
@@ -129,16 +174,16 @@ const Profile = () => {
       setUsername(persistedUsername);
       setUsernameDraft(persistedUsername);
       setUsernameFinalized(true);
-      toast({ title: "Nome de usuario salvo", description: "Agora voce pode entrar com usuario ou e-mail." });
+      toast({ title: "Nome de usuário salvo", description: "Agora você pode entrar com usuário ou e-mail." });
     } catch (error: any) {
       const errMsg = String(error?.message || "");
       toast({
         title: "Erro ao salvar",
         description: errMsg.includes("profiles_username_unique_idx")
-          ? "Esse nome de usuario ja esta em uso."
+          ? "Esse nome de usuário já está em uso."
           : errMsg.includes("username_locked_once_set")
-            ? "Nome de usuario ja foi definido e nao pode mais ser alterado."
-            : error?.message || "Nao foi possivel atualizar o nome de usuario.",
+            ? "Nome de usuário já foi definido e não pode mais ser alterado."
+            : error?.message || "Não foi possível atualizar o nome de usuário.",
         variant: "destructive",
       });
     } finally {
@@ -150,7 +195,7 @@ const Profile = () => {
     avatarInputRef.current?.click();
   };
 
-  const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -158,26 +203,69 @@ const Profile = () => {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : null;
-      if (!result) return;
-      setAvatarUrl(result);
-      localStorage.setItem(avatarStorageKey, result);
-      localStorage.setItem("ii_profile_avatar_current", result);
-      window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { key: avatarStorageKey, url: result } }));
-      toast({ title: "Foto atualizada", description: "Sua foto de perfil foi personalizada." });
-    };
-    reader.readAsDataURL(file);
+    try {
+      const result = await resizeImageToDataUrl(file);
+
+      const { data: updated, error } = await supabase
+        .from("profiles")
+        .update({ avatar_url: result })
+        .eq("user_id", userId)
+        .select("avatar_url")
+        .maybeSingle();
+
+      if (error) throw error;
+
+      let persistedAvatar = updated?.avatar_url ?? null;
+      if (!persistedAvatar) {
+        const { data: upserted, error: upsertError } = await supabase
+          .from("profiles")
+          .upsert(
+            {
+              user_id: userId,
+              name: userName || "",
+              email: userEmail || "",
+              username: buildFallbackUsername(),
+              avatar_url: result,
+            },
+            { onConflict: "user_id" }
+          )
+          .select("avatar_url")
+          .maybeSingle();
+        if (upsertError) throw upsertError;
+        persistedAvatar = upserted?.avatar_url ?? result;
+      }
+
+      setAvatarUrl(persistedAvatar);
+      localStorage.setItem(avatarStorageKey, persistedAvatar);
+      localStorage.setItem("ii_profile_avatar_current", persistedAvatar);
+      window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { key: avatarStorageKey, url: persistedAvatar } }));
+      toast({ title: "Foto atualizada", description: "Sua foto de perfil foi sincronizada entre dispositivos." });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao salvar foto",
+        description: error?.message || "Nao foi possivel salvar a foto no perfil.",
+        variant: "destructive",
+      });
+    }
     e.currentTarget.value = "";
   };
 
-  const handleAvatarRemove = () => {
-    setAvatarUrl(null);
-    localStorage.removeItem(avatarStorageKey);
-    localStorage.removeItem("ii_profile_avatar_current");
-    window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { key: avatarStorageKey, url: null } }));
-    toast({ title: "Foto removida", description: "Avatar voltou para o padrao." });
+  const handleAvatarRemove = async () => {
+    try {
+      const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("user_id", userId);
+      if (error) throw error;
+      setAvatarUrl(null);
+      localStorage.removeItem(avatarStorageKey);
+      localStorage.removeItem("ii_profile_avatar_current");
+      window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { key: avatarStorageKey, url: null } }));
+      toast({ title: "Foto removida", description: "Avatar voltou para o padrao." });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao remover foto",
+        description: error?.message || "Nao foi possivel remover a foto.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleLogout = async () => {
@@ -279,14 +367,14 @@ const Profile = () => {
 
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Resumo do Portfolio</h2>
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Resumo do Portfólio</h2>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
                 {
                   icon: Wallet,
-                  label: "Patrimonio",
+                  label: "Patrimônio",
                   value: `R$ ${totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
                   compact: true,
                 },
@@ -315,7 +403,7 @@ const Profile = () => {
 
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Informacoes da Conta</h2>
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Informações da Conta</h2>
             </div>
 
             <AnimatedCard delay={0.2}>
@@ -335,7 +423,7 @@ const Profile = () => {
                     <Mail className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-xs text-muted-foreground">Email</p>
+                    <p className="text-xs text-muted-foreground">E-mail</p>
                     <p className="text-sm font-medium">{userEmail}</p>
                   </div>
                 </div>
@@ -345,7 +433,7 @@ const Profile = () => {
                     <User className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-xs text-muted-foreground">Nome de usuario</p>
+                    <p className="text-xs text-muted-foreground">Nome de usuário</p>
                     {usernameLocked ? (
                       <p className="text-sm font-medium">{username}</p>
                     ) : (
@@ -391,8 +479,8 @@ const Profile = () => {
             <AnimatedCard delay={0.3}>
               <div className="glass-card divide-y divide-border/30">
                 {[
-                  { label: "Minha Carteira", desc: "Ver ativos e alocacao", href: "/carteira", icon: Wallet },
-                  { label: "Explorar Ativos", desc: "Analisar acoes da B3", href: "/ativos", icon: PieChart },
+                  { label: "Minha Carteira", desc: "Ver ativos e alocação", href: "/carteira", icon: Wallet },
+                  { label: "Explorar Ativos", desc: "Analisar ações da B3", href: "/ativos", icon: PieChart },
                   { label: "Aprender", desc: "Trilhas educativas", href: "/aprender", icon: TrendingUp },
                 ].map((item) => (
                   <a
@@ -424,7 +512,7 @@ const Profile = () => {
               </div>
               <div className="text-left">
                 <p className="text-sm font-medium text-destructive">Sair da conta</p>
-                <p className="text-xs text-muted-foreground">Encerrar sessao atual</p>
+                <p className="text-xs text-muted-foreground">Encerrar sessão atual</p>
               </div>
             </button>
           </AnimatedCard>
