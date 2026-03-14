@@ -728,7 +728,7 @@ const AssetDetail = () => {
                 </p>
                 {activeValuationType === "graham" && activeFairPrice !== null && activeUpsideFormatted !== null ? (
                   <div className="mt-1.5 space-y-5">
-                    <div className="grid grid-cols-1 min-[394px]:grid-cols-2 min-[560px]:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div className="bg-muted/50 rounded-xl p-5 text-center">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preco atual</p>
                         <p className={`text-lg font-mono font-bold mt-2.5 ${isPriceReady ? "" : "text-muted-foreground"}`}>{displayedPriceLabel}</p>
@@ -758,7 +758,7 @@ const AssetDetail = () => {
                   </div>
                 ) : activeValuationType === "preco_justo" && activeFairPrice !== null && activeUpsideFormatted !== null ? (
                   <div className="mt-1.5 space-y-5">
-                    <div className="grid grid-cols-1 min-[394px]:grid-cols-2 min-[560px]:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       <div className="bg-muted/50 rounded-xl p-6 text-center">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Preco atual</p>
                         <p className={`text-lg font-mono font-bold mt-2.5 ${isPriceReady ? "" : "text-muted-foreground"}`}>{displayedPriceLabel}</p>

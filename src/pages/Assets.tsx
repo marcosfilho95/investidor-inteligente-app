@@ -128,8 +128,15 @@ const Assets = () => {
                   <h1 className="text-xl font-bold">Ativos</h1>
                 </div>
                 <p className="text-sm text-muted-foreground max-w-lg">
-                  Explore os {totalAssets} ativos da B3 disponiveis na plataforma. Analise fundamentos e compare
-                  indicadores.
+                  <span className="md:hidden">
+                    Explore os {totalAssets} ativos da B3 disponiveis na plataforma. Analise fundamentos e compare
+                    indicadores.
+                  </span>
+                  <span className="hidden md:inline">
+                    Explore os {totalAssets} ativos da B3 disponiveis na plataforma.
+                    <br />
+                    Analise fundamentos e compare indicadores.
+                  </span>
                 </p>
               </div>
 
