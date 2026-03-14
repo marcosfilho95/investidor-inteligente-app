@@ -3141,6 +3141,7 @@ export function buildAssetContext(symbol: string): string {
   if (!h) return `Ativo ${symbol} não encontrado no dataset.`;
   const rec = calcRecommendationScore(h);
   const activeValuation = resolveActiveValuation(h);
+  const isStateOwned = ["PETR3", "PETR4", "BBAS3", "SAPR11"].includes(h.symbol);
 
   const grahamVsScore =
     "Classificação do Score: o score final considera também rentabilidade, endividamento, crescimento, dividendos e ajustes estruturais.";
@@ -3171,6 +3172,7 @@ export function buildAssetContext(symbol: string): string {
   return `Dados atuais de ${h.symbol} (${h.name}):
 Preço: R$ ${h.price} | Variação: ${h.changePercent >= 0 ? '+' : ''}${h.changePercent}%
 Market Cap: ${h.marketCap} | Setor: ${h.sector} / ${h.subsetor}
+Risco Estatal/Governança: ${isStateOwned ? "SIM (empresa estatal, sujeita a maior interferência governamental/política)" : "NÃO"}
 Índice de Basileia: ${h.subsetor === "Bancos" ? `${h.basileia ?? 'N/A'}%` : 'N/A'}
 P/L: ${h.pe ?? 'N/A'} | P/VP: ${h.pvp ?? 'N/A'} | DY: ${h.dividend}% | PAYOUT: ${h.payout ?? 'N/A'}%
 LPA: ${h.lpa ?? 'N/A'} | VPA: ${h.vpa ?? 'N/A'}

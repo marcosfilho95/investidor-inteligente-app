@@ -35,11 +35,32 @@ const SUPABASE_PUBLISHABLE_KEY =
   import.meta.env.SUPABASE_ANON_KEY ||
   "";
 const CHAT_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/chat` : "";
-const QUICK_PROMPTS = [
+const QUICK_PROMPTS_DEFAULT = [
   { icon: "📊", label: "Analise minha carteira" },
   { icon: "💡", label: "Como diversificar?" },
   { icon: "💰", label: "Quais ativos parecem caros pelos fundamentos?" },
   { icon: "🛡️", label: "Como reduzir risco sem perder tanto potencial?" },
+];
+
+const QUICK_PROMPTS_PORTFOLIO = [
+  { icon: "📊", label: "Minha alocação está equilibrada?" },
+  { icon: "⚖️", label: "Quais posições devo rebalancear primeiro?" },
+  { icon: "🧩", label: "Quais setores estão sub-representados na carteira?" },
+  { icon: "🎯", label: "Como reduzir concentração sem perder qualidade?" },
+];
+
+const QUICK_PROMPTS_LEARN = [
+  { icon: "📘", label: "Por qual trilha eu devo começar?" },
+  { icon: "🧠", label: "Explique Value Investing de forma simples" },
+  { icon: "📊", label: "Qual a diferença entre P/L e P/VP?" },
+  { icon: "💰", label: "Como avaliar se um dividendo é sustentável?" },
+];
+
+const QUICK_PROMPTS_ASSET = [
+  { icon: "🏢", label: "Resuma o negócio desta empresa" },
+  { icon: "📈", label: "Quais são os pontos fortes e fracos deste ativo?" },
+  { icon: "🧮", label: "Como interpretar o score deste ativo?" },
+  { icon: "⚠️", label: "Quais riscos devo monitorar neste ativo?" },
 ];
 const NATURA_TICKER_MIGRATION_NOTE =
   "Ticker antigo da Natura: NTCO3. Após reorganização societária, o ticker atual negociado na B3 é NATU3.";
@@ -110,6 +131,12 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
 
   const inputLocked = isLoading || isAssistantTyping;
   const showQuickPrompts = messages.length <= 1 && !isLoading;
+  const quickPrompts = useMemo(() => {
+    if (page === "carteira") return QUICK_PROMPTS_PORTFOLIO;
+    if (page === "aprender") return QUICK_PROMPTS_LEARN;
+    if (page === "ativo") return QUICK_PROMPTS_ASSET;
+    return QUICK_PROMPTS_DEFAULT;
+  }, [page]);
 
   const handleSend = async (overrideInput?: string) => {
     const text = overrideInput ?? input;
@@ -177,6 +204,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
         body.ticker = canonicalTicker;
         body.currentData = normalizeTickerAliasesInContext(buildAssetContext(canonicalTicker));
       } else {
+        body.userSymbols = userSymbols ?? [];
         body.dataset = normalizeTickerAliasesInContext(buildDatasetContext(userSymbols, userHoldingsData));
       }
 
@@ -326,7 +354,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
           >
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Sugestões rápidas</p>
             <div className="flex flex-wrap gap-1.5">
-              {QUICK_PROMPTS.map((prompt) => (
+              {quickPrompts.map((prompt) => (
                 <button
                   key={prompt.label}
                   onClick={() => handleSend(prompt.label)}

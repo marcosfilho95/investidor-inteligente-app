@@ -240,6 +240,7 @@ Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estraté
                     page="dashboard"
                     fullHeight
                     userSymbols={enrichedHoldings.map(h => h.symbol)}
+                    userHoldingsData={enrichedHoldings.map(h => ({ symbol: h.symbol, shares: h.shares, avgPrice: h.avgPrice }))}
                     welcomeMessage={aiDashboardWelcome}
                     className="w-full"
                   />

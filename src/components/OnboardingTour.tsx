@@ -75,7 +75,8 @@ const desktopSteps: TourStep[] = [
   {
     selector: '[data-tour="user-menu"]',
     title: "👤 Seu Perfil",
-    description: "Acesse seu perfil, configurações e opção de logout aqui.",
+    description:
+      "Aqui você acessa seu perfil completo: dados da conta, avatar personalizado, atalhos rápidos e opção de logout.",
     position: "bottom",
     route: "/dashboard",
   },
@@ -171,7 +172,8 @@ const mobileSteps: TourStep[] = [
   {
     selector: '[data-tour="user-menu"]',
     title: "👤 Seu Perfil",
-    description: "Acesse seu perfil, configurações e opção de logout aqui.",
+    description:
+      "Aqui você acessa seu perfil completo: dados da conta, avatar personalizado, atalhos rápidos e opção de logout.",
     position: "bottom",
     route: "/dashboard",
   },

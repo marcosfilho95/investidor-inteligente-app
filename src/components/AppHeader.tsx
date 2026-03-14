@@ -1,5 +1,5 @@
 ﻿import { Link, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, Settings, LogOut, User, HelpCircle, Database, Menu, X } from "lucide-react";
+import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, LogOut, User, HelpCircle, Database, Menu, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -297,12 +297,6 @@ export function AppHeader({ activePage }: AppHeaderProps) {
               </div>
             )}
           </div>
-
-          {/* Settings */}
-          <button onClick={() => toast({ title: "Configurações", description: "Em breve disponível!" })}
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-            <Settings className="h-4 w-4" />
-          </button>
 
           {/* User menu */}
           <div className="relative" ref={menuRef} data-tour="user-menu">
