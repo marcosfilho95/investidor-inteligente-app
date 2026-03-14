@@ -269,7 +269,7 @@ const Login = () => {
                           onChange={(e) => setUsername(normalizeUsername(e.target.value))}
                           onFocus={() => setFocused("username")}
                           onBlur={() => setFocused(null)}
-                          placeholder="ex: marcos123"
+                          placeholder="ex: marcosfilho123"
                           className="w-full pl-10 pr-4 py-3.5 rounded-lg bg-card border border-border/50 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
                         />
                       </div>
@@ -280,7 +280,11 @@ const Login = () => {
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{isLogin ? "Usuario ou E-mail" : "E-mail"}</label>
                   <div className={`relative rounded-lg transition-all duration-300 ${focused === "email" ? "ring-2 ring-primary/40 shadow-lg shadow-primary/10" : ""}`}>
-                    <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focused === "email" ? "text-primary" : "text-muted-foreground"}`} />
+                    {isLogin ? (
+                      <User className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focused === "email" ? "text-primary" : "text-muted-foreground"}`} />
+                    ) : (
+                      <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focused === "email" ? "text-primary" : "text-muted-foreground"}`} />
+                    )}
                     <input
                       type={isLogin ? "text" : "email"}
                       value={email}
