@@ -264,8 +264,12 @@ const Landing = () => {
               </>
             )}
             <div className="relative z-10">
-              <motion.div variants={fadeUp} className="h-20 w-20 rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center mx-auto mb-6">
-                <Bot className="h-10 w-10 text-primary" />
+              <motion.div variants={fadeUp} className="h-20 w-20 rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center mx-auto mb-6 p-1.5 overflow-hidden">
+                <img
+                  src="/images/hodl-avatar.png"
+                  alt="Hodl"
+                  className="h-full w-full object-cover rounded-xl"
+                />
               </motion.div>
               <motion.h2 variants={fadeUp} className="text-3xl md:text-4xl font-bold mb-3">Conheça o Hodl</motion.h2>
               <motion.p variants={fadeUp} className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">

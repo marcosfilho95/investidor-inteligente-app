@@ -18,6 +18,7 @@ interface AiChatWidgetProps {
 }
 
 type Msg = { role: "user" | "assistant"; content: string };
+const HODL_AVATAR_SRC = "/images/hodl-avatar.png";
 
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || import.meta.env.SUPABASE_PROJECT_ID;
 const SUPABASE_URL =
@@ -71,6 +72,31 @@ function normalizeTickerAliasesInContext(text: string): string {
   return normalized.includes(NATURA_TICKER_MIGRATION_NOTE)
     ? normalized
     : `${normalized}\n${NATURA_TICKER_MIGRATION_NOTE}`;
+}
+
+function HodlAvatar({ size = 20, rounded = "rounded-lg" }: { size?: number; rounded?: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div
+        className={`bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/20 flex items-center justify-center ${rounded}`}
+        style={{ width: size, height: size }}
+      >
+        <Bot className="text-primary" style={{ width: Math.max(12, size * 0.5), height: Math.max(12, size * 0.5) }} />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={HODL_AVATAR_SRC}
+      alt="Hodl"
+      style={{ width: size, height: size }}
+      className={`object-cover border border-primary/20 ${rounded}`}
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, userSymbols, userHoldingsData, className = "", fullHeight = false }: AiChatWidgetProps) {
@@ -262,9 +288,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
     return (
       <div className="glass-card p-4 group hover:border-primary/20 transition-all duration-300">
         <div className="flex items-center gap-2 mb-3">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/25 to-primary/10 border border-primary/20 flex items-center justify-center">
-            <Bot className="h-4 w-4 text-primary" />
-          </div>
+          <HodlAvatar size={32} />
           <div>
             <p className="text-xs font-semibold">Hodl AI</p>
             <p className="text-[10px] text-muted-foreground">{context || "Comentário inteligente"}</p>
@@ -284,9 +308,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
       <div className="absolute -bottom-16 -left-16 w-32 h-32 rounded-full bg-primary/[0.04] blur-3xl pointer-events-none" />
       <div className="relative p-4 border-b border-border/30 flex items-center gap-3 bg-gradient-to-r from-card/80 to-transparent">
         <div className="relative">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/20">
-            <Bot className="h-5 w-5 text-primary" />
-          </div>
+          <HodlAvatar size={40} rounded="rounded-xl" />
           <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-card" />
         </div>
         <div className="flex-1">
@@ -319,7 +341,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
             >
               {msg.role === "assistant" && (
                 <div className="h-6 w-6 rounded-lg bg-primary/15 flex items-center justify-center mr-2 mt-1 flex-shrink-0">
-                  <Bot className="h-3.5 w-3.5 text-primary" />
+                  <HodlAvatar size={24} />
                 </div>
               )}
               <div
@@ -337,7 +359,7 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
         {isLoading && messages[messages.length - 1]?.role === "user" && (
           <div className="flex justify-start">
             <div className="h-6 w-6 rounded-lg bg-primary/15 flex items-center justify-center mr-2 mt-1 flex-shrink-0">
-              <Bot className="h-3.5 w-3.5 text-primary" />
+              <HodlAvatar size={24} />
             </div>
             <div className="bg-secondary/60 border border-border/30 rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />

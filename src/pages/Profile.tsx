@@ -92,11 +92,14 @@ const Profile = () => {
       setUsernameDraft(normalized);
       toast({ title: "Nome de usuario salvo", description: "Agora voce pode entrar com usuario ou e-mail." });
     } catch (error: any) {
+      const errMsg = String(error?.message || "");
       toast({
         title: "Erro ao salvar",
-        description: error?.message?.includes("profiles_username_unique_idx")
+        description: errMsg.includes("profiles_username_unique_idx")
           ? "Esse nome de usuario ja esta em uso."
-          : error?.message || "Nao foi possivel atualizar o nome de usuario.",
+          : errMsg.includes("username_locked_once_set")
+            ? "Nome de usuario ja foi definido e nao pode mais ser alterado."
+            : error?.message || "Nao foi possivel atualizar o nome de usuario.",
         variant: "destructive",
       });
     } finally {
@@ -304,16 +307,17 @@ const Profile = () => {
                   </div>
                   <div className="flex-1">
                     <p className="text-xs text-muted-foreground">Nome de usuario</p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={usernameDraft}
-                        onChange={(e) => setUsernameDraft(normalizeUsername(e.target.value))}
-                        placeholder="ex: marcos123"
-                        disabled={usernameLocked}
-                        className="w-full max-w-[220px] px-3 py-1.5 rounded-md bg-background/80 border border-border/50 text-sm disabled:opacity-70 disabled:cursor-not-allowed"
-                      />
-                      {!usernameLocked && (
+                    {usernameLocked ? (
+                      <p className="text-sm font-medium">{username}</p>
+                    ) : (
+                      <div className="mt-1 flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={usernameDraft}
+                          onChange={(e) => setUsernameDraft(normalizeUsername(e.target.value))}
+                          placeholder="ex: marcos123"
+                          className="w-full max-w-[220px] px-3 py-1.5 rounded-md bg-background/80 border border-border/50 text-sm"
+                        />
                         <button
                           type="button"
                           onClick={handleSaveUsername}
@@ -322,12 +326,7 @@ const Profile = () => {
                         >
                           {savingUsername ? "Salvando..." : "Salvar"}
                         </button>
-                      )}
-                    </div>
-                    {usernameLocked && (
-                      <p className="text-[11px] text-muted-foreground mt-1">
-                        Nome de usuario definido e bloqueado (edicao unica).
-                      </p>
+                      </div>
                     )}
                   </div>
                 </div>
