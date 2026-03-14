@@ -80,8 +80,9 @@ const Login = () => {
         let emailForLogin = loginValue;
 
         if (!loginValue.includes("@")) {
+          const normalizedLoginUsername = normalizeUsername(loginValue);
           const { data: resolvedEmail, error: resolveError } = await supabase.rpc("get_email_by_username", {
-            p_username: loginValue,
+            p_username: normalizedLoginUsername,
           });
           if (resolveError) throw resolveError;
           if (!resolvedEmail) {

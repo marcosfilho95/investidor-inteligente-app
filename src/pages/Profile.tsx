@@ -14,6 +14,7 @@ const Profile = () => {
   const [userId, setUserId] = useState("");
   const [username, setUsername] = useState("");
   const [usernameDraft, setUsernameDraft] = useState("");
+  const [usernameFinalized, setUsernameFinalized] = useState(false);
   const [savingUsername, setSavingUsername] = useState(false);
   const [userCreatedAt, setUserCreatedAt] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -49,6 +50,7 @@ const Profile = () => {
           const dbUsername = profileData?.username || "";
           setUsername(dbUsername);
           setUsernameDraft(dbUsername);
+          setUsernameFinalized(dbUsername.trim().length > 0);
         });
 
       setLoading(false);
@@ -62,7 +64,7 @@ const Profile = () => {
       .slice(0, 32);
 
   const handleSaveUsername = async () => {
-    const usernameLocked = username.trim().length > 0;
+    const usernameLocked = usernameFinalized || username.trim().length > 0;
     if (usernameLocked) {
       toast({
         title: "Nome de usuario bloqueado",
@@ -84,12 +86,49 @@ const Profile = () => {
 
     setSavingUsername(true);
     try {
-      const { error } = await supabase.from("profiles").update({ username: normalized }).eq("user_id", userId);
+      const { data: updatedProfile, error } = await supabase
+        .from("profiles")
+        .update({ username: normalized })
+        .eq("user_id", userId)
+        .or("username.is.null,username.eq.")
+        .select("username")
+        .maybeSingle();
       if (error) throw error;
+      let persistedUsername = updatedProfile?.username ?? null;
+
+      // Legacy safety: if profile row does not exist yet, create/upsert and persist username once.
+      if (!persistedUsername) {
+        const { data: upsertedProfile, error: upsertError } = await supabase
+          .from("profiles")
+          .upsert(
+            {
+              user_id: userId,
+              name: userName || "",
+              email: userEmail || "",
+              username: normalized,
+            },
+            { onConflict: "user_id" }
+          )
+          .select("username")
+          .maybeSingle();
+
+        if (upsertError) throw upsertError;
+        persistedUsername = upsertedProfile?.username ?? null;
+      }
+
+      if (!persistedUsername) {
+        toast({
+          title: "Nome de usuario bloqueado",
+          description: "Este usuario ja foi definido anteriormente e nao pode ser alterado.",
+        });
+        setUsernameFinalized(true);
+        return;
+      }
 
       await supabase.auth.updateUser({ data: { username: normalized } });
-      setUsername(normalized);
-      setUsernameDraft(normalized);
+      setUsername(persistedUsername);
+      setUsernameDraft(persistedUsername);
+      setUsernameFinalized(true);
       toast({ title: "Nome de usuario salvo", description: "Agora voce pode entrar com usuario ou e-mail." });
     } catch (error: any) {
       const errMsg = String(error?.message || "");
@@ -151,7 +190,7 @@ const Profile = () => {
   const memberSince = userCreatedAt
     ? new Date(userCreatedAt).toLocaleDateString("pt-BR", { year: "numeric", month: "long", day: "numeric" })
     : "-";
-  const usernameLocked = username.trim().length > 0;
+  const usernameLocked = usernameFinalized || username.trim().length > 0;
 
   const totalInvested = enrichedHoldings.reduce((s, h) => s + h.avgPrice * h.shares, 0);
   const totalGain = enrichedHoldings.reduce((s, h) => s + (h.totalGainValue ?? (h.price - h.avgPrice) * h.shares), 0);
