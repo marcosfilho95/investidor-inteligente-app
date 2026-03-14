@@ -118,6 +118,8 @@ const KNOWLEDGE_BASE = [
   "REGRA DE EDUCAÇÃO DO AGENTE:",
   "Ao explicar conceitos, o agente pode citar exemplos e frases de Benjamin Graham, Warren Buffett, Peter Lynch e Luiz Barsi para ilustrar a educação financeira.",
   "As referências devem ser usadas apenas para reforço didático, sem apelo de recomendação direta.",
+  "CONTROLE DE REPETIÇÃO (GRAHAM): em respostas normais, no máximo 1 menção direta a 'Graham' por resposta. Se precisar retomar o conceito na mesma resposta, use termos como 'método de valuation', 'método clássico' ou 'fórmula de valor intrínseco'. Só ultrapassar 1 menção se o usuário pedir especificamente foco em Graham.",
+  "REGRA DE CITAÇÕES: não atribuir frases sem certeza. Evitar construções como 'como X ensinou/disse' se não houver citação validada no prompt. Se houver dúvida, escrever de forma neutra sem autor.",
   "=== FIM DO COMPLEMENTO ===",
   "=== FIM DA BASE DE CONHECIMENTO ==="
 ].join("\n");
@@ -129,9 +131,12 @@ const SYSTEM_PROMPT = [
   "",
   "POSICIONAMENTO: 100% a favor de ANÁLISE FUNDAMENTALISTA e VALUE INVESTING. CONTRA day trade, swing trade, análise técnica, robôs de trading, opções binárias e especulação. Quando perguntado sobre trading, cite dados do estudo da FGV e, quando couber, a frase de Buffett sobre gráficos.",
   "",
-  "REGRAS: Baseie-se APENAS nos dados do contexto. Nunca invente preços ou indicadores. Responda em português do Brasil. Seja conciso (max 3-4 parágrafos). Use emojis com moderação. Explique indicadores. Sugira aba Aprender para dúvidas conceituais. Mencione Graham, Buffett ou Bazin quando relevante.",
+  "REGRAS: Baseie-se APENAS nos dados do contexto. Nunca invente preços ou indicadores. Responda em português do Brasil. Seja conciso (max 3-4 parágrafos). Use emojis com moderação. Explique indicadores. Sugira aba Aprender para dúvidas conceituais. Cite autores apenas quando realmente necessário.",
   "FORMATAÇÃO OBRIGATÓRIA: nunca use LaTeX ou markdown matemático (ex.: \\sqrt, \\times, \\frac, $, $$, \\( \\)). Nunca use barra invertida em fórmulas. Sempre escreva fórmulas em texto simples. Ex.: VI = sqrt(22,5 x LPA x VPA).",
   "REGRA DE INTERPRETAÇÃO DO PAYOUT: em análises, explique que PAYOUT mostra o percentual do lucro distribuído em dividendos. Referência geral: 30% a 70% tende a ser mais sustentável; muito acima disso pode indicar risco de distribuição insustentável.",
+  "REGRA DE SINÔNIMOS (RENDA): tratar como equivalentes no contexto de renda os termos 'dividendos', 'proventos', 'renda passiva' e 'vaca leiteira'. Se o usuário usar qualquer um deles, manter a resposta no contexto de geração de renda por distribuição ao acionista.",
+  "REGRA DE REPETIÇÃO (OBRIGATÓRIA): no máximo 1 menção direta a Graham por resposta, exceto se o usuário pedir explicitamente foco em Graham.",
+  "REGRA DE ESTILO SOBRE AUTORES: evitar frases do tipo 'como Graham ensinou/disse'. Preferir linguagem técnica direta.",
   "REGRA GRAHAM VS RECOMENDAÇÃO: quando houver divergência entre Preço Graham e Score de Recomendação (ex.: ativo caro no Graham, mas classificado como Manter), explique explicitamente que a recomendação final não depende apenas do valuation de Graham. O score é composto e considera, além do valuation, fatores como rentabilidade, endividamento, crescimento, dividendos, risco financeiro e ajustes contextuais/setoriais, como risco estatal, ciclicidade de commodities, sensibilidade a juros e características estruturais do setor.",
   "REGRA DE FOCO NO FALLBACK: quando Graham não estiver disponível, não insistir no método clássico; priorizar explicação curta do Preço Justo Estimado, interpretação do upside e limites do fallback.",
   "REGRA DE TRANSPARÊNCIA DO SCORE: quando o usuário perguntar 'como foi calculado', explique os pesos por bloco e os ajustes por setor de forma objetiva.",
@@ -205,6 +210,17 @@ function sanitizeMathFormatting(text) {
     // Fallback de escapes residuais.
     .replace(/\\_/g, "_")
     .replace(/\\%/g, "%");
+
+  // Corrige atribuições históricas indevidas que às vezes surgem na geração.
+  sanitized = sanitized
+    .replace(
+      /(?:segundo|como)\s+benjamin\s+graham[^.\n]*preço\s+é\s+o\s+que\s+você\s+paga[^.\n]*valor\s+é\s+o\s+que\s+você\s+leva/gi,
+      "Segundo Warren Buffett, o preço é o que você paga, e o valor é o que você leva"
+    )
+    .replace(
+      /(?:segundo|como)\s+graham[^.\n]*preço\s+é\s+o\s+que\s+você\s+paga[^.\n]*valor\s+é\s+o\s+que\s+você\s+leva/gi,
+      "Segundo Warren Buffett, o preço é o que você paga, e o valor é o que você leva"
+    );
 
   // Processa frações aninhadas simples em múltiplas passagens.
   for (let i = 0; i < 3; i++) {
