@@ -127,15 +127,16 @@ const Login = () => {
         toast({ title: "Conta criada com sucesso!", description: "Voce ja pode acessar a plataforma." });
         navigate("/dashboard");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       toast({
         title: "Erro",
         description:
-          error.message === "Invalid login credentials"
+          message === "Invalid login credentials"
             ? "E-mail/usuario ou senha incorretos"
-            : error.message.includes("profiles_username_unique_idx")
+            : message.includes("profiles_username_unique_idx")
               ? "Esse nome de usuario ja esta em uso."
-              : error.message,
+              : message,
         variant: "destructive",
       });
     } finally {

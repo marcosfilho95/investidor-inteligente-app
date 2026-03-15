@@ -110,6 +110,11 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          investor_profile_answers: Json | null
+          investor_profile_created_at: string | null
+          investor_profile_score: number | null
+          investor_profile_type: string | null
+          investor_profile_updated_at: string | null
           name: string
           updated_at: string
           user_id: string
@@ -120,6 +125,11 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          investor_profile_answers?: Json | null
+          investor_profile_created_at?: string | null
+          investor_profile_score?: number | null
+          investor_profile_type?: string | null
+          investor_profile_updated_at?: string | null
           name?: string
           updated_at?: string
           user_id: string
@@ -130,6 +140,11 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          investor_profile_answers?: Json | null
+          investor_profile_created_at?: string | null
+          investor_profile_score?: number | null
+          investor_profile_type?: string | null
+          investor_profile_updated_at?: string | null
           name?: string
           updated_at?: string
           user_id?: string

@@ -15,6 +15,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  calculatePortfolioRisk,
+  loadInvestorProfileFromStorage,
+  normalizeInvestorProfile,
+  type InvestorProfileSummary,
+} from "@/lib/investorIntelligence";
+import { getAiTaxonomy } from "@/data/investments";
 
 const chartColors = [
   "hsl(var(--chart-1))",
@@ -91,6 +99,7 @@ const Portfolio = () => {
   const [showTradeRightFade, setShowTradeRightFade] = useState(false);
   const [showTradeScrollHint, setShowTradeScrollHint] = useState(false);
   const [showTradeMobileScrollbar, setShowTradeMobileScrollbar] = useState(false);
+  const [investorProfile, setInvestorProfile] = useState<InvestorProfileSummary | null>(null);
   const holdingsScrollRef = useRef<HTMLDivElement | null>(null);
   const tradeScrollRef = useRef<HTMLDivElement | null>(null);
   const { enrichedHoldings, loading, userTrades, addHolding, sellHolding, portfolioMetrics } = useUserHoldings();
@@ -141,6 +150,160 @@ const Portfolio = () => {
       proventos,
     };
   }, [enrichedHoldings, portfolioMetrics]);
+
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) return;
+      const user = data.user;
+      if (!user) {
+        setInvestorProfile(null);
+        return;
+      }
+
+      const fromMetadata = normalizeInvestorProfile(user.user_metadata?.investor_profile);
+      if (fromMetadata) {
+        setInvestorProfile(fromMetadata);
+        return;
+      }
+
+      const fromStorage =
+        loadInvestorProfileFromStorage(user.id) ||
+        loadInvestorProfileFromStorage(user.email || "");
+      setInvestorProfile(fromStorage);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const portfolioRisk = useMemo(() => {
+    const riskInput = enrichedHoldings.map((h) => {
+      const tax = getAiTaxonomy(h.symbol, h.sector, h.subsetor);
+      return {
+        symbol: h.symbol,
+        setor_macro: tax.setor_macro,
+        subsetor: tax.subsetor,
+        modeloNegocio: tax.modelo_negocio,
+        perfilDividendos: tax.perfil_dividendos,
+        perfilDefensivo: tax.perfil_defensivo,
+        allocationPct: h.allocation,
+        score: h.score ?? null,
+        upsidePct: h.upside ?? null,
+        dividendPct: h.dividend ?? null,
+        roePct: h.roe ?? null,
+        roicPct: h.roic ?? null,
+        margemLiquidaPct: h.margemLiquida ?? null,
+        divLiqEbitda: h.divLiqEbitda ?? null,
+        lpa: h.lpa ?? null,
+        cLucro5aPct: h.cLucro5a ?? null,
+        cReceita5aPct: h.cReceita5a ?? null,
+        payoutPct: h.payout ?? null,
+      };
+    });
+    return calculatePortfolioRisk(riskInput, investorProfile);
+  }, [enrichedHoldings, investorProfile]);
+  const compatibilityStatus = portfolioRisk.profileCompatibility?.status || "Não avaliada";
+  const compatibilityIntro =
+    compatibilityStatus === "Boa compatibilidade"
+      ? "está alinhada ao seu perfil"
+      : compatibilityStatus === "Parcialmente desalinhada"
+        ? "está parcialmente desalinhada do seu perfil"
+        : compatibilityStatus === "Desalinhada"
+          ? "está desalinhada do seu perfil"
+          : "ainda não foi avaliada em relação ao seu perfil";
+  const compatibilityTone =
+    compatibilityStatus === "Boa compatibilidade"
+      ? {
+          wrapper:
+            "bg-gradient-to-r from-card/85 to-card/60 border border-emerald-400/25 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.14)]",
+          label: "text-emerald-300/80",
+          value: "text-emerald-200",
+          accent: "bg-emerald-400/80",
+        }
+      : compatibilityStatus === "Desalinhada"
+        ? {
+            wrapper:
+              "bg-gradient-to-r from-red-950/35 via-red-950/20 to-card/70 border border-red-500/55 shadow-[inset_0_0_0_1px_rgba(239,68,68,0.35)]",
+            label: "text-red-300",
+            value: "text-red-200",
+            accent: "bg-rose-400/80",
+          }
+        : compatibilityStatus === "Parcialmente desalinhada"
+          ? {
+              wrapper:
+                "bg-gradient-to-r from-card/85 to-card/60 border border-amber-400/25 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.14)]",
+              label: "text-amber-300/80",
+              value: "text-amber-200",
+              accent: "bg-amber-400/80",
+            }
+          : {
+              wrapper:
+                "bg-gradient-to-r from-card/85 to-card/60 border border-border/35 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.12)]",
+              label: "text-muted-foreground",
+              value: "text-foreground",
+              accent: "bg-primary/70",
+            };
+  const aiPortfolioContext = useMemo(() => {
+    const sectorAllocationForAi = Object.entries(sectorMap)
+      .map(([sector, allocationPct]) => ({ sector, allocationPct }))
+      .sort((a, b) => b.allocationPct - a.allocationPct);
+
+    const positions = [...enrichedHoldings]
+      .sort((a, b) => b.value - a.value)
+      .map((h) => {
+        const tax = getAiTaxonomy(h.symbol, h.sector, h.subsetor);
+        const alerts: string[] = [];
+        if (h.allocation >= 25) alerts.push("concentracao_alta");
+        if (h.allocation >= 15 && h.allocation < 25) alerts.push("concentracao_moderada");
+        const pnl = h.totalGainCloseValue ?? h.totalGainValue ?? (h.price - h.avgPrice) * h.shares;
+        if (pnl < 0) alerts.push("posicao_no_prejuizo");
+        if ((h.score ?? 0) > 0 && (h.score ?? 0) < 50) alerts.push("fundamentos_mais_fracos");
+        return {
+          symbol: h.symbol,
+          name: h.name,
+          sector: tax.setor_macro,
+          subsetor: tax.subsetor,
+          shares: h.shares,
+          avgPrice: h.avgPrice,
+          currentPrice: h.price,
+          positionValue: h.value,
+          allocationPct: h.allocation,
+          positionPnl: pnl,
+          score: h.score ?? null,
+          upsidePct: h.upside ?? null,
+          alerts,
+        };
+      });
+
+    const recentTrades = [...userTrades]
+      .sort((a, b) => getTradeTimeMs(b.traded_at, b.created_at) - getTradeTimeMs(a.traded_at, a.created_at))
+      .slice(0, 30)
+      .map((t) => ({
+        symbol: t.symbol,
+        side: t.side,
+        shares: t.shares,
+        price: t.price,
+        traded_at: t.traded_at,
+      }));
+
+    return {
+      summary: {
+        totalCloseValue: portfolioMetrics.totalCloseValue,
+        totalGain: portfolioMetrics.totalGain,
+        dailyChange: portfolioMetrics.dailyChange,
+        rentabilityPct: portfolioMetrics.totalGainPercent,
+        assetCount: enrichedHoldings.length,
+        sectorCount: sectorAllocationForAi.length,
+        estimatedDividends: metrics.proventos,
+      },
+      sectorAllocation: sectorAllocationForAi,
+      positions,
+      recentTrades,
+      investorProfile,
+      portfolioRisk,
+    };
+  }, [enrichedHoldings, investorProfile, metrics.proventos, portfolioMetrics, portfolioRisk, sectorMap, userTrades]);
 
   const sortedHoldings = useMemo(
     () => [...enrichedHoldings].sort((a, b) => b.value - a.value),
@@ -416,9 +579,17 @@ const Portfolio = () => {
                           {enrichedHoldings.length} ativos
                         </span>
                       </>
-                    )}
+                  )}
                 </p>
               </div>
+              {!loading && !isEmpty && (
+                <div className={`md:text-right rounded-xl px-3.5 py-2.5 w-fit md:ml-auto ${compatibilityTone.wrapper}`}>
+                  <div className="flex items-center justify-start gap-2 md:justify-end">
+                    <p className={`text-[10px] uppercase tracking-[0.08em] ${compatibilityTone.label}`}>Compatibilidade perfil/carteira</p>
+                  </div>
+                  <p className={`text-sm md:text-[15px] font-semibold mt-0.5 ${compatibilityTone.value}`}>{compatibilityStatus}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -593,7 +764,8 @@ const Portfolio = () => {
                         page="carteira"
                         userSymbols={enrichedHoldings.map(h => h.symbol)}
                         userHoldingsData={enrichedHoldings.map(h => ({ symbol: h.symbol, shares: h.shares, avgPrice: h.avgPrice }))}
-                        welcomeMessage={`Sua carteira possui ${enrichedHoldings.length} ativos distribuidos em ${Object.keys(sectorMap).length} setores. Posso ajudar a analisar se a distribuicao esta adequada ao seu perfil ou sugerir rebalanceamento. O que gostaria de saber?`}
+                        portfolioContext={aiPortfolioContext}
+                        welcomeMessage={`Sua carteira possui ${enrichedHoldings.length} ativos distribuídos em ${Object.keys(sectorMap).length} setores. ${investorProfile ? `Seu perfil é ${investorProfile.type} e sua carteira ${compatibilityIntro}. ` : ""}Posso ajudar a analisar concentração, risco e compatibilidade com seu perfil. O que gostaria de saber?`}
                       />
                     </div>
                   </div>
@@ -992,6 +1164,9 @@ const Portfolio = () => {
 };
 
 export default Portfolio;
+
+
+
 
 
 

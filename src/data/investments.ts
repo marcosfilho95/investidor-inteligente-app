@@ -1530,8 +1530,8 @@ export function generatePriceHistory(basePrice: number, changePercent: number, p
   return data;
 }
 
-export const performanceData: any[] = [];
-export const assetHistoryData: any[] = [];
+export const performanceData: unknown[] = [];
+export const assetHistoryData: unknown[] = [];
 
 /**
  * Build a "R$ 1.000 invested" comparison using real asset and benchmark data.
@@ -2277,7 +2277,7 @@ export async function getInvestmentComparisonData(symbol: string, period: string
     const cdiFilled = forwardFillOnCalendar(ensureNonEmptySeries(cdiNorm, calendar), calendar);
     const ipcaFilled = forwardFillOnCalendar(ensureNonEmptySeries(ipcaNorm, calendar), calendar);
 
-    let points: InvestmentComparisonPoint[] = calendar.map((date, i) => ({
+    const points: InvestmentComparisonPoint[] = calendar.map((date, i) => ({
       date,
       month: formatDateLabel(date, p),
       [symbol]: Number(assetFilled[i].value.toFixed(2)),
@@ -3061,12 +3061,123 @@ export function calcFairPrice(asset: Holding): number | null {
   return null;
 }
 
+type AiProfileLevel = "baixo" | "médio" | "alto";
+type AiAssetTaxonomy = {
+  setor_macro: string;
+  subsetor: string;
+  modelo_negocio: string;
+  perfil_dividendos: AiProfileLevel;
+  perfil_defensivo: AiProfileLevel;
+  risco_estatal: AiProfileLevel;
+  observacao_qualitativa: string;
+};
+
+const AI_UNIVERSE_SYMBOLS = [
+  "ITUB4", "BBAS3", "BBDC4", "B3SA3", "BBSE3",
+  "AXIA6", "CPFE3", "ISAE4", "SAPR11",
+  "PETR4", "VALE3", "SUZB3", "KLBN11", "GGBR4",
+  "WEGE3", "EMBJ3", "TUPY3",
+  "LREN3", "MGLU3", "MRVE3", "RENT3",
+  "ABEV3", "NATU3",
+  "VIVT3", "TIMS3",
+  "TOTS3",
+  "RDOR3", "RADL3", "HAPV3", "FLRY3",
+] as const;
+
+const AI_UNIVERSE_SET = new Set<string>(AI_UNIVERSE_SYMBOLS);
+
+function normalizeAiSymbol(symbol: string): string {
+  const s = String(symbol || "").trim().toUpperCase();
+  if (s === "NTCO3") return "NATU3";
+  return s;
+}
+
+function getAiPreferredAssetName(symbol: string, fallbackName?: string): string {
+  const s = normalizeAiSymbol(symbol);
+  if (s === "AXIA6") return "AXIA6";
+  return String(fallbackName || s);
+}
+
+function getAiSafeDescription(symbol: string, fallbackDescription?: string): string {
+  const s = normalizeAiSymbol(symbol);
+  if (s === "AXIA6") {
+    return "Empresa do setor elétrico brasileiro com atuação em geração e transmissão de energia, inserida em ambiente regulado e de contratos de longo prazo.";
+  }
+  return String(fallbackDescription || "");
+}
+
+function isInAiUniverse(symbol: string): boolean {
+  return AI_UNIVERSE_SET.has(normalizeAiSymbol(symbol));
+}
+
+const AI_ASSET_TAXONOMY: Record<string, AiAssetTaxonomy> = {
+  ITUB4: { setor_macro: "Financeiro", subsetor: "Bancos", modelo_negocio: "Banco universal com crédito, serviços e tesouraria", perfil_dividendos: "alto", perfil_defensivo: "alto", risco_estatal: "baixo", observacao_qualitativa: "Sensível a ciclo de crédito, juros e inadimplência." },
+  BBAS3: { setor_macro: "Financeiro", subsetor: "Bancos", modelo_negocio: "Banco universal com forte exposição a agronegócio e crédito público", perfil_dividendos: "alto", perfil_defensivo: "alto", risco_estatal: "alto", observacao_qualitativa: "Pode sofrer maior influência política e de políticas públicas." },
+  BBDC4: { setor_macro: "Financeiro", subsetor: "Bancos", modelo_negocio: "Banco universal com presença em crédito e seguros", perfil_dividendos: "médio", perfil_defensivo: "alto", risco_estatal: "baixo", observacao_qualitativa: "Resultado depende de spreads, provisões e ciclo econômico." },
+  B3SA3: { setor_macro: "Financeiro", subsetor: "Mercado de Capitais", modelo_negocio: "Infraestrutura de bolsa e serviços do mercado de capitais", perfil_dividendos: "médio", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Motores diferentes de bancos; depende de volumes e atividade de mercado." },
+  BBSE3: { setor_macro: "Financeiro", subsetor: "Seguros", modelo_negocio: "Seguridade com foco em seguros, previdência e capitalização", perfil_dividendos: "alto", perfil_defensivo: "alto", risco_estatal: "médio", observacao_qualitativa: "Negócio de maior recorrência e margens elevadas dentro de financeiro." },
+  AXIA6: { setor_macro: "Energia", subsetor: "Geração / Distribuição", modelo_negocio: "Companhia elétrica integrada com geração e ativos de rede", perfil_dividendos: "médio", perfil_defensivo: "médio", risco_estatal: "médio", observacao_qualitativa: "Maior variabilidade operacional que transmissão pura." },
+  CPFE3: { setor_macro: "Energia", subsetor: "Geração / Distribuição", modelo_negocio: "Distribuição e geração de energia com receita regulada", perfil_dividendos: "alto", perfil_defensivo: "alto", risco_estatal: "baixo", observacao_qualitativa: "Exposta a revisão tarifária, execução e investimentos." },
+  ISAE4: { setor_macro: "Energia", subsetor: "Transmissão", modelo_negocio: "Transmissão de energia com contratos de longo prazo", perfil_dividendos: "alto", perfil_defensivo: "alto", risco_estatal: "baixo", observacao_qualitativa: "Tese mais previsível e defensiva dentro de energia." },
+  SAPR11: { setor_macro: "Saneamento", subsetor: "Saneamento", modelo_negocio: "Serviço essencial de água e esgoto com regulação local", perfil_dividendos: "médio", perfil_defensivo: "alto", risco_estatal: "alto", observacao_qualitativa: "Setor perene, porém com risco regulatório/estatal relevante." },
+  PETR4: { setor_macro: "Commodities", subsetor: "Petróleo", modelo_negocio: "Exploração, produção, refino e distribuição de petróleo e derivados", perfil_dividendos: "alto", perfil_defensivo: "médio", risco_estatal: "alto", observacao_qualitativa: "Sensível a Brent, câmbio e decisões políticas." },
+  VALE3: { setor_macro: "Commodities", subsetor: "Mineração", modelo_negocio: "Mineração de ferro e metais com exposição global", perfil_dividendos: "médio", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Sensível a China, ciclo global e preços internacionais." },
+  SUZB3: { setor_macro: "Commodities", subsetor: "Papel e Celulose", modelo_negocio: "Produção de celulose com receita dolarizada", perfil_dividendos: "baixo", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Depende de ciclo global de celulose e câmbio." },
+  KLBN11: { setor_macro: "Commodities", subsetor: "Papel e Celulose", modelo_negocio: "Papel e celulose com integração florestal e embalagens", perfil_dividendos: "médio", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Combina dinâmica de exportação e mercado interno." },
+  GGBR4: { setor_macro: "Commodities", subsetor: "Siderurgia", modelo_negocio: "Produção de aço para construção e indústria", perfil_dividendos: "baixo", perfil_defensivo: "baixo", risco_estatal: "baixo", observacao_qualitativa: "Fortemente cíclica, sensível a atividade industrial e insumos." },
+  WEGE3: { setor_macro: "Indústria", subsetor: "Bens de capital", modelo_negocio: "Motores, automação e equipamentos industriais", perfil_dividendos: "médio", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Premium de qualidade por execução, escala e previsibilidade." },
+  EMBJ3: { setor_macro: "Indústria", subsetor: "Aeroespacial", modelo_negocio: "Fabricação de aeronaves comerciais, defesa e executiva", perfil_dividendos: "baixo", perfil_defensivo: "baixo", risco_estatal: "médio", observacao_qualitativa: "Dinâmica própria de contratos, câmbio e ciclo de aviação." },
+  TUPY3: { setor_macro: "Indústria", subsetor: "Autopeças", modelo_negocio: "Componentes fundidos para veículos e máquinas", perfil_dividendos: "baixo", perfil_defensivo: "baixo", risco_estatal: "baixo", observacao_qualitativa: "Exposta ao ciclo automotivo e industrial." },
+  LREN3: { setor_macro: "Consumo Cíclico", subsetor: "Varejo", modelo_negocio: "Varejo de moda com operação omnichannel", perfil_dividendos: "médio", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Sensível a renda, crédito e confiança do consumidor." },
+  MGLU3: { setor_macro: "Consumo Cíclico", subsetor: "Varejo", modelo_negocio: "Varejo e marketplace digital", perfil_dividendos: "baixo", perfil_defensivo: "baixo", risco_estatal: "baixo", observacao_qualitativa: "Mais sensível a juros e ciclo de consumo." },
+  MRVE3: { setor_macro: "Consumo Cíclico", subsetor: "Construção", modelo_negocio: "Incorporação e construção residencial", perfil_dividendos: "baixo", perfil_defensivo: "baixo", risco_estatal: "baixo", observacao_qualitativa: "Alta sensibilidade a juros, crédito imobiliário e ciclo." },
+  RENT3: { setor_macro: "Consumo Cíclico", subsetor: "Locação de veículos", modelo_negocio: "Aluguel de carros e gestão de frotas", perfil_dividendos: "baixo", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Depende de custo de frota, revenda e juros." },
+  ABEV3: { setor_macro: "Consumo Não Cíclico", subsetor: "Bebidas", modelo_negocio: "Bebidas com marcas líderes e ampla distribuição", perfil_dividendos: "alto", perfil_defensivo: "alto", risco_estatal: "baixo", observacao_qualitativa: "Consumo recorrente e alta força de marca." },
+  NATU3: { setor_macro: "Consumo Não Cíclico", subsetor: "Higiene e Beleza", modelo_negocio: "Higiene e beleza com portfólio de marcas", perfil_dividendos: "baixo", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Depende de execução comercial, marca e margem." },
+  VIVT3: { setor_macro: "Telecom", subsetor: "Telefonia", modelo_negocio: "Telecom integrada fixa/móvel e serviços digitais", perfil_dividendos: "médio", perfil_defensivo: "alto", risco_estatal: "baixo", observacao_qualitativa: "Negócio maduro, intensivo em infraestrutura e mais defensivo." },
+  TIMS3: { setor_macro: "Telecom", subsetor: "Telefonia", modelo_negocio: "Telefonia móvel com expansão de 5G e dados", perfil_dividendos: "alto", perfil_defensivo: "alto", risco_estatal: "baixo", observacao_qualitativa: "Receita recorrente com competição setorial relevante." },
+  TOTS3: { setor_macro: "Tecnologia", subsetor: "Software", modelo_negocio: "Software de gestão com receita recorrente", perfil_dividendos: "baixo", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Múltiplos tendem a refletir crescimento e escalabilidade." },
+  RDOR3: { setor_macro: "Saúde", subsetor: "Hospitais", modelo_negocio: "Rede hospitalar integrada e intensiva em capital", perfil_dividendos: "baixo", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Execução operacional e expansão influenciam margens." },
+  RADL3: { setor_macro: "Saúde", subsetor: "Varejo farmacêutico", modelo_negocio: "Rede de farmácias com foco em escala e distribuição", perfil_dividendos: "baixo", perfil_defensivo: "alto", risco_estatal: "baixo", observacao_qualitativa: "Modelo distinto de hospitais/planos e mais ligado a consumo essencial." },
+  HAPV3: { setor_macro: "Saúde", subsetor: "Planos de Saúde", modelo_negocio: "Operadora de saúde verticalizada", perfil_dividendos: "baixo", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Sensível a sinistralidade, reajustes e judicialização." },
+  FLRY3: { setor_macro: "Saúde", subsetor: "Diagnósticos", modelo_negocio: "Medicina diagnóstica com escala e serviços ambulatoriais", perfil_dividendos: "médio", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Dinâmica de margens e escala diferente de hospitais e planos." },
+};
+
+export function getAiTaxonomy(symbol: string, sector?: string, subsetor?: string): AiAssetTaxonomy {
+  const normalized = normalizeAiSymbol(symbol);
+  const fromMap = AI_ASSET_TAXONOMY[normalized];
+  if (fromMap) return fromMap;
+  const setor = String(sector || "").trim() || "N/D";
+  const sub = String(subsetor || "").trim() || "N/D";
+  return {
+    setor_macro: setor,
+    subsetor: sub,
+    modelo_negocio: "Modelo não classificado",
+    perfil_dividendos: "médio",
+    perfil_defensivo: "médio",
+    risco_estatal: "baixo",
+    observacao_qualitativa: "Sem observação específica.",
+  };
+}
+
+function getCanonicalSetorMacro(sector?: string, symbol?: string, subsetor?: string): string {
+  if (symbol) {
+    return getAiTaxonomy(symbol, sector, subsetor).setor_macro;
+  }
+  return String(sector || "").trim() || "N/D";
+}
+
+function getCanonicalSubsetor(symbol: string, sector?: string, subsetor?: string): string {
+  return getAiTaxonomy(symbol, sector, subsetor).subsetor;
+}
+
 // Build dataset string for AI context — accepts optional symbol filter for user portfolio
 // userHoldingsData: optional array of { symbol, shares, avgPrice } with REAL user quantities
 export function buildDatasetContext(userSymbols?: string[], userHoldingsData?: { symbol: string; shares: number; avgPrice: number }[]): string {
+  const normalizedUserSymbols = (userSymbols || []).map(normalizeAiSymbol);
   const assetsToShow = userSymbols && userSymbols.length > 0
-    ? holdings.filter(h => userSymbols.includes(h.symbol))
-    : holdings;
+    ? holdings.filter(h => normalizedUserSymbols.includes(normalizeAiSymbol(h.symbol)) && isInAiUniverse(h.symbol))
+    : holdings.filter((h) => isInAiUniverse(h.symbol));
 
   if (assetsToShow.length === 0) {
     if (userSymbols && userSymbols.length === 0) {
@@ -3085,12 +3196,15 @@ export function buildDatasetContext(userSymbols?: string[], userHoldingsData?: {
   const totalValue = enrichedAssets.reduce((sum, h) => sum + h.realValue, 0);
   const assetAllocations = enrichedAssets.map(h => ({
     symbol: h.symbol,
-    sector: h.sector,
+    sector: getAiTaxonomy(h.symbol, h.sector, h.subsetor).setor_macro,
+    subsetor: getAiTaxonomy(h.symbol, h.sector, h.subsetor).subsetor,
     alloc: totalValue > 0 ? (h.realValue / totalValue * 100) : 0,
   }));
   const sectorAllocations: Record<string, number> = {};
+  const subsetorAllocations: Record<string, number> = {};
   assetAllocations.forEach(a => {
     sectorAllocations[a.sector] = (sectorAllocations[a.sector] || 0) + a.alloc;
+    subsetorAllocations[a.subsetor] = (subsetorAllocations[a.subsetor] || 0) + a.alloc;
   });
 
   // Build concentration warnings
@@ -3101,16 +3215,19 @@ export function buildDatasetContext(userSymbols?: string[], userHoldingsData?: {
   Object.entries(sectorAllocations).forEach(([sector, alloc]) => {
     if (alloc > 30) warnings.push(`⚠️ ALERTA SETOR: ${sector} representa ${alloc.toFixed(1)}% da carteira (máx recomendado: 25-30%)`);
   });
+  Object.entries(subsetorAllocations).forEach(([subsetor, alloc]) => {
+    if (alloc > 35) warnings.push(`⚠️ ALERTA SUBSETOR: ${subsetor} representa ${alloc.toFixed(1)}% da carteira (concentração na mesma tese).`);
+  });
 
   const header = userSymbols
-    ? `CARTEIRA DO USUÁRIO (${assetsToShow.length} ativos, valor total: R$ ${totalValue.toFixed(2)}):\nATENÇÃO: O usuário possui SOMENTE os ativos listados abaixo. NÃO mencione outros ativos que não estejam nesta lista.\n`
+    ? `CARTEIRA DO USUÁRIO (${assetsToShow.length} ativos, valor total: R$ ${totalValue.toFixed(2)}):\nATENÇÃO: Os ativos listados abaixo são as posições atuais do usuário. Não trate ativos fora desta lista como se já fossem da carteira.\n`
     : "";
 
   const warningBlock = warnings.length > 0
     ? `\n${warnings.join('\n')}\nINSTRUÇÃO: Quando houver alertas de concentração, sugira ESPECIFICAMENTE rebalancear — vender parcialmente posições mais caras e realocar em ativos/setores sub-representados. Investidores inteligentes aproveitam assimetrias, comprando barato e vendendo caro, balanceando a carteira de forma inteligente.\n\n`
     : "";
 
-  const allocBlock = `\nALOCAÇÃO POR SETOR:\n${Object.entries(sectorAllocations).map(([s, a]) => `- ${s}: ${a.toFixed(1)}%`).join('\n')}\n`;
+  const allocBlock = `\nALOCAÇÃO POR SETOR_MACRO:\n${Object.entries(sectorAllocations).map(([s, a]) => `- ${s}: ${a.toFixed(1)}%`).join('\n')}\n\nALOCAÇÃO POR SUBSETOR:\n${Object.entries(subsetorAllocations).map(([s, a]) => `- ${s}: ${a.toFixed(1)}%`).join('\n')}\n`;
   const methodologyBlock = `\n${buildScoreMethodologyContext()}\n`;
 
   const body = enrichedAssets.map(h => {
@@ -3123,25 +3240,183 @@ export function buildDatasetContext(userSymbols?: string[], userHoldingsData?: {
     const basileiaLine = h.subsetor === "Bancos"
       ? `\nÍndice de Basileia: ${h.basileia ?? 'N/A'}%`
       : "";
-    return `${h.symbol} (${h.name}) - Setor: ${h.sector}/${h.subsetor} - Alocação: ${alloc}% - Qtd: ${h.realShares} ações - Valor: R$${h.realValue.toFixed(2)}
+    const tax = getAiTaxonomy(h.symbol, h.sector, h.subsetor);
+    const aiName = getAiPreferredAssetName(h.symbol, h.name);
+    const aiDescription = getAiSafeDescription(h.symbol, h.description);
+    return `${normalizeAiSymbol(h.symbol)} (${aiName}) - Setor macro: ${tax.setor_macro} | Subsetor: ${tax.subsetor} - Alocação: ${alloc}% - Qtd: ${h.realShares} ações - Valor: R$${h.realValue.toFixed(2)}
+Modelo de negócio: ${tax.modelo_negocio}
+Perfil dividendos: ${tax.perfil_dividendos} | Perfil defensivo: ${tax.perfil_defensivo} | Risco estatal: ${tax.risco_estatal}
 Preço Atual: R$${h.price} | Preço Médio: R$${h.realAvgPrice.toFixed(2)} | P/L: ${h.pe ?? 'N/A'} | P/VP: ${h.pvp ?? 'N/A'} | DY: ${h.dividend}%
 ROE: ${h.roe ?? 'N/A'}% | ROIC: ${h.roic ?? 'N/A'}% | Marg.Líq: ${h.margemLiquida ?? 'N/A'}%
 Dív.Líq/EBITDA: ${h.divLiqEbitda ?? 'N/A'} | Liq.Corrente: ${h.liqCorrente ?? 'N/A'}
 ${basileiaLine}
 Score: ${rec.score}/100 (${rec.label}) | ${activeValuationLine}
-${h.description}`;
+Observação qualitativa: ${tax.observacao_qualitativa}
+${aiDescription}`;
   }).join('\n\n');
 
   return header + warningBlock + allocBlock + methodologyBlock + '\n' + body;
+}
+
+// Build peers universe context for AI:
+// provide full application universe (30 assets), with portfolio membership as contextual metadata.
+export function buildPeerUniverseContext(userSymbols?: string[]): string {
+  const normalizedUserSymbols = new Set((userSymbols || []).map(normalizeAiSymbol));
+  const universe = holdings
+    .filter((h) => isInAiUniverse(h.symbol))
+    .map((h) => ({
+      ...h,
+      symbolNorm: normalizeAiSymbol(h.symbol),
+      setorMacro: getCanonicalSetorMacro(h.sector, h.symbol, h.subsetor),
+      subsetorCanonico: getCanonicalSubsetor(h.symbol, h.sector, h.subsetor),
+    }))
+    .sort((a, b) => a.symbolNorm.localeCompare(b.symbolNorm));
+
+  if (universe.length === 0) return "";
+
+  const bySubsetor: Record<string, string[]> = {};
+  for (const h of universe) {
+    if (!bySubsetor[h.subsetorCanonico]) bySubsetor[h.subsetorCanonico] = [];
+    bySubsetor[h.subsetorCanonico].push(h.symbolNorm);
+  }
+  const bySetor: Record<string, string[]> = {};
+  for (const h of universe) {
+    if (!bySetor[h.setorMacro]) bySetor[h.setorMacro] = [];
+    bySetor[h.setorMacro].push(h.symbolNorm);
+  }
+
+  const subsetorBlock = Object.entries(bySubsetor)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([subsetor, symbols]) => `- ${subsetor}: ${symbols.join(", ")}`)
+    .join("\n");
+  const setorBlock = Object.entries(bySetor)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([setor, symbols]) => `- ${setor}: ${symbols.join(", ")}`)
+    .join("\n");
+  const inPortfolioSet = normalizedUserSymbols;
+  const inPortfolioUniverse = universe.filter((h) => inPortfolioSet.has(h.symbolNorm));
+
+  const formatMetric = (v: number | null | undefined, suffix = "") =>
+    Number.isFinite(v as number) ? `${Number(v).toFixed(1)}${suffix}` : "N/D";
+  const rankLine = (h: typeof universe[number], idx: number) => {
+    const rec = calcRecommendationScore(h);
+    const valuation = resolveActiveValuation(h);
+    const upside = valuation.upside;
+    return `${idx + 1}) ${h.symbolNorm} [score ${rec.score} | upside ${formatMetric(upside, "%")} | ROE ${formatMetric(h.roe, "%")} | DY ${formatMetric(h.dividend, "%")} | Dív/EBITDA ${formatMetric(h.divLiqEbitda)}]`;
+  };
+  const rankingBySubsetor = (rows: typeof universe) => {
+    const group: Record<string, typeof universe> = {};
+    rows.forEach((h) => {
+      const key = h.subsetorCanonico;
+      if (!group[key]) group[key] = [];
+      group[key].push(h);
+    });
+    return Object.entries(group)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([subsetor, assets]) => {
+        const ranked = [...assets].sort((a, b) => {
+          const recA = calcRecommendationScore(a).score;
+          const recB = calcRecommendationScore(b).score;
+          if (recA !== recB) return recB - recA;
+          const upA = resolveActiveValuation(a).upside ?? -9999;
+          const upB = resolveActiveValuation(b).upside ?? -9999;
+          if (upA !== upB) return upB - upA;
+          const roeA = Number.isFinite(a.roe ?? Number.NaN) ? Number(a.roe) : -9999;
+          const roeB = Number.isFinite(b.roe ?? Number.NaN) ? Number(b.roe) : -9999;
+          if (roeA !== roeB) return roeB - roeA;
+          const dyA = Number.isFinite(a.dividend ?? Number.NaN) ? Number(a.dividend) : -9999;
+          const dyB = Number.isFinite(b.dividend ?? Number.NaN) ? Number(b.dividend) : -9999;
+          if (dyA !== dyB) return dyB - dyA;
+          const debtA = Number.isFinite(a.divLiqEbitda ?? Number.NaN) ? Number(a.divLiqEbitda) : 9999;
+          const debtB = Number.isFinite(b.divLiqEbitda ?? Number.NaN) ? Number(b.divLiqEbitda) : 9999;
+          return debtA - debtB;
+        });
+        return `- ${subsetor}: ${ranked.map((h, i) => rankLine(h, i)).join(" | ")}`;
+      })
+      .join("\n");
+  };
+  const rankingUniverseBlock = rankingBySubsetor(universe);
+  const rankingPortfolioBlock = inPortfolioUniverse.length > 0 ? rankingBySubsetor(inPortfolioUniverse) : "- N/D";
+
+  const outsidePeerSuggestions = Object.entries(bySubsetor)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([subsetor, symbols]) => {
+      const outsideSymbols = symbols
+        .filter((s) => !inPortfolioSet.has(s))
+        .map((s) => {
+          const asset = universe.find((h) => h.symbolNorm === s);
+          const rec = asset ? calcRecommendationScore(asset) : null;
+          return rec ? `${s} (score ${rec.score}/100 - ${rec.label})` : s;
+        });
+      if (outsideSymbols.length === 0) return null;
+      return `- ${subsetor}: ${outsideSymbols.join(", ")}`;
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  return [
+    "UNIVERSO DE PARES DA APLICAÇÃO (30 ativos, não necessariamente em carteira):",
+    "Regra: para comparação de pares, priorize MESMO SUBSETOR; na falta, amplie para mesmo SETOR_MACRO e explicite a diferença.",
+    "A carteira do usuário serve como contexto de posição/alocação, não como limite dos pares comparáveis.",
+    "MODO PADRÃO (OBRIGATÓRIO): em pedidos de 'pares', 'setor', 'comparar', 'rebalancear' ou 'substituir', usar SETOR COMPLETO (UNIVERSO APP).",
+    "Só usar 'SOMENTE CARTEIRA' quando o usuário pedir explicitamente: 'minha carteira', 'o que eu tenho' ou equivalente.",
+    "IMPORTANTE: o melhor ativo comparável pode estar FORA da carteira atual; destaque isso quando aplicável.",
+    "REGRAS DE MODO DE COMPARAÇÃO:",
+    "- Se o usuário pedir 'compare com seus pares' ou 'compare com o setor', usar SETOR COMPLETO (universo total da aplicação).",
+    "- Se o usuário pedir 'compare com minha carteira' ou 'com o que eu tenho', usar apenas ativos DA CARTEIRA.",
+    "Em pedidos de rebalanceamento/substituição, verifique também pares FORA DA CARTEIRA no mesmo subsetor antes de propor troca de setor.",
+    `Ativos na carteira atual: ${Array.from(inPortfolioSet).sort().join(", ") || "nenhum"}`,
+    "",
+    "RANKING POR SUBSETOR - SETOR COMPLETO (UNIVERSO APP):",
+    rankingUniverseBlock || "- N/D",
+    "",
+    "RANKING POR SUBSETOR - SOMENTE CARTEIRA:",
+    "Use este bloco apenas quando o usuário pedir explicitamente comparação com a carteira.",
+    rankingPortfolioBlock,
+    "",
+    "PARES POR SUBSETOR:",
+    subsetorBlock || "- N/D",
+    "",
+    "PARES FORA DA CARTEIRA (MESMO SUBSETOR):",
+    outsidePeerSuggestions || "- N/D",
+    "",
+    "PARES POR SETOR:",
+    setorBlock || "- N/D",
+  ].join("\n");
+}
+
+function buildAssetPeerContext(symbol: string): string {
+  const normalized = normalizeAiSymbol(symbol);
+  const target = holdings.find((h) => normalizeAiSymbol(h.symbol) === normalized && isInAiUniverse(h.symbol));
+  if (!target) return "";
+  const targetTax = getAiTaxonomy(target.symbol, target.sector, target.subsetor);
+  const universe = holdings.filter((h) => isInAiUniverse(h.symbol));
+  const sameSubsetor = universe
+    .filter((h) => getAiTaxonomy(h.symbol, h.sector, h.subsetor).subsetor === targetTax.subsetor)
+    .map((h) => normalizeAiSymbol(h.symbol))
+    .sort();
+  const sameSetor = universe
+    .filter((h) => getAiTaxonomy(h.symbol, h.sector, h.subsetor).setor_macro === targetTax.setor_macro)
+    .map((h) => normalizeAiSymbol(h.symbol))
+    .sort();
+  return [
+    `Pares no mesmo subsetor (${targetTax.subsetor}): ${sameSubsetor.join(", ") || "N/D"}`,
+    `Pares no mesmo setor_macro (${targetTax.setor_macro}): ${sameSetor.join(", ") || "N/D"}`,
+  ].join("\n");
 }
 
 // Build context for a specific asset (used by AiChatWidget for RAG)
 export function buildAssetContext(symbol: string): string {
   const h = holdings.find(a => a.symbol === symbol);
   if (!h) return `Ativo ${symbol} não encontrado no dataset.`;
+  if (!isInAiUniverse(h.symbol)) return `Ativo ${symbol} não está no universo de análise da IA.`;
   const rec = calcRecommendationScore(h);
   const activeValuation = resolveActiveValuation(h);
   const isStateOwned = ["PETR3", "PETR4", "BBAS3", "SAPR11"].includes(h.symbol);
+  const tax = getAiTaxonomy(h.symbol, h.sector, h.subsetor);
+  const peerContext = buildAssetPeerContext(h.symbol);
+  const aiName = getAiPreferredAssetName(h.symbol, h.name);
+  const aiDescription = getAiSafeDescription(h.symbol, h.description);
 
   const grahamVsScore =
     "Classificação do Score: o score final considera também rentabilidade, endividamento, crescimento, dividendos e ajustes estruturais.";
@@ -3169,9 +3444,12 @@ export function buildAssetContext(symbol: string): string {
   const trailing12m = getTrailing12mReturnPct(symbol);
   const assetReturn12m = trailing12m === null ? "N/A" : trailing12m.toFixed(2);
 
-  return `Dados atuais de ${h.symbol} (${h.name}):
+  return `Dados atuais de ${h.symbol} (${aiName}):
 Preço: R$ ${h.price} | Variação: ${h.changePercent >= 0 ? '+' : ''}${h.changePercent}%
 Market Cap: ${h.marketCap} | Setor: ${h.sector} / ${h.subsetor}
+Setor macro (canônico): ${tax.setor_macro} | Subsetor (canônico): ${tax.subsetor}
+Modelo de negócio: ${tax.modelo_negocio}
+Perfil dividendos: ${tax.perfil_dividendos} | Perfil defensivo: ${tax.perfil_defensivo} | Risco estatal: ${tax.risco_estatal}
 Risco Estatal/Governança: ${isStateOwned ? "SIM (empresa estatal, sujeita a maior interferência governamental/política)" : "NÃO"}
 Índice de Basileia: ${h.subsetor === "Bancos" ? `${h.basileia ?? 'N/A'}%` : 'N/A'}
 P/L: ${h.pe ?? 'N/A'} | P/VP: ${h.pvp ?? 'N/A'} | DY: ${h.dividend}% | PAYOUT: ${h.payout ?? 'N/A'}%
@@ -3189,7 +3467,9 @@ Upside da Referência: ${activeValuation.upside !== null ? `${activeValuation.up
 Leitura Graham vs Score: ${grahamVsScore}
 ${scoreMethodology}
 Performance 12 meses: ${h.symbol} ${assetReturn12m}% | IBOV ${benchReturns.IBOV ?? 'N/A'}% | CDI ${benchReturns.CDI ?? 'N/A'}% | IPCA ${benchReturns.IPCA ?? 'N/A'}%
-Descrição: ${h.description}`;
+${peerContext}
+Observação qualitativa: ${tax.observacao_qualitativa}
+Descrição: ${aiDescription}`;
 }
 
 

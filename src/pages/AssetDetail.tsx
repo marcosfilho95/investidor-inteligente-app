@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getDailyPriceState, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getTrailing12mReturnPct, mergeHoldingWithDynamicMetrics, getMarketHistory, type DynamicFundamentals } from "@/data/investments";
+import { holdings, getDailyPriceState, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getTrailing12mReturnPct, mergeHoldingWithDynamicMetrics, getMarketHistory, getAiTaxonomy, type DynamicFundamentals } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
 import { loadDynamicFundamentalsBySymbol } from "@/data/fundamentalsLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
@@ -30,6 +30,8 @@ import { getAssetRouteSymbol, getCanonicalSymbol, getDisplaySymbol } from "@/lib
 const periods = ["DAILY", "7 DIAS", "30 DIAS", "6 MESES", "YTD", "1 ANO", "5 ANOS"];
 const periodMap: Record<string, string> = { "DAILY": "1D", "7 DIAS": "7D", "30 DIAS": "30D", "6 MESES": "6M", "YTD": "YTD", "1 ANO": "1A", "5 ANOS": "5A" };
 const Y_DOMAIN_ADJUST_PERIODS = new Set(["DAILY", "7 DIAS", "30 DIAS", "6 MESES", "YTD"]);
+type ComparisonChartPoint = Record<string, string | number>;
+type TickPayload = { value?: string };
 
 function computeVisualDomain(
   values: number[],
@@ -113,7 +115,7 @@ const AssetDetail = () => {
   const [chartsReady, setChartsReady] = useState(false);
   const [orderQtyInput, setOrderQtyInput] = useState("1");
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [investmentComparison, setInvestmentComparison] = useState<Record<string, any>[]>([]);
+  const [investmentComparison, setInvestmentComparison] = useState<ComparisonChartPoint[]>([]);
   const [comparisonMeta, setComparisonMeta] = useState<{
     lastUpdatedAt: string | null;
     sources: { ibov: "ok" | "stale"; cdi: "ok" | "stale"; ipca: "ok" | "stale" };
@@ -129,7 +131,7 @@ const AssetDetail = () => {
   const [intradayCurrentPoint, setIntradayCurrentPoint] = useState<{ datetime: string; price: number } | null>(null);
   const [intradayLastUpdatedLabel, setIntradayLastUpdatedLabel] = useState<string | null>(null);
   const [dailyPriceHydrated, setDailyPriceHydrated] = useState(false);
-  const { addHolding, sellHolding, userHoldings } = useUserHoldings();
+  const { addHolding, sellHolding, userHoldings, enrichedHoldings, userTrades, portfolioMetrics } = useUserHoldings();
   const sevenDayLastUpdatedLabel = useMemo(() => {
     const last = sevenDayPriceHistory[sevenDayPriceHistory.length - 1];
     if (!last) return null;
@@ -172,23 +174,18 @@ const AssetDetail = () => {
   }, [baseAsset?.symbol]);
 
   const asset = useMemo(
-    () => (baseAsset ? mergeHoldingWithDynamicMetrics(baseAsset, dynamicFundamentals) : undefined),
+    () => mergeHoldingWithDynamicMetrics(baseAsset ?? holdings[0], dynamicFundamentals),
     [baseAsset, dynamicFundamentals]
   );
-
-  if (!asset) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg font-semibold">Ativo não encontrado</p>
-          <Link to="/ativos" className="text-primary text-sm mt-2 inline-block hover:underline">Voltar para ativos</Link>
-        </div>
-      </div>
-    );
-  }
+  const hasAsset = Boolean(baseAsset);
 
   const userHolding = userHoldings.find(h => h.symbol === asset.symbol);
   const displaySymbol = getDisplaySymbol(asset.symbol);
+  const assetTaxonomy = useMemo(
+    () => getAiTaxonomy(asset.symbol, asset.sector, asset.subsetor),
+    [asset.symbol, asset.sector, asset.subsetor]
+  );
+  const displayAssetName = asset.symbol === "AXIA6" ? "AXIA6" : asset.name;
   const recommendation = useMemo(() => calcRecommendationScore(asset), [asset]);
   const activeValuation = useMemo(() => resolveActiveValuation(asset), [asset]);
   const activeValuationType = activeValuation.type;
@@ -199,6 +196,53 @@ const AssetDetail = () => {
   const activeUpsideFormatted = activeUpside !== null ? activeUpside.toFixed(1) : null;
   const recommendationDisclaimer =
     "Observação: O score fundamentalista combina valuation, rentabilidade, endividamento, crescimento, dividendos e ajustes estruturais, como risco setorial e risco estatal quando aplicável.";
+  const sectorMapForAi = enrichedHoldings.reduce<Record<string, number>>((acc, h) => {
+    const tax = getAiTaxonomy(h.symbol, h.sector, h.subsetor);
+    acc[tax.setor_macro] = (acc[tax.setor_macro] || 0) + h.allocation;
+    return acc;
+  }, {});
+  const aiPortfolioContext = {
+    summary: {
+      totalCloseValue: portfolioMetrics.totalCloseValue,
+      totalGain: portfolioMetrics.totalGain,
+      dailyChange: portfolioMetrics.dailyChange,
+      rentabilityPct: portfolioMetrics.totalGainPercent,
+      assetCount: enrichedHoldings.length,
+      sectorCount: Object.keys(sectorMapForAi).length,
+    },
+    sectorAllocation: Object.entries(sectorMapForAi)
+      .map(([sector, allocationPct]) => ({ sector, allocationPct }))
+      .sort((a, b) => b.allocationPct - a.allocationPct),
+    positions: [...enrichedHoldings]
+      .sort((a, b) => b.value - a.value)
+      .map((h) => {
+        const tax = getAiTaxonomy(h.symbol, h.sector, h.subsetor);
+        return {
+        symbol: h.symbol,
+        name: h.symbol === "AXIA6" ? "AXIA6" : h.name,
+        sector: tax.setor_macro,
+        subsetor: tax.subsetor,
+        shares: h.shares,
+        avgPrice: h.avgPrice,
+        currentPrice: h.price,
+        positionValue: h.value,
+        allocationPct: h.allocation,
+        positionPnl: h.totalGainCloseValue ?? h.totalGainValue ?? (h.price - h.avgPrice) * h.shares,
+        score: h.score ?? null,
+        upsidePct: h.upside ?? null,
+      };
+      }),
+    recentTrades: [...userTrades]
+      .sort((a, b) => new Date(b.traded_at || "").getTime() - new Date(a.traded_at || "").getTime())
+      .slice(0, 20)
+      .map((t) => ({
+        symbol: t.symbol,
+        side: t.side,
+        shares: t.shares,
+        price: t.price,
+        traded_at: t.traded_at,
+      })),
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -557,6 +601,17 @@ const AssetDetail = () => {
     };
   }, [chartsReady, asset.symbol, selectedPeriod]);
 
+  if (!hasAsset) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg font-semibold">Ativo não encontrado</p>
+          <Link to="/ativos" className="text-primary text-sm mt-2 inline-block hover:underline">Voltar para ativos</Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
@@ -593,7 +648,7 @@ const AssetDetail = () => {
                     {displayedPriceLabel}
                   </p>
 
-                  <p className="min-w-0 truncate text-base max-[390px]:text-[0.95rem] leading-tight text-muted-foreground">{asset.name}</p>
+                  <p className="min-w-0 truncate text-base max-[390px]:text-[0.95rem] leading-tight text-muted-foreground">{displayAssetName}</p>
                   <div className="flex items-center gap-2 self-center justify-self-end">
                     <div className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold font-mono ${isPriceReady ? (isPositive ? "bg-gain/10 text-gain" : "bg-loss/10 text-loss") : "bg-muted/30 text-muted-foreground"}`}>
                       {isPriceReady && (isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />)}
@@ -624,10 +679,10 @@ const AssetDetail = () => {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2.5 flex-wrap">
                         <h1 className="text-[1.8rem] leading-none font-bold tracking-tight">{displaySymbol}</h1>
-                        <span className="hidden min-[804px]:inline-flex text-[11px] px-2.5 py-1 rounded-full bg-transparent text-primary font-semibold border border-primary/30">{asset.sector}</span>
-                        <span className="hidden min-[804px]:inline-flex text-[11px] px-2.5 py-1 rounded-full bg-muted text-muted-foreground border border-border/30">{asset.subsetor}</span>
+                        <span className="hidden min-[804px]:inline-flex text-[11px] px-2.5 py-1 rounded-full bg-transparent text-primary font-semibold border border-primary/30">{assetTaxonomy.setor_macro}</span>
+                        <span className="hidden min-[804px]:inline-flex text-[11px] px-2.5 py-1 rounded-full bg-muted text-muted-foreground border border-border/30">{assetTaxonomy.subsetor}</span>
                       </div>
-                      <p className="mt-1.5 text-base leading-tight text-muted-foreground">{asset.name}</p>
+                      <p className="mt-1.5 text-base leading-tight text-muted-foreground">{displayAssetName}</p>
                       {userHolding && (
                         <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-primary">
                           <Star className="h-3 w-3 fill-primary" />
@@ -844,7 +899,7 @@ const AssetDetail = () => {
                       <stop offset="95%" stopColor="hsl(142, 72%, 48%)" stopOpacity={0} />
                     </linearGradient></defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
-                    <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={9} tickLine={false} axisLine={false} tick={({ x, y, payload }: any) => payload.value ? <text x={x} y={y + 12} textAnchor="middle" fill="hsl(215, 14%, 50%)" fontSize={9}>{payload.value}</text> : null} interval={Math.max(0, Math.floor(priceHistory.length / 10))} />
+                    <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={9} tickLine={false} axisLine={false} tick={({ x, y, payload }: { x?: number; y?: number; payload?: TickPayload }) => payload?.value && Number.isFinite(x) && Number.isFinite(y) ? <text x={x} y={(y as number) + 12} textAnchor="middle" fill="hsl(215, 14%, 50%)" fontSize={9}>{payload.value}</text> : null} interval={Math.max(0, Math.floor(priceHistory.length / 10))} />
                     <YAxis
                       stroke="hsl(215, 14%, 50%)"
                       fontSize={11}
@@ -857,7 +912,10 @@ const AssetDetail = () => {
                     <Tooltip
                       contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px", fontFamily: "JetBrains Mono", color: "hsl(var(--foreground))" }}
                       formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Preco"]}
-                      labelFormatter={(_label: string, payload: any[]) => payload?.[0]?.payload?.tooltipLabel ?? _label}
+                      labelFormatter={(_label: string, payload: unknown[]) => {
+                        const first = payload?.[0] as { payload?: { tooltipLabel?: string } } | undefined;
+                        return first?.payload?.tooltipLabel ?? _label;
+                      }}
                     />
                     <Area
                       type="monotone"
@@ -899,8 +957,8 @@ const AssetDetail = () => {
                       fontSize={9}
                       tickLine={false}
                       axisLine={false}
-                      tick={({ x, y, payload }: any) =>
-                        payload.value ? (
+                      tick={({ x, y, payload }: { x?: number; y?: number; payload?: TickPayload }) =>
+                        payload?.value && Number.isFinite(x) && Number.isFinite(y) ? (
                           <text x={x} y={y + 12} textAnchor="middle" fill="hsl(215, 14%, 50%)" fontSize={9}>
                             {payload.value}
                           </text>
@@ -927,7 +985,10 @@ const AssetDetail = () => {
                         color: "hsl(var(--foreground))",
                       }}
                       formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`]}
-                      labelFormatter={(_label: string, payload: any[]) => payload?.[0]?.payload?.tooltipLabel ?? _label}
+                      labelFormatter={(_label: string, payload: unknown[]) => {
+                        const first = payload?.[0] as { payload?: { tooltipLabel?: string } } | undefined;
+                        return first?.payload?.tooltipLabel ?? _label;
+                      }}
                     />
                     <Legend wrapperStyle={{ fontSize: "11px" }} />
                     <Area
@@ -1004,10 +1065,13 @@ const AssetDetail = () => {
             <AiChatWidget
               page="ativo"
               ticker={asset.symbol}
+              userSymbols={enrichedHoldings.map((h) => h.symbol)}
+              userHoldingsData={enrichedHoldings.map((h) => ({ symbol: h.symbol, shares: h.shares, avgPrice: h.avgPrice }))}
+              portfolioContext={aiPortfolioContext}
               fullHeight
               className="h-full"
               context={`Analise de ${displaySymbol}`}
-              welcomeMessage={`Analisando ${displaySymbol} (${asset.name})...\n\n${asset.description}\n\nSetor: ${asset.sector} / ${asset.subsetor}\nScore: ${recommendation.score}/100 (${recommendation.label})\nP/L: ${asset.pe ?? 'N/A'} | DY: ${asset.dividend}% | ROE: ${asset.roe ?? 'N/A'}%\n${activeValuationType ? `${activeValuationLabel}: R$ ${activeFairPrice?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${activeUpsideFormatted}% upside)\n` : ""}\n${recommendationDisclaimer}\n\nPergunte sobre indicadores, riscos ou estrategias para este ativo.`}
+              welcomeMessage={`Analisando ${displaySymbol} (${displayAssetName})...\n\n${asset.description}\n\nSetor: ${assetTaxonomy.setor_macro} / ${assetTaxonomy.subsetor}\nScore: ${recommendation.score}/100 (${recommendation.label})\nP/L: ${asset.pe ?? 'N/A'} | DY: ${asset.dividend}% | ROE: ${asset.roe ?? 'N/A'}%\n${activeValuationType ? `${activeValuationLabel}: R$ ${activeFairPrice?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${activeUpsideFormatted}% upside)\n` : ""}\n${recommendationDisclaimer}\n\nPergunte sobre indicadores, riscos ou estrategias para este ativo.`}
             />
           </div>
 
@@ -1029,7 +1093,7 @@ const AssetDetail = () => {
                     <IndicatorCard label="PAYOUT" value={asset.payout !== null ? `${asset.payout.toFixed(2)}%` : null} tooltip={indicatorTooltips.payout} />
                     <IndicatorCard label="P/EBIT" value={asset.pEbit?.toFixed(2) ?? null} tooltip={indicatorTooltips.pEbit} />
                     <IndicatorCard label="EV/EBIT" value={asset.evEbit?.toFixed(1) ?? null} tooltip={indicatorTooltips.evEbit} />
-                    {asset.subsetor === "Bancos"
+                    {assetTaxonomy.subsetor === "Bancos"
                       ? (
                         <IndicatorCard
                           label="Indice Basileia"

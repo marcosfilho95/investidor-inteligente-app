@@ -1,12 +1,19 @@
-import { type ChangeEvent, useEffect, useRef, useState } from "react";
+﻿import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Mail, Calendar, LogOut, ChevronRight, Wallet, TrendingUp, PieChart, Camera, GraduationCap } from "lucide-react";
+import { User, Mail, Calendar, LogOut, ChevronRight, Wallet, TrendingUp, PieChart, Camera, GraduationCap, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 import { useToast } from "@/hooks/use-toast";
+import {
+  loadInvestorProfileFromStorage,
+  normalizeInvestorProfile,
+  type InvestorProfileSummary,
+} from "@/lib/investorIntelligence";
+import { InvestorProfileOnboardingModal } from "@/components/InvestorProfileOnboardingModal";
+import { loadInvestorProfileFromDatabase, persistInvestorProfile } from "@/lib/investorProfilePersistence";
 
 const Profile = () => {
   const [userName, setUserName] = useState("Investidor");
@@ -18,6 +25,8 @@ const Profile = () => {
   const [savingUsername, setSavingUsername] = useState(false);
   const [userCreatedAt, setUserCreatedAt] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [investorProfile, setInvestorProfile] = useState<InvestorProfileSummary | null>(null);
+  const [showProfileOnboarding, setShowProfileOnboarding] = useState(false);
   const [loading, setLoading] = useState(true);
   const { enrichedHoldings, totalValue, portfolioMetrics } = useUserHoldings();
   const navigate = useNavigate();
@@ -73,7 +82,7 @@ const Profile = () => {
     });
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) {
         navigate("/login");
         return;
@@ -84,6 +93,15 @@ const Profile = () => {
       setUserName(name);
       setUserEmail(data.user.email || "");
       setUserCreatedAt(data.user.created_at || "");
+      const profileFromDatabase = await loadInvestorProfileFromDatabase(data.user.id);
+      const profileFromMetadata = normalizeInvestorProfile(data.user.user_metadata?.investor_profile);
+      const profileFromStorage =
+        loadInvestorProfileFromStorage(data.user.id) ||
+        loadInvestorProfileFromStorage(data.user.email || "");
+      const initialProfile = profileFromDatabase || profileFromMetadata || profileFromStorage;
+      if (initialProfile) {
+        setInvestorProfile(initialProfile);
+      }
       const persistedAvatar = localStorage.getItem(`ii_profile_avatar_${data.user.email || name}`);
       if (persistedAvatar) setAvatarUrl(persistedAvatar);
 
@@ -175,15 +193,15 @@ const Profile = () => {
       setUsernameDraft(persistedUsername);
       setUsernameFinalized(true);
       toast({ title: "Nome de usuário salvo", description: "Agora você pode entrar com usuário ou e-mail." });
-    } catch (error: any) {
-      const errMsg = String(error?.message || "");
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error || "");
       toast({
         title: "Erro ao salvar",
         description: errMsg.includes("profiles_username_unique_idx")
           ? "Esse nome de usuário já está em uso."
           : errMsg.includes("username_locked_once_set")
             ? "Nome de usuário já foi definido e não pode mais ser alterado."
-            : error?.message || "Não foi possível atualizar o nome de usuário.",
+            : errMsg || "Não foi possível atualizar o nome de usuário.",
         variant: "destructive",
       });
     } finally {
@@ -240,10 +258,11 @@ const Profile = () => {
       localStorage.setItem("ii_profile_avatar_current", persistedAvatar);
       window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { key: avatarStorageKey, url: persistedAvatar } }));
       toast({ title: "Foto atualizada", description: "Sua foto de perfil foi sincronizada entre dispositivos." });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error || "");
       toast({
         title: "Erro ao salvar foto",
-        description: error?.message || "Nao foi possivel salvar a foto no perfil.",
+        description: errMsg || "Nao foi possivel salvar a foto no perfil.",
         variant: "destructive",
       });
     }
@@ -259,10 +278,11 @@ const Profile = () => {
       localStorage.removeItem("ii_profile_avatar_current");
       window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { key: avatarStorageKey, url: null } }));
       toast({ title: "Foto removida", description: "Avatar voltou para o padrao." });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error || "");
       toast({
         title: "Erro ao remover foto",
-        description: error?.message || "Nao foi possivel remover a foto.",
+        description: errMsg || "Nao foi possivel remover a foto.",
         variant: "destructive",
       });
     }
@@ -401,6 +421,52 @@ const Profile = () => {
 
           <div>
             <div className="flex items-center gap-2 mb-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Perfil do Investidor</h2>
+            </div>
+
+            <AnimatedCard delay={0.18}>
+              <div className="glass-card p-4 sm:p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-primary/12 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="h-4 w-4 text-primary" />
+                      </div>
+                      <p className="text-base font-semibold leading-tight">
+                        {investorProfile ? investorProfile.type : "Perfil não definido"}
+                      </p>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                      {investorProfile ? (
+                        <>
+                          <span className="inline-flex items-center rounded-full bg-muted/50 px-2.5 py-1 text-muted-foreground">
+                            {investorProfile.horizon}
+                          </span>
+                          <span className="inline-flex items-center rounded-full bg-muted/50 px-2.5 py-1 text-muted-foreground">
+                            {investorProfile.mainGoal}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Responda o questionário para personalizar as análises da IA.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowProfileOnboarding(true)}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors whitespace-nowrap"
+                  >
+                    {investorProfile ? "Refazer questionário" : "Responder questionário"}
+                  </button>
+                </div>
+              </div>
+            </AnimatedCard>
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-3">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Informações da Conta</h2>
             </div>
 
@@ -516,9 +582,33 @@ const Profile = () => {
           </AnimatedCard>
         </main>
       </PageTransition>
+
+      <InvestorProfileOnboardingModal
+        open={showProfileOnboarding}
+        initialAnswers={investorProfile?.answers}
+        onOpenChange={setShowProfileOnboarding}
+        onComplete={async (profile) => {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (!user) return;
+          await persistInvestorProfile(
+            { id: user.id, email: user.email, user_metadata: user.user_metadata as { name?: string; [key: string]: unknown } },
+            profile
+          );
+          setInvestorProfile(profile);
+          toast({
+            title: "Perfil atualizado",
+            description: `${profile.type}.`,
+          });
+        }}
+      />
     </div>
   );
 };
 
 export default Profile;
+
+
+
 

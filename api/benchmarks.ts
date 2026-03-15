@@ -190,7 +190,16 @@ async function buildPayload(fromIso: string, toIso: string): Promise<BenchmarksP
   };
 }
 
-export default async function handler(req: any, res: any) {
+type ApiRequest = {
+  method?: string;
+  query?: Record<string, string | string[] | undefined>;
+};
+
+type ApiResponse = {
+  status: (code: number) => { json: (body: unknown) => void };
+};
+
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "GET") {
     res.status(405).json({ error: "Method not allowed" });
     return;

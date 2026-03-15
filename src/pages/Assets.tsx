@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, TrendingUp, TrendingDown, PieChart, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
@@ -6,6 +6,7 @@ import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import {
   getDailyPriceState,
   getLatestIntradayPointForCurrentSession,
+  getAiTaxonomy,
   holdings,
   invalidateIntradayHistoryCache,
 } from "@/data/investments";
@@ -21,7 +22,23 @@ const Assets = () => {
   const [pricesReady, setPricesReady] = useState<boolean>(() => isRealDataLoaded());
   const [livePointsHydrated, setLivePointsHydrated] = useState(false);
 
-  const categories = ["Todos", ...Array.from(new Set(holdings.map((h) => h.sector)))];
+  const canonicalMetaBySymbol = useMemo(() => {
+    return new Map(
+      holdings.map((h) => [
+        h.symbol,
+        {
+          sector: getAiTaxonomy(h.symbol, h.sector, h.subsetor).setor_macro,
+          subsetor: getAiTaxonomy(h.symbol, h.sector, h.subsetor).subsetor,
+          displayName: h.symbol === "AXIA6" ? "AXIA6" : h.name,
+        },
+      ])
+    );
+  }, []);
+
+  const categories = useMemo(
+    () => ["Todos", ...Array.from(new Set(holdings.map((h) => canonicalMetaBySymbol.get(h.symbol)?.sector || h.sector)))],
+    [canonicalMetaBySymbol]
+  );
   const totalAssets = holdings.length;
   const positiveCount = holdings.filter((h) => h.changePercent >= 0).length;
   const negativeCount = holdings.filter((h) => h.changePercent < 0).length;
@@ -100,13 +117,15 @@ const Assets = () => {
   }, []);
 
   const filtered = holdings.filter((h) => {
+    const canonical = canonicalMetaBySymbol.get(h.symbol);
+    const canonicalSector = canonical?.sector || h.sector;
     const displaySymbol = getDisplaySymbol(h.symbol);
     const normalizedSearch = normalizeSearchText(search);
     const matchSearch =
       normalizeSearchText(h.symbol).includes(normalizedSearch) ||
       normalizeSearchText(displaySymbol).includes(normalizedSearch) ||
       normalizeSearchText(h.name).includes(normalizedSearch);
-    const matchCategory = categoryFilter === "Todos" || h.sector === categoryFilter;
+    const matchCategory = categoryFilter === "Todos" || canonicalSector === categoryFilter;
     return matchSearch && matchCategory;
   });
 
@@ -198,6 +217,10 @@ const Assets = () => {
             {filtered.map((asset, i) => (
               <AnimatedCard key={asset.symbol} delay={i * 0.03}>
                 {(() => {
+                  const canonical = canonicalMetaBySymbol.get(asset.symbol);
+                  const displaySector = canonical?.sector || asset.sector;
+                  const displaySubsetor = canonical?.subsetor || asset.subsetor;
+                  const displayName = canonical?.displayName || asset.name;
                   const intradayPoint = livePoints[asset.symbol] ?? null;
                   const dailyState = getDailyPriceState(asset.symbol, intradayPoint);
                   const dailyChangePercent =
@@ -234,11 +257,11 @@ const Assets = () => {
                               <p className="text-sm font-bold group-hover:text-primary transition-colors">
                                 {getDisplaySymbol(asset.symbol)}
                               </p>
-                              <p className="text-xs text-muted-foreground leading-tight">{asset.name}</p>
+                              <p className="text-xs text-muted-foreground leading-tight">{displayName}</p>
                             </div>
                           </div>
                           <span className="text-[10px] px-2 py-0.5 rounded-lg bg-accent/80 text-muted-foreground border border-border/30">
-                            {asset.sector}
+                            {displaySector}
                           </span>
                         </div>
 
@@ -249,7 +272,7 @@ const Assets = () => {
                                 ? `R$ ${dailyState.lastPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
                                 : "—"}
                             </p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">{asset.subsetor}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">{displaySubsetor}</p>
                           </div>
                           <div className="flex flex-col items-end gap-1">
                             <div className={`flex items-center gap-1 px-2 py-0.5 rounded-lg ${showRealPrice ? (isPositive ? "bg-gain/10" : "bg-loss/10") : "bg-muted/20"}`}>

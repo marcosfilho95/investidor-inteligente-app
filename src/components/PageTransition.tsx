@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ReactNode } from "react";
+import type { HTMLMotionProps } from "framer-motion";
 
 interface PageTransitionProps {
   children: ReactNode;
@@ -17,7 +18,12 @@ export function PageTransition({ children }: PageTransitionProps) {
   );
 }
 
-export function AnimatedCard({ children, delay = 0, className = "", ...rest }: { children: ReactNode; delay?: number; className?: string; [key: string]: any }) {
+type AnimatedCardProps = HTMLMotionProps<"div"> & {
+  children: ReactNode;
+  delay?: number;
+};
+
+export function AnimatedCard({ children, delay = 0, className = "", ...rest }: AnimatedCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.992 }}

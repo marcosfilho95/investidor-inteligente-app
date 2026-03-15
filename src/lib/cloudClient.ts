@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 const DEFAULT_PROJECT_ID = "qjocvozhlycmqcodwzqp";
@@ -50,7 +51,7 @@ function createDisabledClient() {
     functions: {
       invoke: async () => ({ data: null, error: disabledError }),
     },
-  } as any;
+  } as unknown as SupabaseClient<Database>;
 }
 
 const hasConfig =

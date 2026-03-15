@@ -2,8 +2,9 @@
 import { Bot, Send, Sparkles, Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
-import { buildDatasetContext, buildAssetContext } from "@/data/investments";
+import { buildDatasetContext, buildAssetContext, buildPeerUniverseContext } from "@/data/investments";
 import { getCanonicalSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
+import type { InvestorProfileSummary, PortfolioRiskSummary } from "@/lib/investorIntelligence";
 
 interface AiChatWidgetProps {
   context?: string;
@@ -13,12 +14,122 @@ interface AiChatWidgetProps {
   ticker?: string;
   userSymbols?: string[];
   userHoldingsData?: { symbol: string; shares: number; avgPrice: number }[];
+  portfolioContext?: {
+    summary?: {
+      totalCloseValue?: number;
+      totalGain?: number;
+      dailyChange?: number;
+      rentabilityPct?: number;
+      assetCount?: number;
+      sectorCount?: number;
+      estimatedDividends?: number;
+    };
+    sectorAllocation?: Array<{ sector: string; allocationPct: number }>;
+    positions?: Array<{
+      symbol: string;
+      name?: string;
+      sector?: string;
+      subsetor?: string;
+      shares?: number;
+      avgPrice?: number;
+      currentPrice?: number;
+      positionValue?: number;
+      allocationPct?: number;
+      positionPnl?: number;
+      score?: number | null;
+      upsidePct?: number | null;
+      alerts?: string[];
+    }>;
+    recentTrades?: Array<{
+      symbol: string;
+      side: "buy" | "sell";
+      shares: number;
+      price: number;
+      traded_at: string;
+    }>;
+    investorProfile?: InvestorProfileSummary | null;
+    portfolioRisk?: PortfolioRiskSummary | null;
+  };
   className?: string;
   fullHeight?: boolean;
 }
 
 type Msg = { role: "user" | "assistant"; content: string };
 const HODL_AVATAR_SRC = "/images/dffsfd.png";
+
+function formatSignedMoneyPtBr(value?: number): string {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "N/D";
+  const abs = Math.abs(num).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (num > 0) return `+R$ ${abs}`;
+  if (num < 0) return `-R$ ${abs}`;
+  return `R$ ${abs}`;
+}
+
+function buildDirectPortfolioReply(
+  inputText: string,
+  portfolioContext?: AiChatWidgetProps["portfolioContext"]
+): string | null {
+  if (!portfolioContext?.summary) return null;
+  const q = String(inputText || "").toLowerCase().trim();
+  const summary = portfolioContext.summary;
+  const totalGain = Number(summary.totalGain);
+  const dailyChange = Number(summary.dailyChange);
+  const rentabilityPct = Number(summary.rentabilityPct);
+  const totalCloseValue = Number(summary.totalCloseValue);
+
+  const broadAnalysisHints = [
+    "carteira completa",
+    "todos os meus numeros",
+    "todos meus numeros",
+    "todos os números",
+    "todos meus números",
+    "meus ativos",
+    "cada ativo",
+    "preco medio",
+    "preço médio",
+    "setor",
+    "setores",
+    "concentr",
+    "aloc",
+    "analis",
+    "resumo",
+    "historico",
+    "histórico",
+    "posicoes",
+    "posições",
+  ];
+  const hasBroadIntent = broadAnalysisHints.some((hint) => q.includes(hint));
+  const hasMultiIntentSeparators = q.includes(",") || q.includes(";") || q.includes(" e ");
+  const wordCount = q.split(/\s+/).filter(Boolean).length;
+  if (hasBroadIntent || hasMultiIntentSeparators || wordCount > 10) {
+    return null;
+  }
+
+  const asksTotalResult =
+    /(preju[ií]zo|lucro)\s*(total)?/.test(q) ||
+    /resultado\s*(total)?/.test(q) ||
+    /quanto\s*(estou|eu)\s*(no|de)\s*(preju[ií]zo|lucro)/.test(q);
+  const asksDailyResult = /(lucro|preju[ií]zo|resultado)\s*(do|da)?\s*(dia|di[áa]rio)/.test(q);
+  const asksRentability = /rentabilidade|retorno\s*acumulado/.test(q);
+  const asksPatrimony = /patrim[oô]nio|valor\s*total\s*da\s*carteira/.test(q);
+
+  if (asksTotalResult && Number.isFinite(totalGain)) {
+    if (totalGain < 0) return `Seu prejuízo total atual (posições abertas) é ${formatSignedMoneyPtBr(totalGain)}.`;
+    if (totalGain > 0) return `Seu lucro total atual (posições abertas) é ${formatSignedMoneyPtBr(totalGain)}.`;
+    return `Seu resultado total atual (posições abertas) está em ${formatSignedMoneyPtBr(totalGain)}.`;
+  }
+  if (asksDailyResult && Number.isFinite(dailyChange)) {
+    return `Seu resultado diário atual é ${formatSignedMoneyPtBr(dailyChange)}.`;
+  }
+  if (asksRentability && Number.isFinite(rentabilityPct)) {
+    return `Sua rentabilidade histórica acumulada atual é ${rentabilityPct.toFixed(2).replace(".", ",")}%.`;
+  }
+  if (asksPatrimony && Number.isFinite(totalCloseValue)) {
+    return `Seu patrimônio atual consolidado é R$ ${totalCloseValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`;
+  }
+  return null;
+}
 
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || import.meta.env.SUPABASE_PROJECT_ID;
 const SUPABASE_URL =
@@ -99,7 +210,18 @@ function HodlAvatar({ size = 20, rounded = "rounded-lg" }: { size?: number; roun
   );
 }
 
-export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, userSymbols, userHoldingsData, className = "", fullHeight = false }: AiChatWidgetProps) {
+export function AiChatWidget({
+  context,
+  welcomeMessage,
+  compact,
+  page,
+  ticker,
+  userSymbols,
+  userHoldingsData,
+  portfolioContext,
+  className = "",
+  fullHeight = false,
+}: AiChatWidgetProps) {
   const initialWelcome = welcomeMessage || "Olá! Sou o Hodl 🤖, seu assistente inteligente. Como posso te ajudar hoje?";
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([
@@ -174,9 +296,16 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
     if (!overrideInput) setInput("");
     setIsLoading(true);
 
+    const directReply = buildDirectPortfolioReply(text, portfolioContext);
+    if (directReply) {
+      setMessages([...newMessages, { role: "assistant", content: directReply }]);
+      setIsLoading(false);
+      return;
+    }
+
     let assistantContent = "";
     let displayContent = "";
-    let typingQueue: string[] = [];
+    const typingQueue: string[] = [];
     let isTyping = false;
 
     const processTypingQueue = () => {
@@ -219,10 +348,16 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
       }
 
       // Build body with RAG context
-      const body: Record<string, any> = {
+      const body: Record<string, unknown> = {
         messages: newMessages.map(m => ({ role: m.role, content: m.content })),
         page: page || "dashboard",
       };
+
+      if (portfolioContext) {
+        body.portfolioContext = portfolioContext;
+      }
+      body.userSymbols = userSymbols ?? [];
+      body.peerUniverse = normalizeTickerAliasesInContext(buildPeerUniverseContext(userSymbols));
 
       // Inject ticker-specific context for asset pages
       if (ticker) {
@@ -230,7 +365,6 @@ export function AiChatWidget({ context, welcomeMessage, compact, page, ticker, u
         body.ticker = canonicalTicker;
         body.currentData = normalizeTickerAliasesInContext(buildAssetContext(canonicalTicker));
       } else {
-        body.userSymbols = userSymbols ?? [];
         body.dataset = normalizeTickerAliasesInContext(buildDatasetContext(userSymbols, userHoldingsData));
       }
 

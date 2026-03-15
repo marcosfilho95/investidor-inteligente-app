@@ -9,11 +9,21 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
+import { InvestorProfileOnboardingModal } from "@/components/InvestorProfileOnboardingModal";
+import { normalizeInvestorProfile, loadInvestorProfileFromStorage, type InvestorProfileSummary } from "@/lib/investorIntelligence";
+import { loadInvestorProfileFromDatabase, persistInvestorProfile } from "@/lib/investorProfilePersistence";
 
 const Index = () => {
   const [userName, setUserName] = useState(() => localStorage.getItem("ii_user_name") || "Investidor");
   const [minDelayDone, setMinDelayDone] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{
+    id: string;
+    email?: string | null;
+    user_metadata?: { name?: string; [key: string]: unknown };
+  } | null>(null);
+  const [investorProfile, setInvestorProfile] = useState<InvestorProfileSummary | null>(null);
+  const [showProfileOnboarding, setShowProfileOnboarding] = useState(false);
   const { enrichedHoldings, loading, userTrades, portfolioMetrics } = useUserHoldings();
 
   useEffect(() => {
@@ -24,8 +34,40 @@ const Index = () => {
         setUserName(first);
         localStorage.setItem("ii_user_name", first);
       }
+      if (data.user) {
+        setCurrentUser({
+          id: data.user.id,
+          email: data.user.email,
+          user_metadata: data.user.user_metadata as { name?: string; [key: string]: unknown },
+        });
+      }
     });
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!currentUser) return;
+
+    (async () => {
+      const dbProfile = await loadInvestorProfileFromDatabase(currentUser.id);
+      if (!mounted) return;
+
+      const metadataProfile = normalizeInvestorProfile(currentUser.user_metadata?.investor_profile);
+      const storageProfile =
+        loadInvestorProfileFromStorage(currentUser.id) ||
+        loadInvestorProfileFromStorage(currentUser.email || "");
+
+      const resolved = dbProfile || metadataProfile || storageProfile;
+      setInvestorProfile(resolved);
+      if (!resolved) {
+        setShowProfileOnboarding(true);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setMinDelayDone(true), 180);
@@ -83,6 +125,58 @@ const Index = () => {
     return buys[0] ?? null;
   }, [enrichedHoldings, userTrades]);
 
+  const aiPortfolioContext = useMemo(() => {
+    const sectorMap: Record<string, number> = {};
+    for (const h of enrichedHoldings) {
+      sectorMap[h.sector] = (sectorMap[h.sector] || 0) + h.allocation;
+    }
+    const sectorAllocation = Object.entries(sectorMap)
+      .map(([sector, allocationPct]) => ({ sector, allocationPct }))
+      .sort((a, b) => b.allocationPct - a.allocationPct);
+
+    const positions = [...enrichedHoldings]
+      .sort((a, b) => b.value - a.value)
+      .map((h) => ({
+        symbol: h.symbol,
+        name: h.name,
+        sector: h.sector,
+        subsetor: h.subsetor,
+        shares: h.shares,
+        avgPrice: h.avgPrice,
+        currentPrice: h.price,
+        positionValue: h.value,
+        allocationPct: h.allocation,
+        positionPnl: h.totalGainCloseValue ?? h.totalGainValue ?? (h.price - h.avgPrice) * h.shares,
+        score: h.score ?? null,
+        upsidePct: h.upside ?? null,
+      }));
+
+    const recentTrades = [...userTrades]
+      .sort((a, b) => new Date(b.traded_at || "").getTime() - new Date(a.traded_at || "").getTime())
+      .slice(0, 20)
+      .map((t) => ({
+        symbol: t.symbol,
+        side: t.side,
+        shares: t.shares,
+        price: t.price,
+        traded_at: t.traded_at,
+      }));
+
+    return {
+      summary: {
+        totalCloseValue: portfolioMetrics.totalCloseValue,
+        totalGain: portfolioMetrics.totalGain,
+        dailyChange: portfolioMetrics.dailyChange,
+        rentabilityPct: portfolioMetrics.totalGainPercent,
+        assetCount: enrichedHoldings.length,
+        sectorCount: sectorAllocation.length,
+      },
+      sectorAllocation,
+      positions,
+      recentTrades,
+    };
+  }, [enrichedHoldings, portfolioMetrics, userTrades]);
+
   const aiDashboardWelcome = useMemo(() => `${greeting}, ${userName}! Sou o Hodl, seu assistente de investimentos.
 
 Meu foco aqui no Dashboard é:
@@ -107,17 +201,25 @@ Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estraté
           <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-primary/[0.03] p-6 md:p-8">
             <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/[0.06] blur-3xl pointer-events-none" />
             <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-primary/[0.04] blur-3xl pointer-events-none" />
-            <div className="relative z-10">
-              <h1 className="text-2xl font-bold">
-                {greeting}, {userName} 👋
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {loading
-                  ? "Carregando dados da sua carteira..."
-                  : isEmpty
-                  ? "Sua carteira está vazia. Vá em Ativos para adicionar ações!"
-                  : "Aqui está o resumo do seu portfólio de investimentos."}
-              </p>
+            <div className="relative z-10 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold">
+                  {greeting}, {userName} 👋
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {loading
+                    ? "Carregando dados da sua carteira..."
+                    : isEmpty
+                    ? "Sua carteira está vazia. Vá em Ativos para adicionar ações!"
+                    : "Aqui está o resumo do seu portfólio de investimentos."}
+                </p>
+              </div>
+              {!loading && (
+                <div className="md:text-right rounded-xl bg-gradient-to-r from-primary/12 to-primary/5 px-3.5 py-2.5 w-fit md:ml-auto shadow-[inset_0_0_0_1px_rgba(34,197,94,0.18)]">
+                  <p className="text-[10px] uppercase tracking-[0.08em] text-primary/80">Perfil do investidor</p>
+                  <p className="text-sm md:text-[15px] font-semibold mt-0.5 text-foreground">{investorProfile?.type || "Não definido"}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -241,6 +343,7 @@ Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estraté
                     fullHeight
                     userSymbols={enrichedHoldings.map(h => h.symbol)}
                     userHoldingsData={enrichedHoldings.map(h => ({ symbol: h.symbol, shares: h.shares, avgPrice: h.avgPrice }))}
+                    portfolioContext={aiPortfolioContext}
                     welcomeMessage={aiDashboardWelcome}
                     className="w-full"
                   />
@@ -250,6 +353,18 @@ Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estraté
           </motion.div>
         </main>
       </PageTransition>
+
+      <InvestorProfileOnboardingModal
+        open={showProfileOnboarding}
+        mandatory={!investorProfile}
+        initialAnswers={investorProfile?.answers}
+        onOpenChange={setShowProfileOnboarding}
+        onComplete={async (profile) => {
+          if (!currentUser) return;
+          await persistInvestorProfile(currentUser, profile);
+          setInvestorProfile(profile);
+        }}
+      />
     </div>
   );
 };

@@ -21,6 +21,7 @@ interface PerformanceChartProps {
 }
 
 type BenchmarkKey = "carteira" | "ibovespa" | "cdi" | "ipca";
+type RawChartPoint = ReturnType<typeof getFilteredBenchmarks>[number];
 
 const benchmarkCache = new Map<string, ReturnType<typeof getFilteredBenchmarks>>();
 
@@ -124,12 +125,12 @@ export function PerformanceChart({ userHoldings, userTrades, totalValue, firstBu
 
   const chartData = useMemo(
     () =>
-      rawData.map((d) => ({
-        date: (d as any).date as string | undefined,
+      rawData.map((d: RawChartPoint) => ({
+        date: d.date as string | undefined,
         month: d.month,
         tooltipLabel: d.tooltipLabel ?? d.month,
         carteira: (() => {
-          const dateKey = (d as any).date as string | undefined;
+          const dateKey = d.date as string | undefined;
           if (!dateKey || twrSeries.length === 0) return (d.carteira / investedBase) * 100;
           const exact = twrSeries.find((p) => p.date === dateKey);
           if (exact) return exact.pct;
@@ -319,7 +320,10 @@ export function PerformanceChart({ userHoldings, userTrades, totalValue, firstBu
                 fontFamily: "JetBrains Mono",
                 color: "hsl(var(--foreground))",
               }}
-              labelFormatter={(_label: string, payload: any[]) => payload?.[0]?.payload?.tooltipLabel ?? _label}
+              labelFormatter={(_label: string, payload: unknown[]) => {
+                const first = payload?.[0] as { payload?: { tooltipLabel?: string } } | undefined;
+                return first?.payload?.tooltipLabel ?? _label;
+              }}
               formatter={(value: number, name: string) => {
                 const label = benchmarks.find((b) => b.key === name)?.label || name;
                 const numeric = Number(value || 0);
