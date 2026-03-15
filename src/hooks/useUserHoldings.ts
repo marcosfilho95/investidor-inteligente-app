@@ -48,6 +48,7 @@ const LOCAL_TRADES_STORAGE_KEY = "ii_user_trades_local_v1";
 let memoryCacheByUser: Record<string, HoldingsCacheEntry> = {};
 let inFlightByUser: Record<string, Promise<UserHolding[]> | null> = {};
 let activeUserCache: HoldingsCacheEntry | null = null;
+const MONEY_EPSILON = 0.005;
 
 function isFresh(entry?: HoldingsCacheEntry): boolean {
   if (!entry) return false;
@@ -147,6 +148,11 @@ function compareTradesAsc(a: UserTrade, b: UserTrade): number {
   }
 
   return a.id.localeCompare(b.id);
+}
+
+function normalizeMoney(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.abs(value) < MONEY_EPSILON ? 0 : value;
 }
 
 function buildSyntheticOpeningBuys(holdings: UserHolding[], trades: UserTrade[]): UserTrade[] {
@@ -322,9 +328,10 @@ export function useUserHoldings() {
     if (existing) {
       const totalShares = existing.shares + shares;
       const newAvg = ((existing.avg_price * existing.shares) + price * shares) / totalShares;
+      const normalizedAvg = Number.isFinite(newAvg) ? Number(newAvg.toFixed(8)) : 0;
       const { error } = await supabase
         .from("user_holdings")
-        .update({ shares: totalShares, avg_price: Math.round(newAvg * 100) / 100 })
+        .update({ shares: totalShares, avg_price: normalizedAvg })
         .eq("user_id", userId)
         .eq("symbol", symbol);
       if (error) {
@@ -334,7 +341,7 @@ export function useUserHoldings() {
     } else {
       const { error } = await supabase
         .from("user_holdings")
-        .insert({ user_id: userId, symbol, shares, avg_price: price });
+        .insert({ user_id: userId, symbol, shares, avg_price: Number(price.toFixed(8)) });
       if (error) {
         toast({ title: "Erro", description: error.message, variant: "destructive" });
         return false;
@@ -550,11 +557,11 @@ export function useUserHoldings() {
       };
     }
 
-    const unrealizedGain = enrichedHoldings.reduce(
-      (sum, h) => sum + ((h.closePrice ?? h.price) - h.avgPrice) * h.shares,
-      0
-    );
-    const totalGain = unrealizedGain;
+    const unrealizedGain = enrichedHoldings.reduce((sum, h) => {
+      const positionPnl = normalizeMoney(((h.closePrice ?? h.price) - h.avgPrice) * h.shares);
+      return sum + positionPnl;
+    }, 0);
+    const totalGain = normalizeMoney(unrealizedGain);
     const openGainPercent = totalInvestedOpen > 0
       ? Math.round((totalGain / totalInvestedOpen) * 10000) / 100
       : 0;
@@ -569,9 +576,9 @@ export function useUserHoldings() {
       })),
       userHoldings.map((h) => ({ symbol: h.symbol, shares: h.shares }))
     );
-    const dailyChange = perf.lastDayPnl;
-    const dailyChangePercent = perf.lastDayReturnPct;
-    const totalGainPercent = perf.cumulativeReturnPct;
+    const dailyChange = normalizeMoney(perf.lastDayPnl);
+    const dailyChangePercent = dailyChange === 0 ? 0 : perf.lastDayReturnPct;
+    const totalGainPercent = Math.abs(perf.cumulativeReturnPct) < 0.005 ? 0 : perf.cumulativeReturnPct;
 
     return {
       totalInvestedOpen: Math.round(totalInvestedOpen * 100) / 100,

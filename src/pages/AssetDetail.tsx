@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
-import { holdings, getDailyPriceState, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getTrailing12mReturnPct, mergeHoldingWithDynamicMetrics, type DynamicFundamentals } from "@/data/investments";
+import { holdings, getDailyPriceState, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getTrailing12mReturnPct, mergeHoldingWithDynamicMetrics, getMarketHistory, type DynamicFundamentals } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
 import { loadDynamicFundamentalsBySymbol } from "@/data/fundamentalsLoader";
 import { IndicatorCard } from "@/components/IndicatorCard";
@@ -351,6 +351,9 @@ const AssetDetail = () => {
     return getTrailing12mReturnPct(asset.symbol);
   }, [asset.symbol, chartsReady]);
   const displayedPrice = dailyPriceState.lastPrice;
+  const markSeries = getMarketHistory()[asset.symbol] || [];
+  const markPrice = markSeries.length > 0 ? Number(markSeries[markSeries.length - 1].close) : Number(asset.price);
+  const orderReferencePrice = Number.isFinite(markPrice) && markPrice > 0 ? markPrice : Number(asset.price);
   const dailyChangePercent = dailyPriceState.previousClose > 0
     ? Math.round((((dailyPriceState.lastPrice / dailyPriceState.previousClose) - 1) * 100) * 100) / 100
     : 0;
@@ -479,10 +482,10 @@ const AssetDetail = () => {
     const ss = String(now.getSeconds()).padStart(2, "0");
     const tradedAt = orderDate ? `${orderDate}T${hh}:${mm}:${ss}` : undefined;
     if (orderType === "buy") {
-      const success = await addHolding(asset.symbol, parsedOrderQty, asset.price, tradedAt);
+      const success = await addHolding(asset.symbol, parsedOrderQty, orderReferencePrice, tradedAt);
       if (success) setShowBuyModal(false);
     } else {
-      const success = await sellHolding(asset.symbol, parsedOrderQty, tradedAt, asset.price);
+      const success = await sellHolding(asset.symbol, parsedOrderQty, tradedAt, orderReferencePrice);
       if (success) setShowBuyModal(false);
     }
   };
@@ -1127,8 +1130,8 @@ const AssetDetail = () => {
                 />
               </div>
               <div className="bg-muted/30 rounded-lg p-3 space-y-1">
-                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Preço unitário</span><span className="font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
-                <div className="flex justify-between text-xs font-medium"><span className="text-muted-foreground">Total estimado</span><span className="font-mono">R$ {(asset.price * effectiveOrderQty).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Preço unitário</span><span className="font-mono">R$ {orderReferencePrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
+                <div className="flex justify-between text-xs font-medium"><span className="text-muted-foreground">Total estimado</span><span className="font-mono">R$ {(orderReferencePrice * effectiveOrderQty).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
               </div>
             </div>
             <div className="flex gap-3">

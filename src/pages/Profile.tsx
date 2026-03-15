@@ -19,7 +19,7 @@ const Profile = () => {
   const [userCreatedAt, setUserCreatedAt] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const { enrichedHoldings, totalValue } = useUserHoldings();
+  const { enrichedHoldings, totalValue, portfolioMetrics } = useUserHoldings();
   const navigate = useNavigate();
   const { toast } = useToast();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
@@ -280,9 +280,7 @@ const Profile = () => {
     : "-";
   const usernameLocked = usernameFinalized || username.trim().length > 0;
 
-  const totalInvested = enrichedHoldings.reduce((s, h) => s + h.avgPrice * h.shares, 0);
-  const totalGain = enrichedHoldings.reduce((s, h) => s + (h.totalGainValue ?? (h.price - h.avgPrice) * h.shares), 0);
-  const rentabilidade = totalInvested > 0 ? Math.round((totalGain / totalInvested) * 10000) / 100 : 0;
+  const rentabilidade = portfolioMetrics.totalGainPercent;
   const initials = userName
     .split(" ")
     .map((n) => n[0])
