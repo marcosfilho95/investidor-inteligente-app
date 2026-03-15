@@ -76,6 +76,8 @@ function formatTradeDateTime(tradedAt: string): string {
 }
 
 const Portfolio = () => {
+  const formatPercent = (value: number) =>
+    value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const [viewMode, setViewMode] = useState<"ativos" | "setor">("ativos");
   const [isTradeHistoryOpen, setIsTradeHistoryOpen] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -856,7 +858,7 @@ const Portfolio = () => {
                               <td className="text-right px-4 py-3 text-sm font-mono">
                                 R$ {h.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                               </td>
-                              <td className="text-right px-5 py-3 text-sm font-mono">{h.allocation}%</td>
+                              <td className="text-right px-5 py-3 text-sm font-mono">{formatPercent(h.allocation)}%</td>
                               <td className="text-right px-5 py-3">
                                 <div className="flex items-center justify-end gap-2">
                                   <button
