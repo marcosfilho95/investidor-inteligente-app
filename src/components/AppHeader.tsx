@@ -1,7 +1,7 @@
 ﻿import { Link, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, LogOut, User, HelpCircle, Database, Menu, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { fetchDataStatus, type DataStatus } from "@/data/dataStatus";
@@ -47,95 +47,83 @@ export function AppHeader({ activePage }: AppHeaderProps) {
       ? new Date(dataStatus.last_version_date).toLocaleDateString("pt-BR")
       : null;
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      const name = data.user?.user_metadata?.name;
-      const firstName =
-        (typeof name === "string" && name.trim().length > 0
-          ? name.split(" ")[0]
-          : data.user?.email?.split("@")[0]) || "IN";
-      setUserName(firstName);
-      localStorage.setItem("ii_user_name", firstName);
+  const syncUserAndAvatar = useCallback(async () => {
+    const { data, error } = await supabase.auth.getUser();
+    const user = data.user;
 
-      const avatarKey = `ii_profile_avatar_${data.user?.email || firstName}`;
-      const localAvatar = localStorage.getItem(avatarKey);
-      if (localAvatar) {
-        setAvatarUrl(localAvatar);
-        localStorage.setItem("ii_profile_avatar_current", localAvatar);
-      } else {
-        localStorage.removeItem("ii_profile_avatar_current");
-      }
+    if (error || !user) {
+      setUserName("IN");
+      setAvatarUrl(null);
+      localStorage.removeItem("ii_user_name");
+      localStorage.removeItem("ii_profile_avatar_current");
+      return;
+    }
 
-      if (data.user?.id) {
-        supabase
-          .from("profiles")
-          .select("avatar_url")
-          .eq("user_id", data.user.id)
-          .maybeSingle()
-          .then(({ data: profileData }) => {
-            const dbAvatar = profileData?.avatar_url ?? null;
-            if (!dbAvatar) return;
-            setAvatarUrl(dbAvatar);
-            localStorage.setItem(avatarKey, dbAvatar);
-            localStorage.setItem("ii_profile_avatar_current", dbAvatar);
-          });
-      }
-    });
-    // Fetch data status
-    fetchDataStatus().then(setDataStatus).catch(() => {});
+    const name = user.user_metadata?.name;
+    const firstName =
+      (typeof name === "string" && name.trim().length > 0 ? name.split(" ")[0] : user.email?.split("@")[0]) || "IN";
+    setUserName(firstName);
+    localStorage.setItem("ii_user_name", firstName);
+
+    const avatarKey = `ii_profile_avatar_${user.email || firstName}`;
+    const localAvatar = localStorage.getItem(avatarKey);
+    if (localAvatar) {
+      setAvatarUrl(localAvatar);
+      localStorage.setItem("ii_profile_avatar_current", localAvatar);
+    } else {
+      setAvatarUrl(null);
+      localStorage.removeItem("ii_profile_avatar_current");
+    }
+
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (profileError) return;
+
+    const dbAvatar = profileData?.avatar_url ?? null;
+    if (dbAvatar) {
+      setAvatarUrl(dbAvatar);
+      localStorage.setItem(avatarKey, dbAvatar);
+      localStorage.setItem("ii_profile_avatar_current", dbAvatar);
+      return;
+    }
+
+    setAvatarUrl(null);
+    localStorage.removeItem(avatarKey);
+    localStorage.removeItem("ii_profile_avatar_current");
   }, []);
 
   useEffect(() => {
-    const refreshAvatar = async () => {
-      const { data } = await supabase.auth.getUser();
-      const name = data.user?.user_metadata?.name;
-      const firstName =
-        (typeof name === "string" && name.trim().length > 0
-          ? name.split(" ")[0]
-          : data.user?.email?.split("@")[0]) || "IN";
-      const avatarKey = `ii_profile_avatar_${data.user?.email || firstName}`;
-      const localAvatar = localStorage.getItem(avatarKey);
-      if (localAvatar) {
-        setAvatarUrl(localAvatar);
-        localStorage.setItem("ii_profile_avatar_current", localAvatar);
-      } else {
-        localStorage.removeItem("ii_profile_avatar_current");
-      }
+    void syncUserAndAvatar();
+    fetchDataStatus().then(setDataStatus).catch(() => {});
+  }, [syncUserAndAvatar]);
 
-      if (data.user?.id) {
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("avatar_url")
-          .eq("user_id", data.user.id)
-          .maybeSingle();
-        const dbAvatar = profileData?.avatar_url ?? null;
-        if (dbAvatar) {
-          setAvatarUrl(dbAvatar);
-          localStorage.setItem(avatarKey, dbAvatar);
-          localStorage.setItem("ii_profile_avatar_current", dbAvatar);
-        } else if (!localAvatar) {
-          setAvatarUrl(null);
-        }
-      }
-    };
-
+  useEffect(() => {
     const onAvatarUpdated = () => {
-      void refreshAvatar();
+      void syncUserAndAvatar();
     };
 
     const onStorage = (e: StorageEvent) => {
       if (e.key?.startsWith("ii_profile_avatar_")) {
-        void refreshAvatar();
+        void syncUserAndAvatar();
       }
     };
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+      void syncUserAndAvatar();
+    });
 
     window.addEventListener("ii:profile-avatar-updated", onAvatarUpdated as EventListener);
     window.addEventListener("storage", onStorage);
     return () => {
+      authListener.subscription.unsubscribe();
       window.removeEventListener("ii:profile-avatar-updated", onAvatarUpdated as EventListener);
       window.removeEventListener("storage", onStorage);
     };
-  }, []);
+  }, [syncUserAndAvatar]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
