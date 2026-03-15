@@ -890,17 +890,29 @@ const Portfolio = () => {
         </main>
       </PageTransition>
 
-      {showOrderModal && selectedTradeAsset && (
-        <div
-          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setShowOrderModal(false)}
-        >
-          <div className="glass-card p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+      <AnimatePresence>
+        {showOrderModal && selectedTradeAsset && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="fixed inset-0 z-50 bg-background/75 backdrop-blur-[3px] flex items-center justify-center p-4"
+            onClick={() => setShowOrderModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 14, scale: 0.985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.99 }}
+              transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+              className="glass-card p-6 w-full max-w-md space-y-4 shadow-2xl shadow-background/30"
+              onClick={(e) => e.stopPropagation()}
+            >
             <h3 className="text-lg font-semibold">
               {orderType === "buy" ? "Comprar" : "Vender"} {getDisplaySymbol(selectedTradeAsset.symbol)}
             </h3>
             {orderType === "sell" && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-green-500 font-medium">
                 Você possui {selectedTradeAsset.availableShares} ações
               </p>
             )}
@@ -971,9 +983,10 @@ const Portfolio = () => {
                 Confirmar {orderType === "buy" ? "compra" : "venda"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

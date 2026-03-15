@@ -22,6 +22,7 @@ import { IndicatorCard } from "@/components/IndicatorCard";
 import { RecommendationGauge } from "@/components/RecommendationGauge";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 import { getAssetRouteSymbol, getCanonicalSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
@@ -601,7 +602,7 @@ const AssetDetail = () => {
                   {userHolding ? (
                     <p className="col-span-2 flex items-center gap-1.5 text-xs font-medium text-primary">
                       <Star className="h-3 w-3 fill-primary" />
-                      Voce possui {userHolding.shares} acoes
+                      Você possui {userHolding.shares} ações
                     </p>
                   ) : (
                     <div className="col-span-2" />
@@ -627,7 +628,7 @@ const AssetDetail = () => {
                       {userHolding && (
                         <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-primary">
                           <Star className="h-3 w-3 fill-primary" />
-                          Voce possui {userHolding.shares} acoes
+                          Você possui {userHolding.shares} ações
                         </p>
                       )}
                     </div>
@@ -1080,12 +1081,27 @@ const AssetDetail = () => {
       </PageTransition>
 
       {/* Buy/Sell Modal */}
-      {showBuyModal && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowBuyModal(false)}>
-          <div className="glass-card p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+      <AnimatePresence>
+        {showBuyModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="fixed inset-0 z-50 bg-background/75 backdrop-blur-[3px] flex items-center justify-center p-4"
+            onClick={() => setShowBuyModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 14, scale: 0.985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.99 }}
+              transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+              className="glass-card p-6 w-full max-w-md space-y-4 shadow-2xl shadow-background/30"
+              onClick={(e) => e.stopPropagation()}
+            >
             <h3 className="text-lg font-semibold">{orderType === "buy" ? "Comprar" : "Vender"} {displaySymbol}</h3>
             {orderType === "sell" && userHolding && (
-              <p className="text-xs text-muted-foreground">Voce possui {userHolding.shares} acoes</p>
+              <p className="text-xs text-green-500 font-medium">Você possui {userHolding.shares} ações</p>
             )}
             <div className="space-y-3">
               <div>
@@ -1111,7 +1127,7 @@ const AssetDetail = () => {
                 />
               </div>
               <div className="bg-muted/30 rounded-lg p-3 space-y-1">
-                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Preco unitario</span><span className="font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Preço unitário</span><span className="font-mono">R$ {asset.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
                 <div className="flex justify-between text-xs font-medium"><span className="text-muted-foreground">Total estimado</span><span className="font-mono">R$ {(asset.price * effectiveOrderQty).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
               </div>
             </div>
@@ -1125,9 +1141,10 @@ const AssetDetail = () => {
                 Confirmar {orderType === "buy" ? "compra" : "venda"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
