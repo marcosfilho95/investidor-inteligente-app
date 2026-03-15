@@ -104,6 +104,7 @@ const Profile = () => {
       }
       const persistedAvatar = localStorage.getItem(`ii_profile_avatar_${data.user.email || name}`);
       if (persistedAvatar) setAvatarUrl(persistedAvatar);
+      const authUsername = normalizeUsername(String(data.user.user_metadata?.username || ""));
 
       supabase
         .from("profiles")
@@ -111,10 +112,11 @@ const Profile = () => {
         .eq("user_id", data.user.id)
         .maybeSingle()
         .then(({ data: profileData }) => {
-          const dbUsername = profileData?.username || "";
-          setUsername(dbUsername);
-          setUsernameDraft(dbUsername);
-          setUsernameFinalized(dbUsername.trim().length > 0);
+          const dbUsername = normalizeUsername(profileData?.username || "");
+          const resolvedUsername = dbUsername || authUsername;
+          setUsername(resolvedUsername);
+          setUsernameDraft(resolvedUsername);
+          setUsernameFinalized(resolvedUsername.trim().length > 0);
           if (profileData?.avatar_url) {
             setAvatarUrl(profileData.avatar_url);
             localStorage.setItem(`ii_profile_avatar_${data.user.email || name}`, profileData.avatar_url);
@@ -180,12 +182,38 @@ const Profile = () => {
       }
 
       if (!persistedUsername) {
-        toast({
-          title: "Nome de usuário bloqueado",
-          description: "Este usuário já foi definido anteriormente e não pode ser alterado.",
-        });
-        setUsernameFinalized(true);
-        return;
+        // Fallback de consistência: em alguns cenários de RLS, update/upsert podem não retornar linha.
+        // Confirmamos o valor atual e, se ainda vazio, persistimos novamente sem depender de retorno.
+        const { data: currentProfile, error: readError } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (readError) throw readError;
+
+        const currentUsername = normalizeUsername(currentProfile?.username || "");
+        if (currentUsername) {
+          toast({
+            title: "Nome de usuário bloqueado",
+            description: "Este usuário já foi definido anteriormente e não pode ser alterado.",
+          });
+          setUsername(currentUsername);
+          setUsernameDraft(currentUsername);
+          setUsernameFinalized(true);
+          return;
+        }
+
+        const { error: forceUpsertError } = await supabase.from("profiles").upsert(
+          {
+            user_id: userId,
+            name: userName || "",
+            email: userEmail || "",
+            username: normalized,
+          },
+          { onConflict: "user_id" }
+        );
+        if (forceUpsertError) throw forceUpsertError;
+        persistedUsername = normalized;
       }
 
       await supabase.auth.updateUser({ data: { username: normalized } });
