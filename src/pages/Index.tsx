@@ -27,6 +27,7 @@ const Index = () => {
   } | null>(null);
   const [investorProfile, setInvestorProfile] = useState<InvestorProfileSummary | null>(null);
   const [showProfileOnboarding, setShowProfileOnboarding] = useState(false);
+  const [activeAlert, setActiveAlert] = useState<SmartAlert | null>(null);
   const { enrichedHoldings, loading, userTrades, portfolioMetrics } = useUserHoldings();
 
   useEffect(() => {
