@@ -93,7 +93,7 @@ export function PerformanceChart({ userHoldings, userTrades, totalValue, firstBu
 
   const rawData = useMemo(() => {
     const roundedBase = Math.round(baseValue * 100) / 100;
-    const key = `${selectedPeriod}:${roundedBase}:${firstBuyDate ?? ""}:${userPortfolio.length}:${latestMarketDateKey}`;
+    const key = `${selectedPeriod}:${roundedBase}:${firstBuyDate ?? ""}:${userPortfolio.length}:${latestMarketDateKey}:${refreshTick}`;
     const cached = benchmarkCache.get(key);
     if (cached) return cached;
     const fresh = getFilteredBenchmarks(selectedPeriod, roundedBase, firstBuyDate ?? undefined, userPortfolio);

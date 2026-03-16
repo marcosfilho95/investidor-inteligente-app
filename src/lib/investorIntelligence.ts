@@ -182,8 +182,8 @@ export function saveInvestorProfileToStorage(userIdOrEmail: string, profile: Inv
   }
 }
 
-export type PortfolioRiskLevel = "Baixo" | "Moderado" | "Moderado/alto" | "Alto";
-export type ProfileCompatibility = "Boa compatibilidade" | "Parcialmente desalinhada" | "Desalinhada";
+export type PortfolioRiskLevel = "Baixo" | "Moderado" | "Alto";
+export type ProfileCompatibility = "Dentro da política" | "Abaixo da política" | "Acima da política";
 
 export interface PortfolioRiskPositionInput {
   symbol: string;
@@ -192,14 +192,21 @@ export interface PortfolioRiskPositionInput {
   modeloNegocio?: string;
   perfilDividendos?: "baixo" | "médio" | "alto";
   perfilDefensivo?: "baixo" | "médio" | "alto";
+  riscoEstatal?: "baixo" | "médio" | "alto";
   allocationPct?: number;
   score?: number | null;
   upsidePct?: number | null;
   dividendPct?: number | null;
+  pe?: number | null;
+  pvp?: number | null;
   roePct?: number | null;
   roicPct?: number | null;
   margemLiquidaPct?: number | null;
+  margemEbitPct?: number | null;
   divLiqEbitda?: number | null;
+  divLiqPl?: number | null;
+  liqCorrente?: number | null;
+  basileia?: number | null;
   lpa?: number | null;
   cLucro5aPct?: number | null;
   cReceita5aPct?: number | null;
@@ -211,6 +218,16 @@ export interface PortfolioRiskSummary {
   classification: PortfolioRiskLevel;
   drivers: string[];
   reducers: string[];
+  riskExposure?: {
+    baixo: number;
+    moderado: number;
+    alto: number;
+  };
+  highRiskAssets?: Array<{
+    symbol: string;
+    weightPct: number;
+    reason: string;
+  }>;
   components: {
     concentrationAssets: number;
     concentrationSectors: number;
@@ -225,63 +242,266 @@ export interface PortfolioRiskSummary {
 }
 
 function riskLevelFromScore(score: number): PortfolioRiskLevel {
-  if (score <= 25) return "Baixo";
-  if (score <= 45) return "Moderado";
-  if (score <= 65) return "Moderado/alto";
+  if (score <= 30) return "Baixo";
+  if (score <= 60) return "Moderado";
   return "Alto";
+}
+
+type AssetRiskBucket = "baixo_risco" | "risco_moderado" | "alto_risco";
+
+function normalizeSubsetorKey(subsetor: string): string {
+  const raw = String(subsetor || "N/D").toLowerCase().trim();
+  return raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function getStructuralRiskBase(setor: string, subsetor: string): number {
+  const setorNorm = String(setor || "N/D").trim();
+  const sub = normalizeSubsetorKey(subsetor);
+  const map: Record<string, number> = {
+    seguros: 2,
+    saneamento: 2,
+    "transmissao energia": 2,
+    transmissao: 2,
+    "energia eletrica": 2,
+    bancos: 3,
+    telefonia: 4,
+    bebidas: 4,
+    diagnosticos: 5,
+    "varejo farmaceutico": 5,
+    hospitais: 5,
+    software: 6,
+    "bens de capital": 6,
+    "mercado de capitais": 6,
+    petroleo: 12,
+    mineracao: 12,
+    "papel e celulose": 12,
+    varejo: 14,
+    siderurgia: 14,
+    construcao: 16,
+    autopecas: 16,
+    "planos de saude": 16,
+  };
+  if (map[sub] != null) return map[sub];
+  if (setorNorm === "Commodities") return 12;
+  if (setorNorm === "Consumo Cíclico") return 14;
+  if (setorNorm === "Financeiro") return 4;
+  if (setorNorm === "Utilidades Públicas") return 3;
+  return 6;
+}
+
+function assetRiskBucketFromScore(score: number): AssetRiskBucket {
+  if (score <= 25) return "baixo_risco";
+  if (score <= 55) return "risco_moderado";
+  return "alto_risco";
+}
+
+function isQualityCompounder(position: {
+  roe: number | null;
+  roic: number | null;
+  margemLiquida: number | null;
+  cReceita5a: number | null;
+  cLucro5a: number | null;
+  lpa: number | null;
+  divLiqEbitda: number | null;
+}): boolean {
+  return (
+    (position.roe ?? 0) >= 18 &&
+    (position.roic ?? 0) >= 12 &&
+    (position.margemLiquida ?? 0) >= 10 &&
+    (position.cReceita5a ?? 0) >= 6 &&
+    (position.cLucro5a ?? 0) >= 6 &&
+    (position.lpa ?? 0) > 0 &&
+    (position.divLiqEbitda == null || position.divLiqEbitda <= 2)
+  );
+}
+
+function classifyPositionRiskBucket(position: {
+  symbol: string;
+  subsetor: string;
+  setor: string;
+  riscoEstatal: "baixo" | "médio" | "alto";
+  lpa: number | null;
+  roe: number | null;
+  roic: number | null;
+  margemLiquida: number | null;
+  margemEbit: number | null;
+  divLiqEbitda: number | null;
+  divLiqPl: number | null;
+  liqCorrente: number | null;
+  basileia: number | null;
+  cLucro5a: number | null;
+  cReceita5a: number | null;
+  pe: number | null;
+  pvp: number | null;
+}): { bucket: AssetRiskBucket; reason: string; score: number } {
+  let risk = getStructuralRiskBase(position.setor, position.subsetor);
+  const reasons: string[] = [];
+
+  if ((position.lpa ?? 1) <= 0) risk += 15;
+  if (position.roe != null) {
+    if (position.roe < 0) risk += 15;
+    else if (position.roe < 5) risk += 10;
+    else if (position.roe < 10) risk += 5;
+    else if (position.roe >= 20) risk -= 3;
+  }
+  if (position.roic != null) {
+    if (position.roic < 0) risk += 10;
+    else if (position.roic < 5) risk += 8;
+    else if (position.roic < 10) risk += 4;
+    else if (position.roic >= 15) risk -= 2;
+  }
+  if (position.margemLiquida != null) {
+    if (position.margemLiquida < 0) risk += 12;
+    else if (position.margemLiquida < 5) risk += 5;
+    else if (position.margemLiquida >= 12) risk -= 2;
+  }
+  if (position.margemEbit != null) {
+    if (position.margemEbit < 0) risk += 8;
+    else if (position.margemEbit < 5) risk += 6;
+    else if (position.margemEbit >= 15) risk -= 2;
+  }
+
+  if (position.cLucro5a != null) {
+    if (position.cLucro5a < -10) risk += 12;
+    else if (position.cLucro5a < 0) risk += 6;
+    else if (position.cLucro5a < 5) risk += 2;
+    else if (position.cLucro5a >= 10) risk -= 2;
+  }
+  if (position.cReceita5a != null) {
+    if (position.cReceita5a < 0) risk += 5;
+    else if (position.cReceita5a < 3) risk += 2;
+    else if (position.cReceita5a >= 8) risk -= 1;
+  }
+  if ((position.cLucro5a ?? 1) < 0 && (position.cReceita5a ?? 1) < 0) {
+    risk += 4;
+    reasons.push("deterioração histórica de receita e lucro");
+  }
+
+  if (position.divLiqEbitda != null) {
+    if (position.divLiqEbitda > 4) risk += 12;
+    else if (position.divLiqEbitda > 2) risk += 6;
+    else if (position.divLiqEbitda > 1) risk += 3;
+  }
+  if (position.divLiqPl != null) {
+    if (position.divLiqPl > 1.5) risk += 8;
+    else if (position.divLiqPl > 0.8) risk += 4;
+  }
+  if (position.liqCorrente != null) {
+    if (position.liqCorrente < 0.8) risk += 7;
+    else if (position.liqCorrente < 1) risk += 5;
+    else if (position.liqCorrente > 1.5) risk -= 1;
+  }
+  if (normalizeSubsetorKey(position.subsetor) === "bancos" && position.basileia != null) {
+    if (position.basileia < 13) risk += 8;
+    else if (position.basileia < 15) risk += 3;
+    else if (position.basileia >= 16) risk -= 2;
+  }
+
+  if (position.riscoEstatal === "alto") {
+    risk += 10;
+    reasons.push("risco político/estatal relevante");
+  } else if (position.riscoEstatal === "médio") {
+    risk += 5;
+  }
+
+  if (position.pe != null) {
+    if (position.pe > 25 && (position.roe ?? 0) < 10) risk += 8;
+    else if (position.pe > 25 && (position.roe ?? 0) > 20 && (position.cLucro5a ?? 0) > 10) risk += 2;
+    else if (position.pe > 35) risk += 5;
+    if (position.pe <= 8 && ((position.lpa ?? 1) <= 0 || (position.cLucro5a ?? 1) < 0)) risk += 4;
+  }
+  if (position.pvp != null) {
+    if (position.pvp > 4 && (position.roe ?? 0) < 10) risk += 6;
+    else if (position.pvp > 8 && (position.roe ?? 0) > 20) risk += 2;
+  }
+
+  const fragilitySignals = [
+    (position.lpa ?? 1) <= 0,
+    (position.roe ?? 1) <= 0,
+    (position.margemLiquida ?? 1) <= 0,
+    (position.cLucro5a ?? 1) < 0,
+    (position.divLiqEbitda ?? 0) > 4,
+    (position.roic ?? 10) < 5,
+  ].filter(Boolean).length;
+  if (fragilitySignals >= 3) {
+    risk += 10;
+    reasons.push("sinais combinados de fragilidade");
+  }
+  if (fragilitySignals >= 4) risk += 6;
+
+  const compounder = isQualityCompounder({
+    roe: position.roe,
+    roic: position.roic,
+    margemLiquida: position.margemLiquida,
+    cReceita5a: position.cReceita5a,
+    cLucro5a: position.cLucro5a,
+    lpa: position.lpa,
+    divLiqEbitda: position.divLiqEbitda,
+  });
+  if (compounder) {
+    risk -= 8;
+    reasons.push("quality compounder");
+  }
+  if (position.symbol === "WEGE3" && compounder) risk -= 4;
+
+  const score = clamp(risk, 0, 100);
+  const bucket = assetRiskBucketFromScore(score);
+  const reason = reasons.length > 0 ? reasons.slice(0, 2).join("; ") : "risco definido por fatores multifatoriais";
+  return { bucket, reason, score };
 }
 
 function evaluateCompatibility(
   profile: InvestorProfileSummary | null,
-  riskScore: number,
-  style: {
-    incomeWeight: number;
-    defensiveWeight: number;
-    growthWeight: number;
-    balancedWeight: number;
-    avgUpside: number;
-    qualityScore: number;
-  }
+  highRiskExposurePct: number,
+  portfolioRiskScore: number
 ): PortfolioRiskSummary["profileCompatibility"] {
   if (!profile) return undefined;
 
-  const riskOkForConservative = riskScore <= 45;
-  const riskOkForModerate = riskScore >= 25 && riskScore <= 64;
-  const riskOkForBold = riskScore <= 75;
-
   if (profile.type === "Conservador") {
-    if (style.incomeWeight >= 60 && style.defensiveWeight >= 50 && style.growthWeight <= 25 && riskOkForConservative && style.qualityScore >= 45) {
-      return { status: "Boa compatibilidade", note: "Carteira com foco em renda/dividendos e perfil mais defensivo, coerente com perfil conservador." };
+    if (highRiskExposurePct <= 30 && portfolioRiskScore <= 30) {
+      return {
+        status: "Dentro da política",
+        note: `Perfil conservador alinhado: ${highRiskExposurePct.toFixed(1)}% em alto risco (limite 30%) e score ${portfolioRiskScore.toFixed(1)}/100 (limite 30).`,
+      };
     }
-    if (style.incomeWeight >= 45 && style.defensiveWeight >= 40 && style.growthWeight <= 35 && riskScore <= 55) {
-      return { status: "Parcialmente desalinhada", note: "A carteira ainda mantém base de renda/defesa, mas o peso de valorização está acima do ideal. Para perfil conservador, a referência prática é manter perto de 70% em ativos de renda/proventos e estabilidade." };
-    }
-    return { status: "Desalinhada", note: "A composição atual está mais orientada para valorização/crescimento do que para renda e estabilidade. Para perfil conservador, a referência prática é manter perto de 70% em ativos de renda/proventos e setores perenes." };
+    return {
+      status: "Acima da política",
+      note: `Você se declarou conservador, mas hoje tem ${highRiskExposurePct.toFixed(1)}% em alto risco (limite 30%) e score ${portfolioRiskScore.toFixed(1)}/100 (limite 30).`,
+    };
   }
 
   if (profile.type === "Moderado") {
-    const mixBase = style.incomeWeight + style.growthWeight;
-    const incomeMixPct = mixBase > 0 ? (style.incomeWeight / mixBase) * 100 : 50;
-    const growthMixPct = mixBase > 0 ? (style.growthWeight / mixBase) * 100 : 50;
-    const isBalanced50_50 = incomeMixPct >= 40 && incomeMixPct <= 60 && growthMixPct >= 40 && growthMixPct <= 60;
-    const isNearBalanced = incomeMixPct >= 30 && incomeMixPct <= 70 && growthMixPct >= 30 && growthMixPct <= 70;
-
-    if (isBalanced50_50 && style.balancedWeight >= 30 && riskOkForModerate && style.qualityScore >= 42) {
-      return { status: "Boa compatibilidade", note: "Carteira próxima do equilíbrio 50/50 entre renda e crescimento (com tolerância), coerente com perfil moderado." };
+    if (highRiskExposurePct >= 40 && highRiskExposurePct <= 50 && portfolioRiskScore >= 31 && portfolioRiskScore <= 60) {
+      return {
+        status: "Dentro da política",
+        note: `Perfil moderado alinhado: alto risco em ${highRiskExposurePct.toFixed(1)}% (faixa alvo 40%-50%) e score ${portfolioRiskScore.toFixed(1)}/100 (faixa alvo 31-60).`,
+      };
     }
-    if (isNearBalanced && style.balancedWeight >= 22 && riskScore <= 70) {
-      return { status: "Parcialmente desalinhada", note: "Existe algum equilíbrio, mas o mix ainda está fora da faixa ideal de 50/50 (tolerância de 10 pontos)." };
+    if (highRiskExposurePct < 40 || portfolioRiskScore < 31) {
+      return {
+        status: "Abaixo da política",
+        note: `Você se declarou moderado, mas hoje sua carteira está conservadora demais: alto risco ${highRiskExposurePct.toFixed(1)}% (ideal 40%-50%) e score ${portfolioRiskScore.toFixed(1)}/100 (ideal 31-60). Para subir risco com qualidade, busque empresas/setores com crescimento de lucro, margens robustas e momento favorável. Se esse desalinhamento persistir, vale refazer seu perfil de investidor.`,
+      };
     }
-    return { status: "Desalinhada", note: "Composição da carteira está distante do meio-termo esperado para perfil moderado." };
+    return {
+      status: "Acima da política",
+      note: `Para perfil moderado, a carteira saiu da faixa recomendada: alto risco ${highRiskExposurePct.toFixed(1)}% (ideal 40%-50%) e score ${portfolioRiskScore.toFixed(1)}/100 (ideal 31-60).`,
+    };
   }
 
-  if (style.growthWeight >= 60 && style.avgUpside >= 10 && style.defensiveWeight <= 35 && riskOkForBold && style.qualityScore >= 40) {
-    return { status: "Boa compatibilidade", note: "Carteira com proposta mais orientada a valorização e maior oscilação, coerente com perfil arrojado." };
+  if (highRiskExposurePct > 60 && portfolioRiskScore > 50) {
+    return {
+      status: "Dentro da política",
+      note: `Perfil arrojado alinhado: alto risco em ${highRiskExposurePct.toFixed(1)}% (alvo >60%) e score ${portfolioRiskScore.toFixed(1)}/100 (alvo >50).`,
+    };
   }
-  if (style.growthWeight >= 45 && style.avgUpside >= 5 && style.defensiveWeight <= 55 && riskScore <= 80) {
-    return { status: "Parcialmente desalinhada", note: "Carteira tem componentes de crescimento, mas ainda concentra peso relevante em renda/defensivos. Para perfil arrojado, a referência prática é ter perto de 70% em ativos com maior potencial de valorização/upside." };
-  }
-  return { status: "Desalinhada", note: "A carteira está mais focada em renda/estabilidade e com pouco peso em teses de maior valorização. Para perfil arrojado, a referência prática é manter perto de 70% em ativos com upside e proposta de crescimento." };
+  return {
+    status: "Abaixo da política",
+    note: `Você se declarou arrojado, mas a carteira está conservadora demais: alto risco ${highRiskExposurePct.toFixed(1)}% (alvo >60%) e score ${portfolioRiskScore.toFixed(1)}/100 (alvo >50). Para aumentar risco com critério, procure setores/ativos com crescimento mais acelerado, upside atrativo e melhora operacional. Se continuar assim no dia a dia, vale refazer seu perfil de investidor.`,
+  };
 }
 
 export function calculatePortfolioRisk(
@@ -301,14 +521,13 @@ export function calculatePortfolioRisk(
         structuralRisk: 0,
         qualityRisk: 0,
       },
-      profileCompatibility: evaluateCompatibility(profile, 0, {
-        incomeWeight: 0,
-        defensiveWeight: 0,
-        growthWeight: 0,
-        balancedWeight: 0,
-        avgUpside: 0,
-        qualityScore: 0,
-      }),
+      riskExposure: {
+        baixo: 0,
+        moderado: 0,
+        alto: 0,
+      },
+      highRiskAssets: [],
+      profileCompatibility: evaluateCompatibility(profile, 0, 0),
     };
   }
 
@@ -316,21 +535,21 @@ export function calculatePortfolioRisk(
     symbol: String(p.symbol || "").toUpperCase(),
     setor: String(p.setor_macro || "N/D"),
     subsetor: String(p.subsetor || "N/D"),
-    modeloNegocio: String(p.modeloNegocio || ""),
-    perfilDividendos: p.perfilDividendos ?? "médio",
-    perfilDefensivo: p.perfilDefensivo ?? "médio",
+    riscoEstatal: p.riscoEstatal ?? "baixo",
     weight: clamp(safeNumber(p.allocationPct, 0), 0, 100),
-    score: p.score == null ? null : safeNumber(p.score, 0),
-    upside: p.upsidePct == null ? null : safeNumber(p.upsidePct, 0),
-    dividend: p.dividendPct == null ? null : safeNumber(p.dividendPct, 0),
     roe: p.roePct == null ? null : safeNumber(p.roePct, 0),
     roic: p.roicPct == null ? null : safeNumber(p.roicPct, 0),
     margemLiquida: p.margemLiquidaPct == null ? null : safeNumber(p.margemLiquidaPct, 0),
-    debt: p.divLiqEbitda == null ? null : safeNumber(p.divLiqEbitda, 0),
+    margemEbit: p.margemEbitPct == null ? null : safeNumber(p.margemEbitPct, 0),
+    divLiqEbitda: p.divLiqEbitda == null ? null : safeNumber(p.divLiqEbitda, 0),
+    divLiqPl: p.divLiqPl == null ? null : safeNumber(p.divLiqPl, 0),
+    liqCorrente: p.liqCorrente == null ? null : safeNumber(p.liqCorrente, 0),
+    basileia: p.basileia == null ? null : safeNumber(p.basileia, 0),
+    pe: p.pe == null ? null : safeNumber(p.pe, 0),
+    pvp: p.pvp == null ? null : safeNumber(p.pvp, 0),
     lpa: p.lpa == null ? null : safeNumber(p.lpa, 0),
     cLucro5a: p.cLucro5aPct == null ? null : safeNumber(p.cLucro5aPct, 0),
     cReceita5a: p.cReceita5aPct == null ? null : safeNumber(p.cReceita5aPct, 0),
-    payout: p.payoutPct == null ? null : safeNumber(p.payoutPct, 0),
   }));
 
   const totalWeight = weights.reduce((sum, p) => sum + p.weight, 0) || 100;
@@ -340,240 +559,104 @@ export function calculatePortfolioRisk(
   const top3 = (sorted[0]?.w ?? 0) + (sorted[1]?.w ?? 0) + (sorted[2]?.w ?? 0);
 
   const bySetor: Record<string, number> = {};
-  const bySubsetor: Record<string, number> = {};
   for (const p of normalized) {
     bySetor[p.setor] = (bySetor[p.setor] || 0) + p.w;
-    bySubsetor[p.subsetor] = (bySubsetor[p.subsetor] || 0) + p.w;
   }
-
   const maxSetor = Math.max(...Object.values(bySetor), 0);
-  const maxSubsetor = Math.max(...Object.values(bySubsetor), 0);
-
-  const volatileSubsetores = new Set([
-    "Varejo",
-    "Construção",
-    "Siderurgia",
-    "Petróleo",
-    "Mineração",
-    "Papel e Celulose",
-    "Software",
-    "Locação de veículos",
-    "Planos de Saúde",
-    "Autopeças",
-  ]);
-  const defensiveSubsetores = new Set([
-    "Bancos",
-    "Seguros",
-    "Mercado de Capitais",
-    "Infraestrutura de mercado",
-    "Transmissão",
-    "Transmissão de energia",
-    "Geração / Distribuição",
-    "Distribuição/Geração de energia",
-    "Energia Elétrica",
-    "Saneamento",
-    "Telefonia",
-    "Bebidas",
-    "Varejo farmacêutico",
-    "Varejo Farmacêutico",
-    "Diagnósticos",
-  ]);
-  const growthSubsetores = new Set([
-    "Software",
-    "Bens de capital",
-    "Bens de Capital",
-    "Hospitais",
-    "Aeroespacial",
-    "Locação de veículos",
-    "Locação de Veículos",
-    "Varejo",
-    "Construção",
-    "Autopeças",
-    "Petróleo",
-    "Mineração",
-    "Siderurgia",
-    "Papel e Celulose",
-    "Planos de Saúde",
-  ]);
-  const regulatorySubsetores = new Set([
-    "Transmissão",
-    "Transmissão de energia",
-    "Geração / Distribuição",
-    "Distribuição/Geração de energia",
-    "Saneamento",
-    "Telefonia",
-    "Planos de Saúde",
-  ]);
-  const stateRiskSymbols = new Set(["BBAS3", "PETR4", "SAPR11", "AXIA6"]);
-
-  let volatileW = 0;
-  let regulatoryW = 0;
-  let stateW = 0;
-  let qualityWeightedScore = 0;
-  let qualityWeight = 0;
-  let weakQualityW = 0;
-  let strongQualityW = 0;
-  let defensiveW = 0;
-  let growthW = 0;
-  let balancedW = 0;
-  let incomeW = 0;
-  let upsideWeightedSum = 0;
-  let upsideWeight = 0;
-  let modelQualityWeightedSum = 0;
-  let modelQualityWeight = 0;
-
-  const qualityFromPercent = (v: number | null, low: number, high: number) => {
-    if (v === null || !Number.isFinite(v)) return 50;
-    if (v <= low) return 0;
-    if (v >= high) return 100;
-    return ((v - low) / (high - low)) * 100;
-  };
+  let highRiskW = 0;
+  let moderateRiskW = 0;
+  let lowRiskW = 0;
+  let weightedRiskScore = 0;
+  let weightedStructuralRisk = 0;
+  const highRiskAssets: Array<{ symbol: string; weightPct: number; reason: string }> = [];
 
   for (const p of normalized) {
-    if (volatileSubsetores.has(p.subsetor)) volatileW += p.w;
-    if (regulatorySubsetores.has(p.subsetor)) regulatoryW += p.w;
-    if (stateRiskSymbols.has(p.symbol)) stateW += p.w;
-    if (defensiveSubsetores.has(p.subsetor)) defensiveW += p.w;
-    if (growthSubsetores.has(p.subsetor)) growthW += p.w;
+    const riskBucket = classifyPositionRiskBucket({
+      symbol: p.symbol,
+      subsetor: p.subsetor,
+      setor: p.setor,
+      riscoEstatal: p.riscoEstatal,
+      lpa: p.lpa,
+      roe: p.roe,
+      roic: p.roic,
+      margemLiquida: p.margemLiquida,
+      margemEbit: p.margemEbit,
+      divLiqEbitda: p.divLiqEbitda,
+      divLiqPl: p.divLiqPl,
+      liqCorrente: p.liqCorrente,
+      basileia: p.basileia,
+      cLucro5a: p.cLucro5a,
+      cReceita5a: p.cReceita5a,
+      pe: p.pe,
+      pvp: p.pvp,
+    });
+    weightedRiskScore += (p.w / 100) * riskBucket.score;
+    weightedStructuralRisk += (p.w / 100) * getStructuralRiskBase(p.setor, p.subsetor);
 
-    const upside = typeof p.upside === "number" && Number.isFinite(p.upside) ? p.upside : null;
-    const dy = typeof p.dividend === "number" && Number.isFinite(p.dividend) ? p.dividend : null;
-    const roe = typeof p.roe === "number" && Number.isFinite(p.roe) ? p.roe : null;
-    const roic = typeof p.roic === "number" && Number.isFinite(p.roic) ? p.roic : null;
-    const margemLiquida = typeof p.margemLiquida === "number" && Number.isFinite(p.margemLiquida) ? p.margemLiquida : null;
-    const debt = typeof p.debt === "number" && Number.isFinite(p.debt) ? p.debt : null;
-    const cLucro5a = typeof p.cLucro5a === "number" && Number.isFinite(p.cLucro5a) ? p.cLucro5a : null;
-    const cReceita5a = typeof p.cReceita5a === "number" && Number.isFinite(p.cReceita5a) ? p.cReceita5a : null;
-    const score = typeof p.score === "number" && Number.isFinite(p.score) ? p.score : null;
-    const nearFairValue = upside !== null && upside >= -8 && upside <= 22;
-    const moderateUpside = upside !== null && upside >= -10 && upside <= 15;
-    const isIncomeAsset =
-      (dy !== null && dy >= 4.5) &&
-      defensiveSubsetores.has(p.subsetor) &&
-      moderateUpside &&
-      (roe === null || roe >= 10);
-    if (isIncomeAsset) {
-      incomeW += p.w;
-      defensiveW += p.w * 0.35;
+    if (riskBucket.bucket === "alto_risco") {
+      highRiskW += p.w;
+      highRiskAssets.push({
+        symbol: p.symbol,
+        weightPct: Number(p.w.toFixed(1)),
+        reason: riskBucket.reason,
+      });
+    } else if (riskBucket.bucket === "risco_moderado") {
+      moderateRiskW += p.w;
     } else {
-      if (dy !== null && dy >= 4.5) incomeW += p.w * 0.55;
-      if (dy !== null && dy >= 7) incomeW += p.w * 0.2;
-      if (roe !== null && roe >= 12) incomeW += p.w * 0.25;
-    }
-    if (p.perfilDividendos === "alto") incomeW += p.w * 0.2;
-    if (p.perfilDividendos === "baixo") incomeW -= p.w * 0.08;
-    if (p.perfilDefensivo === "alto") defensiveW += p.w * 0.2;
-    if (p.perfilDefensivo === "baixo") defensiveW -= p.w * 0.1;
-
-    const highStructuralRisk = debt !== null && debt > 5;
-    const isBalancedAsset =
-      nearFairValue &&
-      (score === null || score >= 55) &&
-      (roe === null || roe >= 10) &&
-      !highStructuralRisk;
-    if (isBalancedAsset) {
-      balancedW += p.w;
-    } else if (nearFairValue && (score === null || score >= 50)) {
-      balancedW += p.w * 0.55;
-    }
-
-    const isGrowthAsset =
-      (upside !== null && upside >= 15) &&
-      growthSubsetores.has(p.subsetor) &&
-      (cLucro5a === null || cLucro5a >= 8);
-    if (isGrowthAsset) {
-      growthW += p.w;
-    } else {
-      if (upside !== null && upside > 28) growthW += p.w * 0.45;
-      if (upside !== null && upside > 15) growthW += p.w * 0.2;
-      if (cLucro5a !== null && cLucro5a >= 10) growthW += p.w * 0.15;
-      if (cReceita5a !== null && cReceita5a >= 8) growthW += p.w * 0.08;
-    }
-    if (p.perfilDividendos === "baixo" && p.perfilDefensivo !== "alto") growthW += p.w * 0.08;
-    if (/software|marketplace|expans[aã]o|crescimento|aeroespacial/i.test(p.modeloNegocio)) growthW += p.w * 0.07;
-
-    if (upside !== null && upside < -12) defensiveW += p.w * 0.15;
-    if (upside !== null) {
-      upsideWeightedSum += upside * p.w;
-      upsideWeight += p.w;
-    }
-
-    const scoreComp = score ?? 55;
-    const roeComp = qualityFromPercent(roe, 0, 20);
-    const roicComp = qualityFromPercent(roic, 0, 18);
-    const margemComp = qualityFromPercent(margemLiquida, -5, 20);
-    let qualityAssetScore =
-      (scoreComp * 0.4) +
-      (roeComp * 0.25) +
-      (roicComp * 0.2) +
-      (margemComp * 0.15);
-    if (debt !== null && debt > 5) qualityAssetScore -= 18;
-    if (p.lpa !== null && p.lpa <= 0) qualityAssetScore -= 15;
-    qualityAssetScore = clamp(qualityAssetScore, 0, 100);
-    modelQualityWeightedSum += qualityAssetScore * p.w;
-    modelQualityWeight += p.w;
-
-    if (typeof p.score === "number" && Number.isFinite(p.score)) {
-      qualityWeightedScore += p.score * p.w;
-      qualityWeight += p.w;
-      if (p.score < 50) weakQualityW += p.w;
-      if (p.score >= 70) strongQualityW += p.w;
+      lowRiskW += p.w;
     }
   }
 
-  const avgQualityScore = qualityWeight > 0 ? qualityWeightedScore / qualityWeight : 55;
-  const avgUpside = upsideWeight > 0 ? upsideWeightedSum / upsideWeight : 0;
-  const modelQualityScore = modelQualityWeight > 0 ? modelQualityWeightedSum / modelQualityWeight : 55;
+  const concentrationAssets = clamp(Math.max(0, top1 - 20) * 2 + Math.max(0, top3 - 55) * 0.9, 0, 100);
+  const concentrationSectors = clamp(Math.max(0, maxSetor - 30) * 2.2, 0, 100);
+  const volatileExposure = clamp(highRiskW * 1.35, 0, 100);
+  const structuralRisk = clamp(weightedStructuralRisk * 5, 0, 100);
+  const qualityRisk = clamp(100 - weightedRiskScore, 0, 100);
 
-  const concentrationAssets = clamp((top1 - 12) * 2.8 + (top3 - 38) * 1.35, 0, 100);
-  const concentrationSectors = clamp((maxSetor - 24) * 2.2 + (maxSubsetor - 18) * 2.0, 0, 100);
-  const volatileExposure = clamp(volatileW * 1.45, 0, 100);
-  const structuralRisk = clamp((stateW * 1.1) + (regulatoryW * 0.8), 0, 100);
-  const qualityRisk = clamp(((60 - avgQualityScore) * 1.8) + (weakQualityW * 1.0) - (strongQualityW * 0.45), 0, 100);
-
-  const totalScore = Math.round(
-    (concentrationAssets * 0.25) +
-    (concentrationSectors * 0.20) +
-    (volatileExposure * 0.20) +
-    (structuralRisk * 0.15) +
-    (qualityRisk * 0.20)
-  );
+  const portfolioRiskScore = clamp(weightedRiskScore, 0, 100);
+  const highRiskExposurePct = clamp(highRiskW, 0, 100);
+  const totalScore = Number(portfolioRiskScore.toFixed(1));
 
   const drivers: string[] = [];
   const reducers: string[] = [];
 
-  if (top1 >= 20) drivers.push(`Maior posição com peso elevado (${top1.toFixed(1)}%).`);
-  if (top3 >= 55) drivers.push(`Top 3 posições concentram ${top3.toFixed(1)}% da carteira.`);
-  if (maxSetor >= 30) drivers.push(`Concentração setorial relevante (maior setor: ${maxSetor.toFixed(1)}%).`);
-  if (maxSubsetor >= 25) drivers.push(`Concentração intrassetorial relevante (maior subsetor: ${maxSubsetor.toFixed(1)}%).`);
-  if (volatileW >= 30) drivers.push(`Exposição moderada/alta a subsetores mais voláteis (${volatileW.toFixed(1)}%).`);
-  if (stateW >= 18) drivers.push(`Peso relevante em empresas com risco estatal/regulatório (${stateW.toFixed(1)}%).`);
-  if (avgQualityScore < 58) drivers.push(`Qualidade fundamentalista média abaixo do ideal (score médio ${avgQualityScore.toFixed(1)}).`);
+  drivers.push(`Exposição a ações de alto risco: ${highRiskExposurePct.toFixed(1)}%.`);
+  drivers.push(`Risk Score ponderado da carteira: ${portfolioRiskScore.toFixed(1)}/100.`);
+  if (highRiskAssets.length > 0) {
+    const topHighRisk = [...highRiskAssets]
+      .sort((a, b) => b.weightPct - a.weightPct)
+      .slice(0, 3)
+      .map((a) => `${a.symbol} (${a.weightPct.toFixed(1)}%)`);
+    drivers.push(`Ações que mais elevam o risco: ${topHighRisk.join(", ")}.`);
+  }
+  if (top1 > 20) drivers.push(`Maior ativo acima da faixa padrão (20%): ${top1.toFixed(1)}%.`);
+  if (maxSetor > 30) drivers.push(`Maior setor acima da faixa padrão (30%): ${maxSetor.toFixed(1)}%.`);
 
-  if (maxSetor < 28 && maxSubsetor < 22) reducers.push("Boa dispersão entre setores e subsetores.");
-  if (volatileW < 25) reducers.push("Exposição controlada a subsetores mais cíclicos.");
-  if (avgQualityScore >= 65) reducers.push(`Qualidade média dos ativos ajuda a compensar parte do risco (score médio ${avgQualityScore.toFixed(1)}).`);
+  if (highRiskExposurePct <= 30) reducers.push("Exposição a ações de alto risco está controlada.");
+  if (portfolioRiskScore <= 50) reducers.push("Score ponderado da carteira está em nível administrável.");
+  if (top1 <= 20 && maxSetor <= 30) reducers.push("Concentração por ativo e setor está dentro da faixa padrão.");
 
   return {
     totalScore,
     classification: riskLevelFromScore(totalScore),
-    drivers: drivers.slice(0, 4),
+    drivers: drivers.slice(0, 5),
     reducers: reducers.slice(0, 3),
-    components: {
-      concentrationAssets: Math.round(concentrationAssets),
-      concentrationSectors: Math.round(concentrationSectors),
-      volatileExposure: Math.round(volatileExposure),
-      structuralRisk: Math.round(structuralRisk),
-      qualityRisk: Math.round(qualityRisk),
+    riskExposure: {
+      baixo: Number(clamp(lowRiskW, 0, 100).toFixed(1)),
+      moderado: Number(clamp(moderateRiskW, 0, 100).toFixed(1)),
+      alto: Number(highRiskExposurePct.toFixed(1)),
     },
-    profileCompatibility: evaluateCompatibility(profile, totalScore, {
-      incomeWeight: clamp(incomeW, 0, 100),
-      defensiveWeight: clamp(defensiveW, 0, 100),
-      growthWeight: clamp(growthW, 0, 100),
-      balancedWeight: clamp(balancedW, 0, 100),
-      avgUpside,
-      qualityScore: modelQualityScore,
-    }),
+    highRiskAssets: highRiskAssets
+      .sort((a, b) => b.weightPct - a.weightPct)
+      .slice(0, 8),
+    components: {
+      concentrationAssets: Number(concentrationAssets.toFixed(1)),
+      concentrationSectors: Number(concentrationSectors.toFixed(1)),
+      volatileExposure: Number(volatileExposure.toFixed(1)),
+      structuralRisk: Number(structuralRisk.toFixed(1)),
+      qualityRisk: Number(qualityRisk.toFixed(1)),
+    },
+    profileCompatibility: evaluateCompatibility(profile, highRiskExposurePct, portfolioRiskScore),
   };
 }
 

@@ -11,7 +11,7 @@ interface HoldingsTableProps {
 }
 
 export function HoldingsTable({ holdings: userHoldings }: HoldingsTableProps) {
-  const items = userHoldings || [];
+  const items = useMemo(() => userHoldings || [], [userHoldings]);
   const PAGE_SIZE = 6;
   const [page, setPage] = useState(1);
   const [pageDir, setPageDir] = useState(1);

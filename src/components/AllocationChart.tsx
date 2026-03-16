@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { animate, motion } from "framer-motion";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Holding } from "@/data/investments";
+import { getAiTaxonomy } from "@/data/investments";
 
 interface AllocationChartProps {
   holdings?: (Holding & { avgPrice?: number })[];
@@ -27,7 +28,8 @@ export function AllocationChart({ holdings: userHoldings, className = "" }: Allo
     if (!userHoldings || userHoldings.length === 0) return [];
     const sectorMap: Record<string, number> = {};
     for (const h of userHoldings) {
-      sectorMap[h.sector] = (sectorMap[h.sector] || 0) + h.allocation;
+      const canonicalSector = getAiTaxonomy(h.symbol, h.sector, h.subsetor).setor_macro;
+      sectorMap[canonicalSector] = (sectorMap[canonicalSector] || 0) + h.allocation;
     }
     return Object.entries(sectorMap).map(([name, value], i) => ({
       name,
