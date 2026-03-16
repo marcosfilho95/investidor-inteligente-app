@@ -6,12 +6,15 @@ import { AiChatWidget } from "@/components/AiChatWidget";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 import { InvestorProfileOnboardingModal } from "@/components/InvestorProfileOnboardingModal";
 import { normalizeInvestorProfile, loadInvestorProfileFromStorage, type InvestorProfileSummary } from "@/lib/investorIntelligence";
 import { loadInvestorProfileFromDatabase, persistInvestorProfile } from "@/lib/investorProfilePersistence";
+import { evaluateAlerts, type SmartAlert } from "@/lib/smartAlerts";
+import { SmartAlertCard } from "@/components/SmartAlertCard";
+import { getAiTaxonomy } from "@/data/investments";
 
 const Index = () => {
   const [userName, setUserName] = useState(() => localStorage.getItem("ii_user_name") || "Investidor");
@@ -24,6 +27,7 @@ const Index = () => {
   } | null>(null);
   const [investorProfile, setInvestorProfile] = useState<InvestorProfileSummary | null>(null);
   const [showProfileOnboarding, setShowProfileOnboarding] = useState(false);
+  const [activeAlert, setActiveAlert] = useState<SmartAlert | null>(null);
   const { enrichedHoldings, loading, userTrades, portfolioMetrics } = useUserHoldings();
 
   useEffect(() => {
@@ -110,6 +114,33 @@ const Index = () => {
   const dashboardReady = !loading && minDelayDone;
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
+
+  // Evaluate smart alerts when dashboard is ready
+  useEffect(() => {
+    if (!dashboardReady) return;
+    const sectorMap: Record<string, number> = {};
+    for (const h of enrichedHoldings) {
+      const tax = getAiTaxonomy(h.symbol, h.sector, h.subsetor);
+      sectorMap[tax.setor_macro] = (sectorMap[tax.setor_macro] || 0) + h.allocation;
+    }
+    const alert = evaluateAlerts({
+      isEmpty,
+      holdings: enrichedHoldings.map((h) => ({
+        symbol: h.symbol,
+        allocation: h.allocation,
+        changePercent: h.changePercent,
+        sector: h.sector,
+        score: (h as any).score ?? null,
+        upside: (h as any).upside ?? null,
+        pe: h.pe,
+        pvp: h.pvp,
+      })),
+      dailyChangePercent: portfolioMetrics.dailyChangePercent,
+      sectorMap,
+      totalAssets: enrichedHoldings.length,
+    });
+    setActiveAlert(alert);
+  }, [dashboardReady, isEmpty, enrichedHoldings, portfolioMetrics.dailyChangePercent]);
   const firstBuyDate = useMemo(() => {
     const holdingDates = enrichedHoldings
       .map((h) => (h.firstBuyDate || "").slice(0, 10))
@@ -277,6 +308,13 @@ Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estraté
               </motion.div>
             )}
           </div>
+
+          {/* Smart Alert */}
+          <AnimatePresence>
+            {activeAlert && dashboardReady && (
+              <SmartAlertCard alert={activeAlert} onDismiss={() => setActiveAlert(null)} />
+            )}
+          </AnimatePresence>
 
           {dashboardReady && !isEmpty && showCharts && (
             <motion.div
