@@ -511,7 +511,7 @@ const Profile = () => {
                     onClick={() => setShowProfileOnboarding(true)}
                     className="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors whitespace-nowrap"
                   >
-                    {investorProfile ? "Refazer questionário" : "Responder questionário"}
+                    {investorProfile ? "Redefinir perfil" : "Responder questionário"}
                   </button>
                 </div>
               </div>
