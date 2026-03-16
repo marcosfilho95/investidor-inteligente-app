@@ -12,6 +12,9 @@ import { useUserHoldings } from "@/hooks/useUserHoldings";
 import { InvestorProfileOnboardingModal } from "@/components/InvestorProfileOnboardingModal";
 import { normalizeInvestorProfile, loadInvestorProfileFromStorage, type InvestorProfileSummary } from "@/lib/investorIntelligence";
 import { loadInvestorProfileFromDatabase, persistInvestorProfile } from "@/lib/investorProfilePersistence";
+import { evaluateAlerts, type SmartAlert } from "@/lib/smartAlerts";
+import { SmartAlertCard } from "@/components/SmartAlertCard";
+import { getAiTaxonomy } from "@/data/investments";
 
 const Index = () => {
   const [userName, setUserName] = useState(() => localStorage.getItem("ii_user_name") || "Investidor");
