@@ -1,4 +1,4 @@
-﻿import { type ChangeEvent, useEffect, useRef, useState } from "react";
+﻿import { type ChangeEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Mail, Calendar, LogOut, ChevronRight, Wallet, TrendingUp, PieChart, Camera, GraduationCap, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
@@ -31,7 +31,6 @@ const Profile = () => {
   const { enrichedHoldings, totalValue, portfolioMetrics } = useUserHoldings();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   const avatarStorageKey = `ii_profile_avatar_${userEmail || userName}`;
   const getUsernameStorageKey = (id?: string, email?: string) =>
@@ -267,10 +266,6 @@ const Profile = () => {
     }
   };
 
-  const handleAvatarPick = () => {
-    avatarInputRef.current?.click();
-  };
-
   const handleAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -393,9 +388,8 @@ const Profile = () => {
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 className="relative flex flex-col items-center gap-2"
               >
-                <button
-                  type="button"
-                  onClick={handleAvatarPick}
+                <label
+                  htmlFor="profile-avatar-input"
                   className="relative h-24 w-24 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shadow-[0_0_32px_-8px] shadow-primary/20 overflow-hidden group cursor-pointer"
                   title="Alterar foto de perfil"
                 >
@@ -408,9 +402,9 @@ const Profile = () => {
                   <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/25 transition-colors">
                     <Camera className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                </button>
+                </label>
                 <input
-                  ref={avatarInputRef}
+                  id="profile-avatar-input"
                   type="file"
                   accept="image/*"
                   onChange={handleAvatarChange}
@@ -666,7 +660,3 @@ const Profile = () => {
 };
 
 export default Profile;
-
-
-
-
