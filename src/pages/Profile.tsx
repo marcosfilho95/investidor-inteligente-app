@@ -34,6 +34,8 @@ const Profile = () => {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   const avatarStorageKey = `ii_profile_avatar_${userEmail || userName}`;
+  const getUsernameStorageKey = (id?: string, email?: string) =>
+    `ii_profile_username_${id || email || "anonymous"}`;
 
   const normalizeUsername = (value: string) =>
     value
@@ -82,50 +84,94 @@ const Profile = () => {
     });
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) {
-        navigate("/login");
-        return;
+    let mounted = true;
+
+    const loadProfile = async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (!mounted) return;
+
+        if (!data.user) {
+          navigate("/login");
+          return;
+        }
+
+        const name = data.user.user_metadata?.name || data.user.email?.split("@")[0] || "Investidor";
+        setUserId(data.user.id);
+        setUserName(name);
+        setUserEmail(data.user.email || "");
+        setUserCreatedAt(data.user.created_at || "");
+
+        const profileFromDatabase = await loadInvestorProfileFromDatabase(data.user.id);
+        const profileFromMetadata = normalizeInvestorProfile(data.user.user_metadata?.investor_profile);
+        const profileFromStorage =
+          loadInvestorProfileFromStorage(data.user.id) ||
+          loadInvestorProfileFromStorage(data.user.email || "");
+        const initialProfile = profileFromDatabase || profileFromMetadata || profileFromStorage;
+        if (initialProfile && mounted) {
+          setInvestorProfile(initialProfile);
+        }
+
+        const persistedAvatar = localStorage.getItem(`ii_profile_avatar_${data.user.email || name}`);
+        if (persistedAvatar && mounted) setAvatarUrl(persistedAvatar);
+
+        const authUsername = normalizeUsername(String(data.user.user_metadata?.username || ""));
+        const usernameStorageKey = getUsernameStorageKey(data.user.id, data.user.email || "");
+        const cachedUsername = normalizeUsername(localStorage.getItem(usernameStorageKey) || "");
+
+        const initialResolvedUsername = authUsername || cachedUsername;
+        if (mounted && initialResolvedUsername) {
+          setUsername(initialResolvedUsername);
+          setUsernameDraft(initialResolvedUsername);
+          setUsernameFinalized(true);
+        }
+
+        let profileData: { username?: string | null; avatar_url?: string | null } | null = null;
+        const profileQuery = await supabase
+          .from("profiles")
+          .select("username, avatar_url")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+
+        if (profileQuery.error) {
+          const fallbackQuery = await supabase
+            .from("profiles")
+            .select("username")
+            .eq("user_id", data.user.id)
+            .maybeSingle();
+          profileData = (fallbackQuery.data ?? null) as { username?: string | null; avatar_url?: string | null } | null;
+        } else {
+          profileData = (profileQuery.data ?? null) as { username?: string | null; avatar_url?: string | null } | null;
+        }
+
+        if (!mounted) return;
+
+        const dbUsername = normalizeUsername(profileData?.username || "");
+        const resolvedUsername = dbUsername || authUsername || cachedUsername;
+
+        setUsername(resolvedUsername);
+        setUsernameDraft(resolvedUsername);
+        setUsernameFinalized(resolvedUsername.trim().length > 0);
+
+        if (resolvedUsername) {
+          localStorage.setItem(usernameStorageKey, resolvedUsername);
+        }
+
+        if (profileData?.avatar_url) {
+          setAvatarUrl(profileData.avatar_url);
+          localStorage.setItem(`ii_profile_avatar_${data.user.email || name}`, profileData.avatar_url);
+          localStorage.setItem("ii_profile_avatar_current", profileData.avatar_url);
+        }
+      } finally {
+        if (mounted) setLoading(false);
       }
+    };
 
-      const name = data.user.user_metadata?.name || data.user.email?.split("@")[0] || "Investidor";
-      setUserId(data.user.id);
-      setUserName(name);
-      setUserEmail(data.user.email || "");
-      setUserCreatedAt(data.user.created_at || "");
-      const profileFromDatabase = await loadInvestorProfileFromDatabase(data.user.id);
-      const profileFromMetadata = normalizeInvestorProfile(data.user.user_metadata?.investor_profile);
-      const profileFromStorage =
-        loadInvestorProfileFromStorage(data.user.id) ||
-        loadInvestorProfileFromStorage(data.user.email || "");
-      const initialProfile = profileFromDatabase || profileFromMetadata || profileFromStorage;
-      if (initialProfile) {
-        setInvestorProfile(initialProfile);
-      }
-      const persistedAvatar = localStorage.getItem(`ii_profile_avatar_${data.user.email || name}`);
-      if (persistedAvatar) setAvatarUrl(persistedAvatar);
-      const authUsername = normalizeUsername(String(data.user.user_metadata?.username || ""));
+    void loadProfile();
 
-      supabase
-        .from("profiles")
-        .select("username, avatar_url")
-        .eq("user_id", data.user.id)
-        .maybeSingle()
-        .then(({ data: profileData }) => {
-          const dbUsername = normalizeUsername(profileData?.username || "");
-          const resolvedUsername = dbUsername || authUsername;
-          setUsername(resolvedUsername);
-          setUsernameDraft(resolvedUsername);
-          setUsernameFinalized(resolvedUsername.trim().length > 0);
-          if (profileData?.avatar_url) {
-            setAvatarUrl(profileData.avatar_url);
-            localStorage.setItem(`ii_profile_avatar_${data.user.email || name}`, profileData.avatar_url);
-            localStorage.setItem("ii_profile_avatar_current", profileData.avatar_url);
-          }
-        });
-
-      setLoading(false);
-    });
+    return () => {
+      mounted = false;
+    };
   }, [navigate]);
 
   const handleSaveUsername = async () => {
@@ -151,59 +197,29 @@ const Profile = () => {
 
     setSavingUsername(true);
     try {
-      const { data: updatedProfile, error } = await supabase
+      const { data: currentProfile, error: readError } = await supabase
         .from("profiles")
-        .update({ username: normalized })
-        .eq("user_id", userId)
-        .or("username.is.null,username.eq.")
         .select("username")
+        .eq("user_id", userId)
         .maybeSingle();
-      if (error) throw error;
-      let persistedUsername = updatedProfile?.username ?? null;
+      if (readError) throw readError;
 
-      // Legacy safety: if profile row does not exist yet, create/upsert and persist username once.
-      if (!persistedUsername) {
-        const { data: upsertedProfile, error: upsertError } = await supabase
-          .from("profiles")
-          .upsert(
-            {
-              user_id: userId,
-              name: userName || "",
-              email: userEmail || "",
-              username: normalized,
-            },
-            { onConflict: "user_id" }
-          )
-          .select("username")
-          .maybeSingle();
-
-        if (upsertError) throw upsertError;
-        persistedUsername = upsertedProfile?.username ?? null;
+      const currentUsername = normalizeUsername(currentProfile?.username || "");
+      if (currentUsername) {
+        toast({
+          title: "Nome de usuário bloqueado",
+          description: "Este usuário já foi definido anteriormente e não pode ser alterado.",
+        });
+        setUsername(currentUsername);
+        setUsernameDraft(currentUsername);
+        setUsernameFinalized(true);
+        localStorage.setItem(getUsernameStorageKey(userId, userEmail), currentUsername);
+        return;
       }
 
-      if (!persistedUsername) {
-        // Fallback de consistência: em alguns cenários de RLS, update/upsert podem não retornar linha.
-        // Confirmamos o valor atual e, se ainda vazio, persistimos novamente sem depender de retorno.
-        const { data: currentProfile, error: readError } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("user_id", userId)
-          .maybeSingle();
-        if (readError) throw readError;
-
-        const currentUsername = normalizeUsername(currentProfile?.username || "");
-        if (currentUsername) {
-          toast({
-            title: "Nome de usuário bloqueado",
-            description: "Este usuário já foi definido anteriormente e não pode ser alterado.",
-          });
-          setUsername(currentUsername);
-          setUsernameDraft(currentUsername);
-          setUsernameFinalized(true);
-          return;
-        }
-
-        const { error: forceUpsertError } = await supabase.from("profiles").upsert(
+      const { data: upsertedProfile, error: upsertError } = await supabase
+        .from("profiles")
+        .upsert(
           {
             user_id: userId,
             name: userName || "",
@@ -211,15 +227,29 @@ const Profile = () => {
             username: normalized,
           },
           { onConflict: "user_id" }
-        );
-        if (forceUpsertError) throw forceUpsertError;
-        persistedUsername = normalized;
+        )
+        .select("username")
+        .maybeSingle();
+
+      if (upsertError) throw upsertError;
+      let persistedUsername = upsertedProfile?.username ?? null;
+
+      if (!persistedUsername) {
+        // Fallback de consistência: em alguns cenários de RLS, upsert pode não retornar linha.
+        const { data: afterUpsertProfile, error: afterReadError } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (afterReadError) throw afterReadError;
+        persistedUsername = normalizeUsername(afterUpsertProfile?.username || "") || normalized;
       }
 
       await supabase.auth.updateUser({ data: { username: normalized } });
       setUsername(persistedUsername);
       setUsernameDraft(persistedUsername);
       setUsernameFinalized(true);
+      localStorage.setItem(getUsernameStorageKey(userId, userEmail), persistedUsername);
       toast({ title: "Nome de usuário salvo", description: "Agora você pode entrar com usuário ou e-mail." });
     } catch (error: unknown) {
       const errMsg = error instanceof Error ? error.message : String(error || "");
