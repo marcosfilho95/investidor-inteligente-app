@@ -10,8 +10,14 @@ import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 import { InvestorProfileOnboardingModal } from "@/components/InvestorProfileOnboardingModal";
-import { normalizeInvestorProfile, loadInvestorProfileFromStorage, type InvestorProfileSummary } from "@/lib/investorIntelligence";
+import {
+  calculatePortfolioRisk,
+  normalizeInvestorProfile,
+  loadInvestorProfileFromStorage,
+  type InvestorProfileSummary,
+} from "@/lib/investorIntelligence";
 import { loadInvestorProfileFromDatabase, persistInvestorProfile } from "@/lib/investorProfilePersistence";
+import { getAiTaxonomy } from "@/data/investments";
 
 const Index = () => {
   const [userName, setUserName] = useState(() => localStorage.getItem("ii_user_name") || "Investidor");
@@ -125,10 +131,45 @@ const Index = () => {
     return buys[0] ?? null;
   }, [enrichedHoldings, userTrades]);
 
+  const portfolioRisk = useMemo(() => {
+    const riskInput = enrichedHoldings.map((h) => {
+      const tax = getAiTaxonomy(h.symbol, h.sector, h.subsetor);
+      return {
+        symbol: h.symbol,
+        setor_macro: tax.setor_macro,
+        subsetor: tax.subsetor,
+        modeloNegocio: tax.modelo_negocio,
+        perfilDividendos: tax.perfil_dividendos,
+        perfilDefensivo: tax.perfil_defensivo,
+        riscoEstatal: tax.risco_estatal,
+        allocationPct: h.allocation,
+        score: h.score ?? null,
+        upsidePct: h.upside ?? null,
+        dividendPct: h.dividend ?? null,
+        pe: h.pe ?? null,
+        pvp: h.pvp ?? null,
+        roePct: h.roe ?? null,
+        roicPct: h.roic ?? null,
+        margemLiquidaPct: h.margemLiquida ?? null,
+        margemEbitPct: h.margemEbit ?? null,
+        divLiqEbitda: h.divLiqEbitda ?? null,
+        divLiqPl: h.divLiqPl ?? null,
+        liqCorrente: h.liqCorrente ?? null,
+        basileia: h.basileia ?? null,
+        lpa: h.lpa ?? null,
+        cLucro5aPct: h.cLucro5a ?? null,
+        cReceita5aPct: h.cReceita5a ?? null,
+        payoutPct: h.payout ?? null,
+      };
+    });
+    return calculatePortfolioRisk(riskInput, investorProfile);
+  }, [enrichedHoldings, investorProfile]);
+
   const aiPortfolioContext = useMemo(() => {
     const sectorMap: Record<string, number> = {};
     for (const h of enrichedHoldings) {
-      sectorMap[h.sector] = (sectorMap[h.sector] || 0) + h.allocation;
+      const canonicalSector = getAiTaxonomy(h.symbol, h.sector, h.subsetor).setor_macro;
+      sectorMap[canonicalSector] = (sectorMap[canonicalSector] || 0) + h.allocation;
     }
     const sectorAllocation = Object.entries(sectorMap)
       .map(([sector, allocationPct]) => ({ sector, allocationPct }))
@@ -136,20 +177,23 @@ const Index = () => {
 
     const positions = [...enrichedHoldings]
       .sort((a, b) => b.value - a.value)
-      .map((h) => ({
-        symbol: h.symbol,
-        name: h.name,
-        sector: h.sector,
-        subsetor: h.subsetor,
-        shares: h.shares,
-        avgPrice: h.avgPrice,
-        currentPrice: h.price,
-        positionValue: h.value,
-        allocationPct: h.allocation,
-        positionPnl: h.totalGainCloseValue ?? h.totalGainValue ?? (h.price - h.avgPrice) * h.shares,
-        score: h.score ?? null,
-        upsidePct: h.upside ?? null,
-      }));
+      .map((h) => {
+        const tax = getAiTaxonomy(h.symbol, h.sector, h.subsetor);
+        return {
+          symbol: h.symbol,
+          name: h.name,
+          sector: tax.setor_macro,
+          subsetor: tax.subsetor,
+          shares: h.shares,
+          avgPrice: h.avgPrice,
+          currentPrice: h.price,
+          positionValue: h.value,
+          allocationPct: h.allocation,
+          positionPnl: h.totalGainCloseValue ?? h.totalGainValue ?? (h.price - h.avgPrice) * h.shares,
+          score: h.score ?? null,
+          upsidePct: h.upside ?? null,
+        };
+      });
 
     const recentTrades = [...userTrades]
       .sort((a, b) => new Date(b.traded_at || "").getTime() - new Date(a.traded_at || "").getTime())
@@ -174,8 +218,18 @@ const Index = () => {
       sectorAllocation,
       positions,
       recentTrades,
+      investorProfile,
+      portfolioRisk,
     };
-  }, [enrichedHoldings, portfolioMetrics, userTrades]);
+  }, [enrichedHoldings, investorProfile, portfolioMetrics, portfolioRisk, userTrades]);
+
+  const aiCompatibilityWarning = useMemo(() => {
+    const status = String(portfolioRisk.profileCompatibility?.status || "");
+    if (!status || status === "Dentro da política") return "";
+    if (status === "Abaixo da política") return "Atenção: sua carteira está mais conservadora do que o seu perfil atual.";
+    if (status === "Acima da política") return "Atenção: sua carteira está mais arriscada do que o seu perfil atual.";
+    return "";
+  }, [portfolioRisk.profileCompatibility?.status]);
 
   const aiDashboardWelcome = useMemo(() => `${greeting}, ${userName}! Sou o Hodl, seu assistente de investimentos.
 
@@ -188,25 +242,35 @@ ${loading
     ? "Estou carregando sua carteira agora. Em instantes eu já te passo uma leitura completa dos seus ativos."
     : isEmpty
     ? "Sua carteira está vazia. Posso te guiar no primeiro aporte e na escolha dos primeiros ativos com critério."
-    : `Sua carteira tem ${enrichedHoldings.length} ativos. Posso apontar forças, riscos e oportunidades de rebalanceamento.`}
+    : `Sua carteira tem ${enrichedHoldings.length} ativos. Posso te mostrar pontos fortes e ajustes para melhorar o equilíbrio.`}
+
+${aiCompatibilityWarning ? `\n${aiCompatibilityWarning}\n` : ""}
 
 Se quiser aprender do zero, posso te direcionar para a aba Aprender com trilhas sobre:
-Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estratégia vs Especulação, Psicologia do Investidor e Gestão de Risco.`, [greeting, userName, loading, isEmpty, enrichedHoldings.length]);
+Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estratégia vs Especulação, Psicologia do Investidor e Gestão de Risco.`, [greeting, userName, loading, isEmpty, enrichedHoldings.length, aiCompatibilityWarning]);
+
+  const profileBadgeTone = useMemo(() => {
+    const type = String(investorProfile?.type || "").toLowerCase();
+    if (type.includes("conserv")) return "shadow-[0_0_12px_rgba(34,197,94,0.12)]";
+    if (type.includes("moder")) return "shadow-[0_0_12px_rgba(245,158,11,0.12)]";
+    if (type.includes("arroj") || type.includes("sofistic")) return "shadow-[0_0_12px_rgba(248,113,113,0.12)]";
+    return "shadow-[0_0_10px_rgba(148,163,184,0.08)]";
+  }, [investorProfile?.type]);
 
   return (
     <div className="min-h-screen bg-background">
       <AppHeader activePage="dashboard" />
       <PageTransition>
         <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
-          <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-primary/[0.03] p-6 md:p-8">
+          <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-primary/[0.03] p-5 md:p-6">
             <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/[0.06] blur-3xl pointer-events-none" />
             <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-primary/[0.04] blur-3xl pointer-events-none" />
-            <div className="relative z-10 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-              <div>
-                <h1 className="text-2xl font-bold">
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+              <div className="flex-1">
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight leading-tight">
                   {greeting}, {userName} 👋
                 </h1>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm md:text-base text-muted-foreground mt-1.5 max-w-[780px]">
                   {loading
                     ? "Carregando dados da sua carteira..."
                     : isEmpty
@@ -215,9 +279,26 @@ Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estraté
                 </p>
               </div>
               {!loading && (
-                <div className="md:text-right rounded-xl bg-gradient-to-r from-primary/12 to-primary/5 px-3.5 py-2.5 w-fit md:ml-auto shadow-[inset_0_0_0_1px_rgba(34,197,94,0.18)]">
-                  <p className="text-[10px] uppercase tracking-[0.08em] text-primary/80">Perfil do investidor</p>
-                  <p className="text-sm md:text-[15px] font-semibold mt-0.5 text-foreground">{investorProfile?.type || "Não definido"}</p>
+                <div className={`relative w-fit min-w-[214px] ml-auto overflow-hidden rounded-[14px] border border-white/10 bg-[linear-gradient(168deg,rgba(34,41,51,0.42)_0%,rgba(21,29,38,0.34)_42%,rgba(15,21,28,0.3)_100%)] px-4 py-3 shadow-[0_8px_20px_-14px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[1.5px] ${profileBadgeTone}`}>
+                  <div className="pointer-events-none absolute inset-[1px] rounded-[13px] border border-white/[0.04] bg-gradient-to-b from-white/[0.03] via-transparent to-black/[0.08]" />
+                  <div className="pointer-events-none absolute left-4 right-4 top-[2px] h-px bg-white/12" />
+                  <div className="pointer-events-none absolute left-4 right-4 bottom-[2px] h-px bg-black/20" />
+                  <div className="pointer-events-none absolute -left-5 top-1/2 h-8 w-28 -translate-y-1/2 rotate-[-28deg] bg-gradient-to-r from-white/0 via-white/[0.1] to-white/0 blur-sm" />
+                  <motion.div
+                    className="pointer-events-none absolute left-[28%] top-1/2 h-7 w-16 -translate-y-1/2 rotate-[-28deg] bg-gradient-to-r from-white/0 via-white/[0.08] to-white/0 blur-[2px]"
+                    animate={{ opacity: [0.24, 0.52, 0.24] }}
+                    transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <div className="pointer-events-none absolute right-2 top-1 h-[34%] w-[32%] rounded-full bg-white/[0.04] blur-sm" />
+                  <div className="relative min-w-0 w-full flex flex-col gap-2.5">
+                    <div className="block w-full text-[12px] uppercase tracking-[0.2em] text-primary font-bold leading-none">
+                      Perfil do investidor
+                    </div>
+                    <div className="h-px w-full bg-gradient-to-r from-white/20 via-white/10 to-white/18" />
+                    <p className="w-full text-[14px] font-semibold leading-none tracking-tight text-right text-slate-50 drop-shadow-[0_1px_0_rgba(2,6,23,0.8)]">
+                      {investorProfile?.type || "Não definido"}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

@@ -48,7 +48,7 @@ export function InvestorProfileOnboardingModal({
     setResultProfile(null);
     setSaving(false);
     setIsClosing(false);
-  }, [open]);
+  }, [open, initialAnswers]);
 
   useEffect(() => {
     return () => {

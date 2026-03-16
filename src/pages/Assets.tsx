@@ -29,7 +29,7 @@ const Assets = () => {
         {
           sector: getAiTaxonomy(h.symbol, h.sector, h.subsetor).setor_macro,
           subsetor: getAiTaxonomy(h.symbol, h.sector, h.subsetor).subsetor,
-          displayName: h.symbol === "AXIA6" ? "AXIA6" : h.name,
+          displayName: h.symbol === "AXIA6" ? "AXIA" : h.name,
         },
       ])
     );

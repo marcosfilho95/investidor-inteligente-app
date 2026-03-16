@@ -1,6 +1,6 @@
-﻿import { type ChangeEvent, useEffect, useState } from "react";
+﻿import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Mail, Calendar, LogOut, ChevronRight, Wallet, TrendingUp, PieChart, Camera, GraduationCap, ShieldCheck } from "lucide-react";
+import { User, Mail, Calendar, LogOut, ChevronRight, Wallet, TrendingUp, PieChart, Camera, GraduationCap, ShieldCheck, BellRing } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
@@ -8,12 +8,49 @@ import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 import { useToast } from "@/hooks/use-toast";
 import {
+  calculatePortfolioRisk,
   loadInvestorProfileFromStorage,
   normalizeInvestorProfile,
   type InvestorProfileSummary,
 } from "@/lib/investorIntelligence";
 import { InvestorProfileOnboardingModal } from "@/components/InvestorProfileOnboardingModal";
 import { loadInvestorProfileFromDatabase, persistInvestorProfile } from "@/lib/investorProfilePersistence";
+import { getAiTaxonomy } from "@/data/investments";
+
+type RiskPolicyType = "conservadora" | "moderada" | "sofisticada";
+
+interface RiskMisalignmentTracker {
+  startedAt: string;
+  lastDetectedAt: string;
+}
+
+const isRiskPolicyType = (value: string | null): value is RiskPolicyType =>
+  value === "conservadora" || value === "moderada" || value === "sofisticada";
+
+const getRiskPolicyStorageKey = (id?: string, email?: string) =>
+  `ii_risk_policy_${id || email || "anonymous"}`;
+const getRiskMisalignmentStorageKey = (id?: string, email?: string) =>
+  `ii_risk_misalignment_${id || email || "anonymous"}`;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const toLocalDayId = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const fromDayId = (dayId: string) => new Date(`${dayId}T00:00:00`);
+
+const getDayDiff = (startDayId: string, endDayId: string) =>
+  Math.floor((fromDayId(endDayId).getTime() - fromDayId(startDayId).getTime()) / DAY_MS);
+
+const mapInvestorProfileToRiskPolicy = (type?: InvestorProfileSummary["type"]): RiskPolicyType => {
+  if (type === "Conservador") return "conservadora";
+  if (type === "Arrojado") return "sofisticada";
+  return "moderada";
+};
 
 const Profile = () => {
   const [userName, setUserName] = useState("Investidor");
@@ -26,6 +63,8 @@ const Profile = () => {
   const [userCreatedAt, setUserCreatedAt] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [investorProfile, setInvestorProfile] = useState<InvestorProfileSummary | null>(null);
+  const [riskPolicy, setRiskPolicy] = useState<RiskPolicyType>("moderada");
+  const [misalignmentTracker, setMisalignmentTracker] = useState<RiskMisalignmentTracker | null>(null);
   const [showProfileOnboarding, setShowProfileOnboarding] = useState(false);
   const [loading, setLoading] = useState(true);
   const { enrichedHoldings, totalValue, portfolioMetrics } = useUserHoldings();
@@ -111,6 +150,14 @@ const Profile = () => {
           setInvestorProfile(initialProfile);
         }
 
+        const riskPolicyStorageKey = getRiskPolicyStorageKey(data.user.id, data.user.email || "");
+        const storedRiskPolicy = localStorage.getItem(riskPolicyStorageKey);
+        if (isRiskPolicyType(storedRiskPolicy)) {
+          setRiskPolicy(storedRiskPolicy);
+        } else {
+          setRiskPolicy(mapInvestorProfileToRiskPolicy(initialProfile?.type));
+        }
+
         const persistedAvatar = localStorage.getItem(`ii_profile_avatar_${data.user.email || name}`);
         if (persistedAvatar && mounted) setAvatarUrl(persistedAvatar);
 
@@ -172,6 +219,11 @@ const Profile = () => {
       mounted = false;
     };
   }, [navigate]);
+
+  useEffect(() => {
+    if (!userId && !userEmail) return;
+    localStorage.setItem(getRiskPolicyStorageKey(userId, userEmail), riskPolicy);
+  }, [riskPolicy, userEmail, userId]);
 
   const handleSaveUsername = async () => {
     const usernameLocked = usernameFinalized || username.trim().length > 0;
@@ -352,6 +404,141 @@ const Profile = () => {
     ? new Date(userCreatedAt).toLocaleDateString("pt-BR", { year: "numeric", month: "long", day: "numeric" })
     : "-";
   const usernameLocked = usernameFinalized || username.trim().length > 0;
+  const portfolioRisk = useMemo(() => {
+    const riskInput = enrichedHoldings.map((h) => {
+      const tax = getAiTaxonomy(h.symbol, h.sector, h.subsetor);
+      return {
+        symbol: h.symbol,
+        setor_macro: tax.setor_macro,
+        subsetor: tax.subsetor,
+        modeloNegocio: tax.modelo_negocio,
+        perfilDividendos: tax.perfil_dividendos,
+        perfilDefensivo: tax.perfil_defensivo,
+        riscoEstatal: tax.risco_estatal,
+        allocationPct: h.allocation,
+        score: h.score ?? null,
+        upsidePct: h.upside ?? null,
+        dividendPct: h.dividend ?? null,
+        pe: h.pe ?? null,
+        pvp: h.pvp ?? null,
+        roePct: h.roe ?? null,
+        roicPct: h.roic ?? null,
+        margemLiquidaPct: h.margemLiquida ?? null,
+        margemEbitPct: h.margemEbit ?? null,
+        divLiqEbitda: h.divLiqEbitda ?? null,
+        divLiqPl: h.divLiqPl ?? null,
+        liqCorrente: h.liqCorrente ?? null,
+        basileia: h.basileia ?? null,
+        lpa: h.lpa ?? null,
+        cLucro5aPct: h.cLucro5a ?? null,
+        cReceita5aPct: h.cReceita5a ?? null,
+        payoutPct: h.payout ?? null,
+      };
+    });
+    return calculatePortfolioRisk(riskInput, investorProfile);
+  }, [enrichedHoldings, investorProfile]);
+
+  const policyMeta = useMemo(() => {
+    const weightedScore = portfolioRisk.totalScore;
+    const highRiskPct = portfolioRisk.riskExposure?.alto ?? 0;
+    if (riskPolicy === "conservadora") {
+      const within = weightedScore <= 30 && highRiskPct <= 30;
+      return {
+        label: "Conservadora",
+        range: "0-30 pontos",
+        highRiskRule: "Alto risco até 30%",
+        status: within ? "Dentro da política" : "Acima da política",
+      };
+    }
+    if (riskPolicy === "moderada") {
+      const below = weightedScore < 31 || highRiskPct < 40;
+      const within = weightedScore >= 31 && weightedScore <= 60 && highRiskPct >= 40 && highRiskPct <= 50;
+      return {
+        label: "Moderada",
+        range: "31-60 pontos",
+        highRiskRule: "Alto risco entre 40% e 50%",
+        status: within ? "Dentro da política" : below ? "Abaixo da política" : "Acima da política",
+      };
+    }
+    if (riskPolicy === "sofisticada") {
+      const within = weightedScore > 60 && highRiskPct > 60;
+      return {
+        label: "Sofisticada",
+        range: "61-100 pontos",
+        highRiskRule: "Alto risco acima de 60%",
+        status: within ? "Dentro da política" : "Abaixo da política",
+      };
+    }
+    return {
+      label: "Moderada",
+      range: "31-60 pontos",
+      highRiskRule: "Alto risco entre 40% e 50%",
+      status: "Abaixo da política",
+    };
+  }, [portfolioRisk.riskExposure?.alto, portfolioRisk.totalScore, riskPolicy]);
+  const currentRiskScore = Math.min(100, Math.max(0, portfolioRisk.totalScore));
+  const riskPointerColor =
+    portfolioRisk.classification === "Baixo"
+      ? "bg-gain"
+      : portfolioRisk.classification === "Moderado"
+        ? "bg-warning"
+        : "bg-loss";
+  const incompatibleWithPolicy = policyMeta.status === "Abaixo da política" || policyMeta.status === "Acima da política";
+  useEffect(() => {
+    if (!userId && !userEmail) return;
+    const storageKey = getRiskMisalignmentStorageKey(userId, userEmail);
+    const today = toLocalDayId(new Date());
+    const raw = localStorage.getItem(storageKey);
+    let current: RiskMisalignmentTracker | null = null;
+    if (raw) {
+      try {
+        current = JSON.parse(raw) as RiskMisalignmentTracker;
+      } catch {
+        current = null;
+      }
+    }
+
+    if (!incompatibleWithPolicy) {
+      localStorage.removeItem(storageKey);
+      setMisalignmentTracker(null);
+      return;
+    }
+
+    if (!current || !current.startedAt || !current.lastDetectedAt) {
+      const initial = { startedAt: today, lastDetectedAt: today };
+      localStorage.setItem(storageKey, JSON.stringify(initial));
+      setMisalignmentTracker(initial);
+      return;
+    }
+
+    if (current.lastDetectedAt === today) {
+      setMisalignmentTracker(current);
+      return;
+    }
+
+    const gapDays = getDayDiff(current.lastDetectedAt, today);
+    const updated: RiskMisalignmentTracker =
+      gapDays <= 1
+        ? { ...current, lastDetectedAt: today }
+        : { startedAt: today, lastDetectedAt: today };
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+    setMisalignmentTracker(updated);
+  }, [incompatibleWithPolicy, userEmail, userId]);
+
+  const misalignmentDays = useMemo(() => {
+    if (!misalignmentTracker) return 0;
+    const today = toLocalDayId(new Date());
+    return Math.max(1, getDayDiff(misalignmentTracker.startedAt, today) + 1);
+  }, [misalignmentTracker]);
+  const shouldSuggestProfileRedefinition =
+    incompatibleWithPolicy && misalignmentDays >= 10;
+
+  const riskStatusClass =
+    policyMeta.status === "Dentro da política"
+      ? "text-gain bg-gain/10 border-gain/25"
+      : policyMeta.status === "Acima da política"
+        ? "text-loss bg-loss/10 border-loss/25"
+        : "text-warning bg-warning/10 border-warning/25";
 
   const rentabilidade = portfolioMetrics.totalGainPercent;
   const initials = userName
@@ -473,52 +660,6 @@ const Profile = () => {
 
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Perfil do Investidor</h2>
-            </div>
-
-            <AnimatedCard delay={0.18}>
-              <div className="glass-card p-4 sm:p-5">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-lg bg-primary/12 flex items-center justify-center shrink-0">
-                        <ShieldCheck className="h-4 w-4 text-primary" />
-                      </div>
-                      <p className="text-base font-semibold leading-tight">
-                        {investorProfile ? investorProfile.type : "Perfil não definido"}
-                      </p>
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-                      {investorProfile ? (
-                        <>
-                          <span className="inline-flex items-center rounded-full bg-muted/50 px-2.5 py-1 text-muted-foreground">
-                            {investorProfile.horizon}
-                          </span>
-                          <span className="inline-flex items-center rounded-full bg-muted/50 px-2.5 py-1 text-muted-foreground">
-                            {investorProfile.mainGoal}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          Responda o questionário para personalizar as análises da IA.
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowProfileOnboarding(true)}
-                    className="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors whitespace-nowrap"
-                  >
-                    {investorProfile ? "Redefinir perfil" : "Responder questionário"}
-                  </button>
-                </div>
-              </div>
-            </AnimatedCard>
-          </div>
-          <div>
-            <div className="flex items-center gap-2 mb-3">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Informações da Conta</h2>
             </div>
 
@@ -582,6 +723,126 @@ const Profile = () => {
                     <p className="text-xs text-muted-foreground">Membro desde</p>
                     <p className="text-sm font-medium">{memberSince}</p>
                   </div>
+                </div>
+              </div>
+            </AnimatedCard>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Perfil do Investidor</h2>
+            </div>
+
+            <AnimatedCard delay={0.18}>
+              <div className="glass-card p-4 sm:p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-primary/12 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="h-4 w-4 text-primary" />
+                      </div>
+                      <p className="text-base font-semibold leading-tight">
+                        {investorProfile ? investorProfile.type : "Perfil não definido"}
+                      </p>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                      {investorProfile ? (
+                        <>
+                          <span className="inline-flex items-center rounded-full bg-muted/50 px-2.5 py-1 text-muted-foreground">
+                            {investorProfile.horizon}
+                          </span>
+                          <span className="inline-flex items-center rounded-full bg-muted/50 px-2.5 py-1 text-muted-foreground">
+                            {investorProfile.mainGoal}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Responda o questionário para personalizar as análises da IA.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowProfileOnboarding(true)}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors whitespace-nowrap"
+                  >
+                    {investorProfile ? "Redefinir perfil" : "Responder questionário"}
+                  </button>
+                </div>
+
+                <div className="mt-5 pt-5 border-t border-border/30 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Risco atual da carteira</p>
+                      <p className="text-2xl font-bold font-mono leading-tight mt-1">
+                        {portfolioRisk.totalScore.toFixed(1)} pts
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Faixa atual: {portfolioRisk.classification} | Alto risco: {(portfolioRisk.riskExposure?.alto ?? 0).toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border/35 bg-background/35 p-3">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-2">
+                      <span>Termômetro de risco</span>
+                      <span>{currentRiskScore.toFixed(1)}/100</span>
+                    </div>
+                    <div className="relative">
+                      <div className="h-3 rounded-full bg-gradient-to-r from-emerald-400/85 via-amber-400/85 to-rose-400/85" />
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2"
+                        style={{ left: `calc(${currentRiskScore}% - 6px)` }}
+                      >
+                        <div className={`h-3 w-3 rounded-full border-2 border-background shadow-[0_0_0_2px_rgba(15,23,42,0.35)] ${riskPointerColor}`} />
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>0-30 Conservador</span>
+                      <span>31-60 Moderado</span>
+                      <span>61-100 Arrojado</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Perfil atual: <span className="text-foreground font-medium">{policyMeta.label}</span> ({policyMeta.range}) | {policyMeta.highRiskRule}
+                  </p>
+
+                  {incompatibleWithPolicy && (
+                    <div className="rounded-xl border border-warning/30 bg-warning/10 p-3">
+                      <div className="flex items-start gap-2">
+                        <BellRing className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Compatibilidade em monitoramento</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Sua carteira está fora do perfil de risco definido. Se persistir, vale revisar sua estratégia ou atualizar seu perfil.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {shouldSuggestProfileRedefinition && (
+                    <div className="rounded-xl border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/8 to-transparent p-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold">Hora de revisar seu perfil?</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Já são {misalignmentDays} dias com a carteira fora da política. Refazer o perfil pode deixar as recomendações da IA mais alinhadas ao seu comportamento real.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowProfileOnboarding(true)}
+                          className="px-3 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors whitespace-nowrap"
+                        >
+                          Redefinir perfil agora
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </AnimatedCard>
@@ -660,3 +921,7 @@ const Profile = () => {
 };
 
 export default Profile;
+
+
+
+

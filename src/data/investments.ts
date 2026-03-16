@@ -211,7 +211,7 @@ export const holdings: Holding[] = [
   { symbol: "BBSE3", name: "BB Seguridade", shares: 120, price: 34.20, change: 0.48, changePercent: 1.42, value: 4104, allocation: 0.0, category: "Financeiro", description: "Seguradora e empresa de previdência ligada ao Banco do Brasil, com forte geração de caixa e pagamento recorrente de dividendos.", marketCap: "68,36B", pe: 7.55, dividend: 13.14, sector: "Financeiro", subsetor: "Seguros", pvp: 6.55, lpa: 4.51, vpa: 5.19, payout: 100.89, pEbit: 6.9, evEbit: 5.88, evEbitda: null, roe: 86.84, roic: 76.48, margemBruta: 0, margemEbit: 0, margemLiquida: 0, cReceita5a: -100, cLucro5a: 18.05, giroAtivos: 0, liqCorrente: 1.28, divLiqPl: -0.97, divLiqEbitda: null, plAtivos: 0.45 },
 
   // ⚡ Utilidades Públicas (4)
-  { symbol: "AXIA6", name: "Eletrobras", shares: 120, price: 67.70, change: 0.56, changePercent: 0.83, value: 8124, allocation: 1.77, category: "Utilidades Públicas", description: "Maior empresa de energia elétrica da América Latina. Privatizada em 2022, gera e transmite energia em todo o território nacional. Ticker migrado de ELET3 para AXIA6.", marketCap: "172,37B", pe: 28.39, dividend: 6.43, sector: "Utilidades Públicas", subsetor: "Energia Elétrica", pvp: 1.57, lpa: 2.25, vpa: 40.67, payout: 125.16, pEbit: 47.19, evEbit: 55.18, evEbitda: 25.55, roe: 5.53, roic: -4.97, margemBruta: 42.87, margemEbit: 9.56, margemLiquida: 15.89, cReceita5a: 1.88, cLucro5a: 2.8, giroAtivos: 0.15, liqCorrente: 1.68, divLiqPl: 0.39, divLiqEbitda: 5.48, plAtivos: 0.42 },
+  { symbol: "AXIA6", name: "AXIA", shares: 120, price: 67.70, change: 0.56, changePercent: 0.83, value: 8124, allocation: 1.77, category: "Utilidades Públicas", description: "Maior empresa de energia elétrica da América Latina. Privatizada em 2022, gera e transmite energia em todo o território nacional. Ticker migrado de ELET3 para AXIA6.", marketCap: "172,37B", pe: 28.39, dividend: 6.43, sector: "Utilidades Públicas", subsetor: "Energia Elétrica", pvp: 1.57, lpa: 2.25, vpa: 40.67, payout: 125.16, pEbit: 47.19, evEbit: 55.18, evEbitda: 25.55, roe: 5.53, roic: -4.97, margemBruta: 42.87, margemEbit: 9.56, margemLiquida: 15.89, cReceita5a: 1.88, cLucro5a: 2.8, giroAtivos: 0.15, liqCorrente: 1.68, divLiqPl: 0.39, divLiqEbitda: 5.48, plAtivos: 0.42 },
   { symbol: "CPFE3", name: "CPFL Energia", shares: 80, price: 50.87, change: -0.29, changePercent: -0.57, value: 4069.60, allocation: 1.00, category: "Utilidades Públicas", description: "Grupo do setor elétrico que atua em geração, transmissão e distribuição de energia, principalmente no interior de São Paulo.", marketCap: "54,56B", pe: 10.14, dividend: 5.9, sector: "Utilidades Públicas", subsetor: "Energia Elétrica", pvp: 2.47, lpa: 4.76, vpa: 19.52, payout: 58.71, pEbit: 5.03, evEbit: 7.39, evEbitda: 4.92, roe: 24.39, roic: 16.89, margemBruta: 31.83, margemEbit: 24.92, margemLiquida: 12.36, cReceita5a: 2.5, cLucro5a: 3.42, giroAtivos: 0.55, liqCorrente: 0.93, divLiqPl: 1.16, divLiqEbitda: 1.58, plAtivos: 0.28 },
   { symbol: "ISAE4", name: "ISA CTEEP", shares: 100, price: 28.63, change: -1.33, changePercent: -4.44, value: 2863, allocation: 0.89, category: "Utilidades Públicas", description: "Maior empresa privada de transmissão de energia do Brasil. Receita estável e previsível com contratos de longo prazo.", marketCap: "19,44B", pe: 7.56, dividend: 8.03, sector: "Utilidades Públicas", subsetor: "Transmissão Energia", pvp: 0.87, lpa: 3.72, vpa: 32.1, payout: 52.84, pEbit: 4.48, evEbit: 8.07, evEbitda: 8, roe: 11.57, roic: 10.39, margemBruta: 39.35, margemEbit: 43.9, margemLiquida: 26.01, cReceita5a: 11.2, cLucro5a: -3.74, giroAtivos: 0.2, liqCorrente: 3.76, divLiqPl: 0.65, divLiqEbitda: 3.32, plAtivos: 0.45 },
   { symbol: "SAPR11", name: "Sanepar", shares: 200, price: 6.25, change: 0.08, changePercent: 1.30, value: 1250, allocation: 0.44, category: "Utilidades Públicas", description: "Companhia de saneamento do Paraná, responsável por abastecimento de água e esgoto. Receita regulada e previsível.", marketCap: "12,47B", pe: 5.83, dividend: 4.86, sector: "Utilidades Públicas", subsetor: "Saneamento", pvp: 0.98, lpa: 6.88, vpa: 40.85, payout: 22.26, pEbit: 5.19, evEbit: 3.67, evEbitda: 2.9, roe: 16.84, roic: 10.71, margemBruta: 56.27, margemEbit: 32.44, margemLiquida: 28.86, cReceita5a: 6.72, cLucro5a: 12.05, giroAtivos: 0.27, liqCorrente: 1.2, divLiqPl: -0.31, divLiqEbitda: -1.28, plAtivos: 0.47 },
@@ -3094,7 +3094,7 @@ function normalizeAiSymbol(symbol: string): string {
 
 function getAiPreferredAssetName(symbol: string, fallbackName?: string): string {
   const s = normalizeAiSymbol(symbol);
-  if (s === "AXIA6") return "AXIA6";
+  if (s === "AXIA6") return "AXIA";
   return String(fallbackName || s);
 }
 
@@ -3125,7 +3125,7 @@ const AI_ASSET_TAXONOMY: Record<string, AiAssetTaxonomy> = {
   SUZB3: { setor_macro: "Commodities", subsetor: "Papel e Celulose", modelo_negocio: "Produção de celulose com receita dolarizada", perfil_dividendos: "baixo", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Depende de ciclo global de celulose e câmbio." },
   KLBN11: { setor_macro: "Commodities", subsetor: "Papel e Celulose", modelo_negocio: "Papel e celulose com integração florestal e embalagens", perfil_dividendos: "médio", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Combina dinâmica de exportação e mercado interno." },
   GGBR4: { setor_macro: "Commodities", subsetor: "Siderurgia", modelo_negocio: "Produção de aço para construção e indústria", perfil_dividendos: "baixo", perfil_defensivo: "baixo", risco_estatal: "baixo", observacao_qualitativa: "Fortemente cíclica, sensível a atividade industrial e insumos." },
-  WEGE3: { setor_macro: "Indústria", subsetor: "Bens de capital", modelo_negocio: "Motores, automação e equipamentos industriais", perfil_dividendos: "médio", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Premium de qualidade por execução, escala e previsibilidade." },
+  WEGE3: { setor_macro: "Indústria", subsetor: "Bens de capital", modelo_negocio: "Motores, automação e equipamentos industriais", perfil_dividendos: "médio", perfil_defensivo: "alto", risco_estatal: "baixo", observacao_qualitativa: "Premium de qualidade por execução, escala e previsibilidade, com gestão financeira conservadora." },
   EMBJ3: { setor_macro: "Indústria", subsetor: "Aeroespacial", modelo_negocio: "Fabricação de aeronaves comerciais, defesa e executiva", perfil_dividendos: "baixo", perfil_defensivo: "baixo", risco_estatal: "médio", observacao_qualitativa: "Dinâmica própria de contratos, câmbio e ciclo de aviação." },
   TUPY3: { setor_macro: "Indústria", subsetor: "Autopeças", modelo_negocio: "Componentes fundidos para veículos e máquinas", perfil_dividendos: "baixo", perfil_defensivo: "baixo", risco_estatal: "baixo", observacao_qualitativa: "Exposta ao ciclo automotivo e industrial." },
   LREN3: { setor_macro: "Consumo Cíclico", subsetor: "Varejo", modelo_negocio: "Varejo de moda com operação omnichannel", perfil_dividendos: "médio", perfil_defensivo: "médio", risco_estatal: "baixo", observacao_qualitativa: "Sensível a renda, crédito e confiança do consumidor." },
@@ -3147,8 +3147,13 @@ export function getAiTaxonomy(symbol: string, sector?: string, subsetor?: string
   const normalized = normalizeAiSymbol(symbol);
   const fromMap = AI_ASSET_TAXONOMY[normalized];
   if (fromMap) return fromMap;
-  const setor = String(sector || "").trim() || "N/D";
+  const rawSetor = String(sector || "").trim();
   const sub = String(subsetor || "").trim() || "N/D";
+  let setor = rawSetor || "N/D";
+  if (rawSetor === "Utilidades Públicas") {
+    const subNorm = sub.toLowerCase();
+    setor = subNorm.includes("saneamento") ? "Saneamento" : "Energia";
+  }
   return {
     setor_macro: setor,
     subsetor: sub,
@@ -3207,13 +3212,60 @@ export function buildDatasetContext(userSymbols?: string[], userHoldingsData?: {
     subsetorAllocations[a.subsetor] = (subsetorAllocations[a.subsetor] || 0) + a.alloc;
   });
 
+  // Build concentration warnings with tolerances:
+  // default: ativo <= 20% / setor <= 30%
+  // oportunidade (setores perenes + ativo de maior qualidade/assimetria): ativo <= 25% / setor <= 35%
+  const DEFAULT_ASSET_LIMIT = 20;
+  const OPPORTUNITY_ASSET_LIMIT = 25;
+  const DEFAULT_SECTOR_LIMIT = 30;
+  const OPPORTUNITY_SECTOR_LIMIT = 35;
+  const PERENNIAL_SECTORS = new Set(["Financeiro", "Energia", "Saneamento", "Telecom", "Consumo Não Cíclico"]);
+  const RISKIER_SECTORS = new Set(["Commodities", "Consumo Cíclico"]);
+
+  const assetRiskProfile: Record<string, { limit: number; reason: string }> = {};
+  for (const h of enrichedAssets) {
+    const tax = getAiTaxonomy(h.symbol, h.sector, h.subsetor);
+    const valuation = resolveActiveValuation(h);
+    const rec = calcRecommendationScore(h);
+    const upside = valuation.upside;
+    const hasOpportunityAsymmetry =
+      (typeof upside === "number" && Number.isFinite(upside) && Math.abs(upside) >= 15) ||
+      rec.score >= 70;
+    const canUseOpportunityBand =
+      PERENNIAL_SECTORS.has(tax.setor_macro) &&
+      !RISKIER_SECTORS.has(tax.setor_macro) &&
+      hasOpportunityAsymmetry;
+
+    assetRiskProfile[h.symbol] = {
+      limit: canUseOpportunityBand ? OPPORTUNITY_ASSET_LIMIT : DEFAULT_ASSET_LIMIT,
+      reason: canUseOpportunityBand ? "faixa de oportunidade/perene" : "faixa padrão",
+    };
+  }
+
+  const sectorLimits: Record<string, { limit: number; reason: string }> = {};
+  for (const [sector, alloc] of Object.entries(sectorAllocations)) {
+    const members = enrichedAssets.filter((h) => getAiTaxonomy(h.symbol, h.sector, h.subsetor).setor_macro === sector);
+    const hasStrongQualityCore = members.some((h) => calcRecommendationScore(h).score >= 70);
+    const canUseOpportunityBand = PERENNIAL_SECTORS.has(sector) && hasStrongQualityCore;
+    sectorLimits[sector] = {
+      limit: canUseOpportunityBand ? OPPORTUNITY_SECTOR_LIMIT : DEFAULT_SECTOR_LIMIT,
+      reason: canUseOpportunityBand ? "faixa de oportunidade/perene" : "faixa padrão",
+    };
+  }
+
   // Build concentration warnings
   const warnings: string[] = [];
   assetAllocations.forEach(a => {
-    if (a.alloc > 25) warnings.push(`⚠️ ALERTA CONCENTRAÇÃO: ${a.symbol} representa ${a.alloc.toFixed(1)}% da carteira (máx recomendado: 15-20%)`);
+    const cfg = assetRiskProfile[a.symbol] || { limit: DEFAULT_ASSET_LIMIT, reason: "faixa padrão" };
+    if (a.alloc > cfg.limit) {
+      warnings.push(`⚠️ ALERTA CONCENTRAÇÃO: ${a.symbol} representa ${a.alloc.toFixed(1)}% da carteira (limite ${cfg.reason}: até ${cfg.limit}%).`);
+    }
   });
   Object.entries(sectorAllocations).forEach(([sector, alloc]) => {
-    if (alloc > 30) warnings.push(`⚠️ ALERTA SETOR: ${sector} representa ${alloc.toFixed(1)}% da carteira (máx recomendado: 25-30%)`);
+    const cfg = sectorLimits[sector] || { limit: DEFAULT_SECTOR_LIMIT, reason: "faixa padrão" };
+    if (alloc > cfg.limit) {
+      warnings.push(`⚠️ ALERTA SETOR: ${sector} representa ${alloc.toFixed(1)}% da carteira (limite ${cfg.reason}: até ${cfg.limit}%).`);
+    }
   });
   Object.entries(subsetorAllocations).forEach(([subsetor, alloc]) => {
     if (alloc > 35) warnings.push(`⚠️ ALERTA SUBSETOR: ${subsetor} representa ${alloc.toFixed(1)}% da carteira (concentração na mesma tese).`);
@@ -3224,7 +3276,7 @@ export function buildDatasetContext(userSymbols?: string[], userHoldingsData?: {
     : "";
 
   const warningBlock = warnings.length > 0
-    ? `\n${warnings.join('\n')}\nINSTRUÇÃO: Quando houver alertas de concentração, sugira ESPECIFICAMENTE rebalancear — vender parcialmente posições mais caras e realocar em ativos/setores sub-representados. Investidores inteligentes aproveitam assimetrias, comprando barato e vendendo caro, balanceando a carteira de forma inteligente.\n\n`
+    ? `\n${warnings.join('\n')}\nINSTRUÇÃO: Use estes limites de rebalanceamento: padrão ativo até 20% e setor até 30%; em oportunidade/perenidade (quando indicado no alerta), ativo até 25% e setor até 35%. Não tratar pesos abaixo desses limites como concentração problemática. Quando houver alerta, sugira rebalanceamento prático por etapas, priorizando redução parcial dos excessos.\n\n`
     : "";
 
   const allocBlock = `\nALOCAÇÃO POR SETOR_MACRO:\n${Object.entries(sectorAllocations).map(([s, a]) => `- ${s}: ${a.toFixed(1)}%`).join('\n')}\n\nALOCAÇÃO POR SUBSETOR:\n${Object.entries(subsetorAllocations).map(([s, a]) => `- ${s}: ${a.toFixed(1)}%`).join('\n')}\n`;

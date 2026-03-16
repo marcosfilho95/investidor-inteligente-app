@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 interface GaugeProps {
   score: number;
@@ -18,13 +18,18 @@ const getRecommendationByScore = (value: number): { label: string; color: string
 
 export function RecommendationGauge({ score, label, color }: GaugeProps) {
   const [animatedScore, setAnimatedScore] = useState(0);
+  const animatedScoreRef = useRef(0);
   const uid = useId().replace(/:/g, "");
+
+  useEffect(() => {
+    animatedScoreRef.current = animatedScore;
+  }, [animatedScore]);
 
   useEffect(() => {
     let frame = 0;
     const durationMs = 2000;
     const start = performance.now();
-    const initial = animatedScore;
+    const initial = animatedScoreRef.current;
     const target = clamp(score, 0, 100);
     const diff = target - initial;
 

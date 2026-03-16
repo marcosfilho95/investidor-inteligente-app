@@ -185,7 +185,7 @@ const AssetDetail = () => {
     () => getAiTaxonomy(asset.symbol, asset.sector, asset.subsetor),
     [asset.symbol, asset.sector, asset.subsetor]
   );
-  const displayAssetName = asset.symbol === "AXIA6" ? "AXIA6" : asset.name;
+  const displayAssetName = asset.symbol === "AXIA6" ? "AXIA" : asset.name;
   const recommendation = useMemo(() => calcRecommendationScore(asset), [asset]);
   const activeValuation = useMemo(() => resolveActiveValuation(asset), [asset]);
   const activeValuationType = activeValuation.type;
@@ -219,7 +219,7 @@ const AssetDetail = () => {
         const tax = getAiTaxonomy(h.symbol, h.sector, h.subsetor);
         return {
         symbol: h.symbol,
-        name: h.symbol === "AXIA6" ? "AXIA6" : h.name,
+        name: h.symbol === "AXIA6" ? "AXIA" : h.name,
         sector: tax.setor_macro,
         subsetor: tax.subsetor,
         shares: h.shares,
