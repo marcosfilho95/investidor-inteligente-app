@@ -309,6 +309,13 @@ Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estraté
             )}
           </div>
 
+          {/* Smart Alert */}
+          <AnimatePresence>
+            {activeAlert && dashboardReady && (
+              <SmartAlertCard alert={activeAlert} onDismiss={() => setActiveAlert(null)} />
+            )}
+          </AnimatePresence>
+
           {dashboardReady && !isEmpty && showCharts && (
             <motion.div
               className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch"
