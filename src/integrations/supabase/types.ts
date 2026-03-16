@@ -106,81 +106,27 @@ export type Database = {
       }
       profiles: {
         Row: {
-          avatar_url: string | null
           created_at: string
           email: string
           id: string
-          investor_profile_answers: Json | null
-          investor_profile_created_at: string | null
-          investor_profile_score: number | null
-          investor_profile_type: string | null
-          investor_profile_updated_at: string | null
           name: string
           updated_at: string
           user_id: string
-          username: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          email?: string
-          id?: string
-          investor_profile_answers?: Json | null
-          investor_profile_created_at?: string | null
-          investor_profile_score?: number | null
-          investor_profile_type?: string | null
-          investor_profile_updated_at?: string | null
-          name?: string
-          updated_at?: string
-          user_id: string
-          username?: string
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string
-          email?: string
-          id?: string
-          investor_profile_answers?: Json | null
-          investor_profile_created_at?: string | null
-          investor_profile_score?: number | null
-          investor_profile_type?: string | null
-          investor_profile_updated_at?: string | null
-          name?: string
-          updated_at?: string
-          user_id?: string
-          username?: string
-        }
-        Relationships: []
-      }
-      user_trades: {
-        Row: {
-          created_at: string
-          id: string
-          price: number
-          shares: number
-          side: string
-          symbol: string
-          traded_at: string
-          user_id: string
         }
         Insert: {
           created_at?: string
+          email?: string
           id?: string
-          price: number
-          shares: number
-          side: string
-          symbol: string
-          traded_at?: string
+          name?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          email?: string
           id?: string
-          price?: number
-          shares?: number
-          side?: string
-          symbol?: string
-          traded_at?: string
+          name?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -220,12 +166,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_email_by_username: {
-        Args: {
-          p_username: string
-        }
-        Returns: string | null
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
