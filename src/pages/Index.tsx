@@ -114,6 +114,33 @@ const Index = () => {
   const dashboardReady = !loading && minDelayDone;
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
+
+  // Evaluate smart alerts when dashboard is ready
+  useEffect(() => {
+    if (!dashboardReady) return;
+    const sectorMap: Record<string, number> = {};
+    for (const h of enrichedHoldings) {
+      const tax = getAiTaxonomy(h.symbol, h.sector, h.subsetor);
+      sectorMap[tax.setor_macro] = (sectorMap[tax.setor_macro] || 0) + h.allocation;
+    }
+    const alert = evaluateAlerts({
+      isEmpty,
+      holdings: enrichedHoldings.map((h) => ({
+        symbol: h.symbol,
+        allocation: h.allocation,
+        changePercent: h.changePercent,
+        sector: h.sector,
+        score: (h as any).score ?? null,
+        upside: (h as any).upside ?? null,
+        pe: h.pe,
+        pvp: h.pvp,
+      })),
+      dailyChangePercent: portfolioMetrics.dailyChangePercent,
+      sectorMap,
+      totalAssets: enrichedHoldings.length,
+    });
+    setActiveAlert(alert);
+  }, [dashboardReady, isEmpty, enrichedHoldings, portfolioMetrics.dailyChangePercent]);
   const firstBuyDate = useMemo(() => {
     const holdingDates = enrichedHoldings
       .map((h) => (h.firstBuyDate || "").slice(0, 10))
