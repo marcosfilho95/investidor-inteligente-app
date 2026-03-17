@@ -152,10 +152,12 @@ const Profile = () => {
 
         const riskPolicyStorageKey = getRiskPolicyStorageKey(data.user.id, data.user.email || "");
         const storedRiskPolicy = localStorage.getItem(riskPolicyStorageKey);
-        if (isRiskPolicyType(storedRiskPolicy)) {
+        if (initialProfile?.type) {
+          setRiskPolicy(mapInvestorProfileToRiskPolicy(initialProfile.type));
+        } else if (isRiskPolicyType(storedRiskPolicy)) {
           setRiskPolicy(storedRiskPolicy);
         } else {
-          setRiskPolicy(mapInvestorProfileToRiskPolicy(initialProfile?.type));
+          setRiskPolicy("moderada");
         }
 
         const persistedAvatar = localStorage.getItem(`ii_profile_avatar_${data.user.email || name}`);
@@ -224,6 +226,11 @@ const Profile = () => {
     if (!userId && !userEmail) return;
     localStorage.setItem(getRiskPolicyStorageKey(userId, userEmail), riskPolicy);
   }, [riskPolicy, userEmail, userId]);
+
+  useEffect(() => {
+    if (!investorProfile?.type) return;
+    setRiskPolicy(mapInvestorProfileToRiskPolicy(investorProfile.type));
+  }, [investorProfile?.type]);
 
   const handleSaveUsername = async () => {
     const usernameLocked = usernameFinalized || username.trim().length > 0;
@@ -787,8 +794,8 @@ const Profile = () => {
 
                   <div className="rounded-xl border border-border/35 bg-background/35 p-3">
                     <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-2">
-                      <span>Termômetro de risco</span>
-                      <span>{currentRiskScore.toFixed(1)}/100</span>
+                      <span>Termômetro de risco da carteira</span>
+                      <span>{currentRiskScore.toFixed(1)} / 100 pts</span>
                     </div>
                     <div className="relative">
                       <div className="h-3 rounded-full bg-gradient-to-r from-emerald-400/85 via-amber-400/85 to-rose-400/85" />
@@ -800,15 +807,11 @@ const Profile = () => {
                       </div>
                     </div>
                     <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
-                      <span>0-30 Conservador</span>
-                      <span>31-60 Moderado</span>
-                      <span>61-100 Arrojado</span>
+                      <span>Conservador (0-30)</span>
+                      <span>Moderado (31-60)</span>
+                      <span>Arrojado (61-100)</span>
                     </div>
                   </div>
-
-                  <p className="text-xs text-muted-foreground">
-                    Perfil atual: <span className="text-foreground font-medium">{policyMeta.label}</span> ({policyMeta.range}) | {policyMeta.highRiskRule}
-                  </p>
 
                   {incompatibleWithPolicy && (
                     <div className="rounded-xl border border-warning/30 bg-warning/10 p-3">
