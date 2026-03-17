@@ -222,10 +222,22 @@ const Profile = () => {
         }
 
         const avatarKeys = getAvatarStorageKeys(data.user.id, data.user.email || "", name);
-        if (profileData?.avatar_url) {
-          setAvatarUrl(profileData.avatar_url);
-          for (const key of avatarKeys) localStorage.setItem(key, profileData.avatar_url);
-          localStorage.setItem("ii_profile_avatar_current", profileData.avatar_url);
+        let resolvedAvatar = profileData?.avatar_url ?? null;
+        if (!resolvedAvatar) {
+          const { data: avatarObjects } = await supabase.storage
+            .from(AVATAR_BUCKET)
+            .list(data.user.id, { limit: 10, search: "avatar.jpg" });
+          const hasAvatar = (avatarObjects || []).some((obj) => obj.name === "avatar.jpg");
+          if (hasAvatar) {
+            const avatarPath = `${data.user.id}/avatar.jpg`;
+            const { data: publicUrlData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(avatarPath);
+            resolvedAvatar = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+          }
+        }
+        if (resolvedAvatar) {
+          setAvatarUrl(resolvedAvatar);
+          for (const key of avatarKeys) localStorage.setItem(key, resolvedAvatar);
+          localStorage.setItem("ii_profile_avatar_current", resolvedAvatar);
         } else {
           const cachedAvatar = [localStorage.getItem("ii_profile_avatar_current"), ...avatarKeys.map((k) => localStorage.getItem(k))]
             .find((v) => typeof v === "string" && v.length > 0) || null;
@@ -395,11 +407,14 @@ const Profile = () => {
       toast({ title: "Foto atualizada", description: "Sua foto de perfil foi sincronizada entre dispositivos." });
     } catch (error: unknown) {
       const errMsg = error instanceof Error ? error.message : String(error || "");
+      const normalizedErr = errMsg.toLowerCase();
       toast({
         title: "Erro ao salvar foto",
-        description: errMsg.toLowerCase().includes("bucket not found")
+        description: normalizedErr.includes("bucket not found")
           ? "Bucket de avatar não encontrado no Supabase. Aplique a migration de storage e tente novamente."
-          : errMsg || "Nao foi possivel salvar a foto no perfil.",
+          : normalizedErr.includes("row-level security") || normalizedErr.includes("new row violates")
+            ? "Permissao negada pelo RLS do Storage para avatar. Aplique a migration de bucket/policies de profile-avatars no ambiente atual."
+            : errMsg || "Nao foi possivel salvar a foto no perfil.",
         variant: "destructive",
       });
     }

@@ -9,6 +9,7 @@ import { fetchDataStatus, type DataStatus } from "@/data/dataStatus";
 interface AppHeaderProps {
   activePage: "dashboard" | "carteira" | "ativos" | "aprender";
 }
+const AVATAR_BUCKET = "profile-avatars";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard", key: "dashboard" as const },
@@ -97,11 +98,24 @@ export function AppHeader({ activePage }: AppHeaderProps) {
       return;
     }
 
-    const dbAvatar = profileData?.avatar_url ?? null;
-    if (dbAvatar) {
-      setAvatarUrl(dbAvatar);
-      for (const key of avatarKeys) localStorage.setItem(key, dbAvatar);
-      localStorage.setItem("ii_profile_avatar_current", dbAvatar);
+    let resolvedAvatar = profileData?.avatar_url ?? null;
+
+    if (!resolvedAvatar) {
+      const { data: avatarObjects } = await supabase.storage
+        .from(AVATAR_BUCKET)
+        .list(user.id, { limit: 10, search: "avatar.jpg" });
+      const hasAvatar = (avatarObjects || []).some((obj) => obj.name === "avatar.jpg");
+      if (hasAvatar) {
+        const avatarPath = `${user.id}/avatar.jpg`;
+        const { data: publicUrlData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(avatarPath);
+        resolvedAvatar = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+      }
+    }
+
+    if (resolvedAvatar) {
+      setAvatarUrl(resolvedAvatar);
+      for (const key of avatarKeys) localStorage.setItem(key, resolvedAvatar);
+      localStorage.setItem("ii_profile_avatar_current", resolvedAvatar);
       return;
     }
 
