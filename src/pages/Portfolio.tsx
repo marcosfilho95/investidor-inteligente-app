@@ -667,7 +667,6 @@ const Portfolio = () => {
                   <p className="mt-1">Mede o desempenho percentual da sua carteira ao longo do tempo, considerando todos os seus aportes.</p>
                   <p className="mt-1">O cálculo utiliza a Rentabilidade Ponderada no Tempo (TWR), que elimina distorções causadas por novos aportes ou retiradas, permitindo avaliar a performance real da estratégia de investimento.</p>
                   <p className="mt-1">Diferente do resultado atual, a rentabilidade considera o histórico completo da carteira, incluindo ativos que já foram vendidos.</p>
-                  <p className="mt-1">Também leva em conta os dividendos recebidos.</p>
                 </div>
               </div>,
             ].map((card, i) => (
