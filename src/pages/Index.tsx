@@ -123,60 +123,6 @@ const Index = () => {
   }, [loading, minDelayDone]);
 
   useEffect(() => {
-    if (!currentUser?.id || loading || !minDelayDone || smartAlertEvaluated) return;
-    let active = true;
-
-    (async () => {
-      try {
-        const loginCount = await getOrCreateLoginCount(currentUser.id);
-        if (!active) return;
-
-        const sessionEvalKey = `ii_smart_alert_eval_${currentUser.id}_${loginCount}`;
-        if (localStorage.getItem(sessionEvalKey) === "1") {
-          setSmartAlertEvaluated(true);
-          return;
-        }
-
-        if (loginCount <= 1) {
-          localStorage.setItem(sessionEvalKey, "1");
-          setSmartAlertEvaluated(true);
-          return;
-        }
-
-        const selection = await selectTopSmartAlert(currentUser.id, {
-          holdings: enrichedHoldings,
-          portfolioDailyChangePercent: portfolioMetrics.dailyChangePercent,
-          isFirstEntry: false,
-        });
-        if (!active) return;
-
-        if (selection?.shouldShow) {
-          setSmartAlert(selection.alert);
-          setShowSmartAlert(true);
-          await registerSmartAlertShown(currentUser.id, selection.alert);
-        }
-
-        localStorage.setItem(sessionEvalKey, "1");
-      } catch (err) {
-        console.warn("[smart-alerts] failed to evaluate alerts:", err);
-      } finally {
-        if (active) setSmartAlertEvaluated(true);
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [
-    currentUser?.id,
-    enrichedHoldings,
-    loading,
-    minDelayDone,
-    portfolioMetrics.dailyChangePercent,
-    smartAlertEvaluated,
-  ]);
-
-  useEffect(() => {
     const api = {
       presets: [
         "portfolio_empty",
@@ -187,6 +133,7 @@ const Index = () => {
         "asset_concentration",
         "sector_concentration",
         "asset_overvalued",
+        "profile_mismatch",
       ] as const,
       show: (type: Parameters<typeof buildSmartAlertPreview>[0]) => {
         const preview = buildSmartAlertPreview(type);
@@ -278,6 +225,68 @@ const Index = () => {
     });
     return calculatePortfolioRisk(riskInput, investorProfile);
   }, [enrichedHoldings, investorProfile]);
+
+  useEffect(() => {
+    if (!currentUser?.id || loading || !minDelayDone || smartAlertEvaluated || showProfileOnboarding) return;
+    let active = true;
+
+    (async () => {
+      try {
+        const loginCount = await getOrCreateLoginCount(currentUser.id);
+        if (!active) return;
+
+        const sessionEvalKey = `ii_smart_alert_eval_${currentUser.id}_${loginCount}`;
+        if (localStorage.getItem(sessionEvalKey) === "1") {
+          setSmartAlertEvaluated(true);
+          return;
+        }
+
+        const shouldSkipByFirstLogin = loginCount <= 1;
+        if (shouldSkipByFirstLogin) {
+          localStorage.setItem(sessionEvalKey, "1");
+          setSmartAlertEvaluated(true);
+          return;
+        }
+
+        const selection = await selectTopSmartAlert(currentUser.id, {
+          holdings: enrichedHoldings,
+          portfolioDailyChangePercent: portfolioMetrics.dailyChangePercent,
+          portfolioDailyChangeValue: portfolioMetrics.dailyChange,
+          isFirstEntry: false,
+          investorProfile,
+          portfolioRisk,
+        });
+        if (!active) return;
+
+        if (selection?.shouldShow) {
+          setSmartAlert(selection.alert);
+          setShowSmartAlert(true);
+          await registerSmartAlertShown(currentUser.id, selection.alert);
+        }
+
+        localStorage.setItem(sessionEvalKey, "1");
+      } catch (err) {
+        console.warn("[smart-alerts] failed to evaluate alerts:", err);
+      } finally {
+        if (active) setSmartAlertEvaluated(true);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    currentUser?.id,
+    enrichedHoldings,
+    investorProfile,
+    loading,
+    minDelayDone,
+    portfolioRisk,
+    portfolioMetrics.dailyChange,
+    portfolioMetrics.dailyChangePercent,
+    showProfileOnboarding,
+    smartAlertEvaluated,
+  ]);
 
   const aiPortfolioContext = useMemo(() => {
     const sectorMap: Record<string, number> = {};

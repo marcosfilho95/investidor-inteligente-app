@@ -1,5 +1,6 @@
-import { supabase } from "@/integrations/supabase/client";
+﻿import { supabase } from "@/integrations/supabase/client";
 import { resolveActiveValuation, type Holding, getAiTaxonomy } from "@/data/investments";
+import type { InvestorProfileSummary, InvestorProfileType, PortfolioRiskSummary } from "@/lib/investorIntelligence";
 
 export type SmartAlertType =
   | "portfolio_empty"
@@ -9,7 +10,8 @@ export type SmartAlertType =
   | "asset_rise"
   | "asset_concentration"
   | "sector_concentration"
-  | "asset_overvalued";
+  | "asset_overvalued"
+  | "profile_mismatch";
 
 export type SmartAlertEntityType = "portfolio" | "asset" | "sector";
 
@@ -47,7 +49,10 @@ export interface SmartAlertsContext {
     }
   >;
   portfolioDailyChangePercent: number;
+  portfolioDailyChangeValue?: number;
   isFirstEntry: boolean;
+  investorProfile?: InvestorProfileSummary | null;
+  portfolioRisk?: PortfolioRiskSummary | null;
 }
 
 export interface SelectedSmartAlert {
@@ -56,6 +61,71 @@ export interface SelectedSmartAlert {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+type ProfileKey = "conservador" | "moderado" | "arrojado";
+type AlertSeverity = "critical" | "high" | "medium" | "low" | "info";
+
+interface AlertProfileConfig {
+  threshold?: number;
+  thresholdMax?: number;
+  priority: number;
+  cooldownDays: number;
+  materialDelta: number;
+  materialDirection: "increase" | "decrease";
+  minWeight?: number;
+  minImpactValue?: number;
+  severity: AlertSeverity;
+  messageTone: "protetivo" | "equilibrado" | "analitico";
+}
+
+type AlertConfigByProfile = Record<ProfileKey, AlertProfileConfig>;
+
+const SMART_ALERT_CONFIG: Record<
+  Exclude<SmartAlertType, "portfolio_empty" | "profile_mismatch">,
+  AlertConfigByProfile
+> = {
+  portfolio_drop: {
+    conservador: { threshold: -2.8, priority: 2, cooldownDays: 2, materialDelta: 1.5, materialDirection: "decrease", minImpactValue: 80, severity: "critical", messageTone: "protetivo" },
+    moderado: { threshold: -4, priority: 2, cooldownDays: 3, materialDelta: 2, materialDirection: "decrease", minImpactValue: 120, severity: "high", messageTone: "equilibrado" },
+    arrojado: { threshold: -6.5, priority: 3, cooldownDays: 5, materialDelta: 3, materialDirection: "decrease", minImpactValue: 180, severity: "high", messageTone: "analitico" },
+  },
+  asset_drop: {
+    conservador: { threshold: -5.5, priority: 4, cooldownDays: 3, materialDelta: 3, materialDirection: "decrease", minWeight: 4, severity: "high", messageTone: "protetivo" },
+    moderado: { threshold: -8, priority: 4, cooldownDays: 4, materialDelta: 4, materialDirection: "decrease", minWeight: 5, severity: "high", messageTone: "equilibrado" },
+    arrojado: { threshold: -11.5, priority: 5, cooldownDays: 7, materialDelta: 5, materialDirection: "decrease", minWeight: 6, severity: "medium", messageTone: "analitico" },
+  },
+  portfolio_rise: {
+    conservador: { threshold: 4.5, priority: 8, cooldownDays: 6, materialDelta: 3, materialDirection: "increase", minImpactValue: 120, severity: "low", messageTone: "protetivo" },
+    moderado: { threshold: 5.5, priority: 8, cooldownDays: 7, materialDelta: 3.5, materialDirection: "increase", minImpactValue: 150, severity: "info", messageTone: "equilibrado" },
+    arrojado: { threshold: 7.5, priority: 9, cooldownDays: 10, materialDelta: 4.5, materialDirection: "increase", minImpactValue: 220, severity: "info", messageTone: "analitico" },
+  },
+  asset_rise: {
+    conservador: { threshold: 9, priority: 9, cooldownDays: 6, materialDelta: 5, materialDirection: "increase", minWeight: 4, severity: "low", messageTone: "protetivo" },
+    moderado: { threshold: 12, priority: 9, cooldownDays: 7, materialDelta: 6, materialDirection: "increase", minWeight: 5, severity: "info", messageTone: "equilibrado" },
+    arrojado: { threshold: 16, priority: 9, cooldownDays: 10, materialDelta: 7, materialDirection: "increase", minWeight: 6, severity: "info", messageTone: "analitico" },
+  },
+  asset_concentration: {
+    conservador: { threshold: 26, priority: 6, cooldownDays: 6, materialDelta: 4, materialDirection: "increase", severity: "high", messageTone: "protetivo" },
+    moderado: { threshold: 30, priority: 6, cooldownDays: 7, materialDelta: 5, materialDirection: "increase", severity: "medium", messageTone: "equilibrado" },
+    arrojado: { threshold: 36, priority: 7, cooldownDays: 10, materialDelta: 6, materialDirection: "increase", severity: "medium", messageTone: "analitico" },
+  },
+  sector_concentration: {
+    conservador: { threshold: 36, priority: 5, cooldownDays: 6, materialDelta: 4, materialDirection: "increase", severity: "high", messageTone: "protetivo" },
+    moderado: { threshold: 42, priority: 5, cooldownDays: 7, materialDelta: 5, materialDirection: "increase", severity: "medium", messageTone: "equilibrado" },
+    arrojado: { threshold: 50, priority: 6, cooldownDays: 10, materialDelta: 6, materialDirection: "increase", severity: "medium", messageTone: "analitico" },
+  },
+  asset_overvalued: {
+    conservador: { threshold: 45, priority: 7, cooldownDays: 8, materialDelta: 8, materialDirection: "increase", minWeight: 4, severity: "medium", messageTone: "protetivo" },
+    moderado: { threshold: 50, priority: 7, cooldownDays: 10, materialDelta: 10, materialDirection: "increase", minWeight: 5, severity: "medium", messageTone: "equilibrado" },
+    arrojado: { threshold: 65, priority: 8, cooldownDays: 14, materialDelta: 12, materialDirection: "increase", minWeight: 6, severity: "low", messageTone: "analitico" },
+  },
+};
+
+const PROFILE_MISMATCH_CONFIG: AlertConfigByProfile = {
+  conservador: { priority: 3, cooldownDays: 3, materialDelta: 4, materialDirection: "increase", severity: "high", messageTone: "protetivo" },
+  moderado: { priority: 3, cooldownDays: 5, materialDelta: 5, materialDirection: "increase", severity: "medium", messageTone: "equilibrado" },
+  arrojado: { priority: 6, cooldownDays: 10, materialDelta: 7, materialDirection: "increase", severity: "low", messageTone: "analitico" },
+};
 
 function daysSince(isoDate: string): number {
   const t = new Date(isoDate).getTime();
@@ -70,6 +140,23 @@ function historyKey(type: SmartAlertType, entityType: SmartAlertEntityType, enti
 function normalizePct(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.round(value * 10) / 10;
+}
+
+function profileToKey(profile?: InvestorProfileType | null): ProfileKey {
+  if (profile === "Conservador") return "conservador";
+  if (profile === "Arrojado") return "arrojado";
+  return "moderado";
+}
+
+function resolveConfig(
+  type: Exclude<SmartAlertType, "portfolio_empty" | "profile_mismatch">,
+  profile?: InvestorProfileType | null
+): AlertProfileConfig {
+  return SMART_ALERT_CONFIG[type][profileToKey(profile)];
+}
+
+function resolveMismatchConfig(profile?: InvestorProfileType | null): AlertProfileConfig {
+  return PROFILE_MISMATCH_CONFIG[profileToKey(profile)];
 }
 
 function isMaterialChange(
@@ -138,6 +225,8 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
   const candidates: SmartAlertCandidate[] = [];
   const holdings = ctx.holdings;
   const isEmpty = holdings.length === 0;
+  const profileType = ctx.investorProfile?.type ?? null;
+  const profileKey = profileToKey(profileType);
 
   if (isEmpty) {
     candidates.push({
@@ -158,110 +247,173 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
     return candidates;
   }
 
+  const mismatchStatus = String(ctx.portfolioRisk?.profileCompatibility?.status || "");
+  if (mismatchStatus && mismatchStatus !== "Dentro da política") {
+    const mismatchCfg = resolveMismatchConfig(profileType);
+    const mismatchScore = Number(ctx.portfolioRisk?.totalScore ?? 0);
+    const mismatchExposure = Number(ctx.portfolioRisk?.riskExposure?.alto ?? 0);
+    const deviation =
+      mismatchStatus === "Acima da política"
+        ? Math.max(0, mismatchScore - 30, mismatchExposure - 30)
+        : Math.max(0, 45 - mismatchScore, 50 - mismatchExposure);
+
+    candidates.push({
+      type: "profile_mismatch",
+      entityType: "portfolio",
+      entityId: `${profileKey}:${mismatchStatus.toLowerCase().replace(/\s+/g, "_")}`,
+      priority: mismatchCfg.priority,
+      cooldownDays: mismatchCfg.cooldownDays,
+      referenceValue: normalizePct(deviation),
+      materialDelta: mismatchCfg.materialDelta,
+      materialDirection: mismatchCfg.materialDirection,
+      title:
+        mismatchStatus === "Acima da política"
+          ? "😅 E aí… acelerou demais?"
+          : "😅 E aí… pisando no freio?",
+      message:
+        mismatchStatus === "Acima da política"
+          ? "Sua carteira está mais agressiva do que o seu perfil neste momento.\n\nNada de errado em buscar mais retorno —\nmas vale conferir se o risco ainda está sob controle."
+          : profileType === "Arrojado"
+            ? "Nada de errado nisso — às vezes faz parte da estratégia.\nMas vale dar uma olhada se ainda está alinhada com o que você quer construir.\n\nSe quiser, dá pra ajustar a rota rapidinho."
+            : "Nada de errado nisso — às vezes faz parte da estratégia.\nMas vale dar uma olhada se ainda está alinhada com o que você quer construir.\n\nSe quiser, dá pra ajustar a rota rapidinho.",
+      ctaLabel: "Revisar compatibilidade",
+      route: "/perfil",
+    });
+  }
+
   const portfolioDaily = normalizePct(ctx.portfolioDailyChangePercent);
-  if (portfolioDaily <= -4) {
+
+  const portfolioDropCfg = resolveConfig("portfolio_drop", profileType);
+  if (
+    portfolioDaily <= Number(portfolioDropCfg.threshold) &&
+    (!Number.isFinite(portfolioDropCfg.minImpactValue) ||
+      Math.abs(Number(ctx.portfolioDailyChangeValue ?? 0)) >= Number(portfolioDropCfg.minImpactValue))
+  ) {
     candidates.push({
       type: "portfolio_drop",
       entityType: "portfolio",
       entityId: "portfolio",
-      priority: 2,
-      cooldownDays: 3,
+      priority: portfolioDropCfg.priority,
+      cooldownDays: portfolioDropCfg.cooldownDays,
       referenceValue: portfolioDaily,
-      materialDelta: 3,
-      materialDirection: "decrease",
+      materialDelta: portfolioDropCfg.materialDelta,
+      materialDirection: portfolioDropCfg.materialDirection,
       title: "😨 Haaaja coração!",
       message:
-        "Sua carteira sentiu o golpe!\n\nMas calma! Oscilações fazem parte do mercado.\n\nO importante é entender o que causou esse movimento.\n\nVeja quais ativos foram responsáveis pela queda e verifique se os fundamentos das empresas continuam os mesmos.",
+        profileKey === "conservador"
+          ? "Sua carteira sentiu o golpe e, para o seu perfil, a oscilação foi relevante.\n\nRespira fundo: vale revisar os ativos que puxaram a queda e confirmar se a tese de longo prazo continua válida."
+          : profileKey === "arrojado"
+            ? "Hoje teve emoção até para perfil arrojado.\n\nAgora é separar ruído de mercado de mudança real nos fundamentos."
+            : "Sua carteira caiu de forma relevante hoje.\n\nOscilações fazem parte, mas vale entender o que causou esse movimento e checar se os fundamentos seguem os mesmos.",
       ctaLabel: "Analisar minha carteira",
       route: "/carteira",
     });
   }
 
-  const droppedAssets = holdings.filter((h) => normalizePct(h.changePercent) <= -8).sort((a, b) => a.changePercent - b.changePercent);
+  const assetDropCfg = resolveConfig("asset_drop", profileType);
+  const droppedAssets = holdings
+    .filter(
+      (h) =>
+        h.allocation >= Number(assetDropCfg.minWeight ?? 0) &&
+        normalizePct(h.changePercent) <= Number(assetDropCfg.threshold)
+    )
+    .sort((a, b) => a.changePercent - b.changePercent);
+
   if (droppedAssets.length > 0) {
     const worst = droppedAssets[0];
-    const title =
-      droppedAssets.length > 1 ? "🩸 Sangue no pregão!" : "🐻 O urso acordou com fome!";
     const message =
       droppedAssets.length > 1
-        ? "Percebemos que alguns ativos da sua carteira tiveram uma queda relevante hoje.\n\nVale analisar quais papéis puxaram esse movimento e verificar se os fundamentos continuam os mesmos."
-        : `Percebemos que o ativo ${worst.symbol} apresentou uma queda relevante hoje.\n\nOscilações acontecem, mas vale investigar se foi apenas movimento de mercado ou se houve alguma mudança mais importante.\n\nRevise os fundamentos da empresa e veja se sua tese de investimento continua válida.`;
+        ? "Alguns ativos relevantes da sua carteira caíram forte hoje.\n\nVale analisar quem puxou esse movimento e verificar se os fundamentos continuam os mesmos."
+        : `O ativo ${worst.symbol} teve uma queda relevante hoje.\n\nOscilações acontecem, mas vale investigar se foi só ruído de mercado ou algo mais importante na tese.`;
     candidates.push({
       type: "asset_drop",
       entityType: "asset",
       entityId: worst.symbol,
-      priority: 3,
-      cooldownDays: 3,
+      priority: assetDropCfg.priority,
+      cooldownDays: assetDropCfg.cooldownDays,
       referenceValue: normalizePct(worst.changePercent),
-      materialDelta: 5,
-      materialDirection: "decrease",
-      title,
+      materialDelta: assetDropCfg.materialDelta,
+      materialDirection: assetDropCfg.materialDirection,
+      title: droppedAssets.length > 1 ? "🩸 Sangue no pregão!" : "🐻 O urso acordou com fome!",
       message,
       ctaLabel: droppedAssets.length > 1 ? "Ver ativos em queda" : "Ver carteira",
       route: "/carteira",
     });
   }
 
-  if (portfolioDaily >= 4) {
+  const portfolioRiseCfg = resolveConfig("portfolio_rise", profileType);
+  if (
+    portfolioDaily >= Number(portfolioRiseCfg.threshold) &&
+    (!Number.isFinite(portfolioRiseCfg.minImpactValue) ||
+      Math.abs(Number(ctx.portfolioDailyChangeValue ?? 0)) >= Number(portfolioRiseCfg.minImpactValue))
+  ) {
     candidates.push({
       type: "portfolio_rise",
       entityType: "portfolio",
       entityId: "portfolio",
-      priority: 4,
-      cooldownDays: 5,
+      priority: portfolioRiseCfg.priority,
+      cooldownDays: portfolioRiseCfg.cooldownDays,
       referenceValue: portfolioDaily,
-      materialDelta: 3,
-      materialDirection: "increase",
+      materialDelta: portfolioRiseCfg.materialDelta,
+      materialDirection: portfolioRiseCfg.materialDirection,
       title: "🚀 Quem veio pelas cabeças hoje tá rindo à toa!",
       message:
-        "Parabéns! Sua carteira decolou e teve uma valorização de respeito.\n\nMas lembre-se:\n\nInvestimento é uma maratona, não uma corrida de 100 metros.\n\nAntes de comemorar demais, avalie se:\n\nA concentração ainda está saudável\nSua estratégia de longo prazo continua no trilho",
+        "Parabéns! Sua carteira decolou e teve uma valorização de respeito.\n\nMas lembra: investimento é maratona, não corrida de 100m.\n\nAntes de comemorar demais, vale revisar concentração e estratégia de longo prazo.",
       ctaLabel: "Revisar carteira",
       route: "/carteira",
     });
   }
 
-  const risingAssets = holdings.filter((h) => normalizePct(h.changePercent) >= 10).sort((a, b) => b.changePercent - a.changePercent);
+  const assetRiseCfg = resolveConfig("asset_rise", profileType);
+  const risingAssets = holdings
+    .filter(
+      (h) =>
+        h.allocation >= Number(assetRiseCfg.minWeight ?? 0) &&
+        normalizePct(h.changePercent) >= Number(assetRiseCfg.threshold)
+    )
+    .sort((a, b) => b.changePercent - a.changePercent);
+
   if (risingAssets.length > 0) {
     const best = risingAssets[0];
-    const title =
-      risingAssets.length > 1 ? "🐂 O touro pegou impulso!" : "🚀 Atenção! Foguete decolando...";
     const risingTickers = risingAssets
       .slice(0, 3)
       .map((a) => a.symbol)
       .join(", ");
     const message =
       risingAssets.length > 1
-        ? `Hoje a festa é por conta deles ${risingTickers}!\n\nPode comemorar, mas lembre-se sempre de diversificar sua carteira quando necessário.\n\nAproveite para revisar:\n\nfundamentos\nconcentração\nestratégia de longo prazo`
-        : `O ativo ${best.symbol} teve uma valorização de respeito.\n\nMas segura a euforia!\n\nVeja se ele não ficou "pesado" demais na sua carteira.\n\nConsidere realizar lucro e rebalancear em setores menos concentrados.\n\nSe precisar de ajuda, o HODL pode te ajudar com isso.`;
+        ? `Hoje a festa foi por conta de ${risingTickers}.\n\nPode comemorar, mas sem perder o foco: revise fundamentos, concentração e estratégia.`
+        : `${best.symbol} teve uma alta forte hoje.\n\nSegura a euforia: confira se o ativo não ficou pesado demais na carteira e se faz sentido rebalancear.`;
+
     candidates.push({
       type: "asset_rise",
       entityType: "asset",
       entityId: best.symbol,
-      priority: 5,
-      cooldownDays: 5,
+      priority: assetRiseCfg.priority,
+      cooldownDays: assetRiseCfg.cooldownDays,
       referenceValue: normalizePct(best.changePercent),
-      materialDelta: 5,
-      materialDirection: "increase",
-      title,
+      materialDelta: assetRiseCfg.materialDelta,
+      materialDirection: assetRiseCfg.materialDirection,
+      title: risingAssets.length > 1 ? "🐂 O touro pegou impulso!" : "🚀 Atenção! Foguete decolando...",
       message,
       ctaLabel: risingAssets.length > 1 ? "Ver ativos em alta" : "Revisar carteira",
       route: "/carteira",
     });
   }
 
+  const assetConcentrationCfg = resolveConfig("asset_concentration", profileType);
   const mostConcentratedAsset = [...holdings].sort((a, b) => b.allocation - a.allocation)[0];
-  if (mostConcentratedAsset && mostConcentratedAsset.allocation >= 30) {
+  if (mostConcentratedAsset && mostConcentratedAsset.allocation >= Number(assetConcentrationCfg.threshold)) {
     candidates.push({
       type: "asset_concentration",
       entityType: "asset",
       entityId: mostConcentratedAsset.symbol,
-      priority: 6,
-      cooldownDays: 7,
+      priority: assetConcentrationCfg.priority,
+      cooldownDays: assetConcentrationCfg.cooldownDays,
       referenceValue: normalizePct(mostConcentratedAsset.allocation),
-      materialDelta: 5,
-      materialDirection: "increase",
+      materialDelta: assetConcentrationCfg.materialDelta,
+      materialDirection: assetConcentrationCfg.materialDirection,
       title: "💘 Cuidado pra não se apaixonar...",
-      message: `Observamos que uma parte significativa da sua carteira está concentrada em ${mostConcentratedAsset.symbol}.\n\nIsso pode aumentar o risco do seu portfólio caso a empresa enfrente dificuldades.\n\nDiversificar ajuda a reduzir impactos e tornar sua carteira mais equilibrada.`,
+      message: `Observamos que uma parte significativa da sua carteira está concentrada em ${mostConcentratedAsset.symbol}.\n\nIsso pode aumentar o risco do portfólio se a empresa enfrentar dificuldades.\n\nDiversificar ajuda a reduzir impacto e deixar a carteira mais equilibrada.`,
       ctaLabel: "Ver distribuição da carteira",
       route: "/carteira",
     });
@@ -272,54 +424,62 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
     const sector = getAiTaxonomy(h.symbol, h.sector, h.subsetor).setor_macro;
     sectorWeights[sector] = (sectorWeights[sector] || 0) + h.allocation;
   }
+
+  const sectorConcentrationCfg = resolveConfig("sector_concentration", profileType);
   const topSectorEntry = Object.entries(sectorWeights).sort((a, b) => b[1] - a[1])[0];
-  if (topSectorEntry && topSectorEntry[1] >= 40) {
+  if (topSectorEntry && topSectorEntry[1] >= Number(sectorConcentrationCfg.threshold)) {
     candidates.push({
       type: "sector_concentration",
       entityType: "sector",
       entityId: topSectorEntry[0],
-      priority: 7,
-      cooldownDays: 7,
+      priority: sectorConcentrationCfg.priority,
+      cooldownDays: sectorConcentrationCfg.cooldownDays,
       referenceValue: normalizePct(topSectorEntry[1]),
-      materialDelta: 5,
-      materialDirection: "increase",
+      materialDelta: sectorConcentrationCfg.materialDelta,
+      materialDirection: sectorConcentrationCfg.materialDirection,
       title: "🪺 Muitos ovos na mesma cesta...",
-      message: `Percebemos que sua carteira possui uma grande concentração no setor ${topSectorEntry[0]}.\n\nMudanças regulatórias, econômicas ou políticas podem afetar setores inteiros.\n\nDiversificar entre setores ajuda a proteger sua carteira contra riscos específicos.`,
+      message: `Percebemos uma concentração relevante no setor ${topSectorEntry[0]}.\n\nMudanças regulatórias, macroeconômicas ou políticas podem afetar setores inteiros.\n\nDiversificar entre setores ajuda a proteger sua carteira.`,
       ctaLabel: "Analisar setores",
       route: "/carteira",
     });
   }
 
+  const overvaluedCfg = resolveConfig("asset_overvalued", profileType);
   const overvalued = holdings
     .map((h) => {
       const valuation = resolveActiveValuation(h);
-      if (!valuation.price || valuation.price <= 0) return null;
+      if (!valuation.price || valuation.price <= 0 || !valuation.type) return null;
       const premiumPct = ((h.price / valuation.price) - 1) * 100;
       return { holding: h, premiumPct };
     })
-    .filter((v): v is { holding: SmartAlertsContext["holdings"][number]; premiumPct: number } => !!v && v.premiumPct >= 20)
+    .filter(
+      (v): v is { holding: SmartAlertsContext["holdings"][number]; premiumPct: number } =>
+        !!v &&
+        v.holding.allocation >= Number(overvaluedCfg.minWeight ?? 0) &&
+        v.premiumPct >= Number(overvaluedCfg.threshold)
+    )
     .sort((a, b) => b.premiumPct - a.premiumPct);
 
   if (overvalued.length > 0) {
     const top = overvalued[0];
+    const premiumLabel = top.premiumPct.toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
     candidates.push({
       type: "asset_overvalued",
       entityType: "asset",
       entityId: top.holding.symbol,
-      priority: 8,
-      cooldownDays: 10,
+      priority: overvaluedCfg.priority,
+      cooldownDays: overvaluedCfg.cooldownDays,
       referenceValue: normalizePct(top.premiumPct),
-      materialDelta: 10,
-      materialDirection: "increase",
+      materialDelta: overvaluedCfg.materialDelta,
+      materialDirection: overvaluedCfg.materialDirection,
       title: "😬 Preço esticado, hein?",
       message:
         overvalued.length > 1
-          ? `Alguns ativos deram aquela esticada no preço.\n\nDestaque: ${top.holding.symbol} em +${normalizePct(
-              top.premiumPct
-            )}% acima do valor intrínseco estimado.\n\nSem pânico: a ideia aqui é revisar margem de segurança e fundamentos com calma.`
-          : `${top.holding.symbol} está ${normalizePct(
-              top.premiumPct
-            )}% acima do valor intrínseco estimado.\n\nNada de decisão no impulso: vale revisar margem de segurança e fundamentos com calma.`,
+          ? `Alguns ativos deram aquela esticada no preço.\n\nDestaque: ${top.holding.symbol} em +${premiumLabel}% acima da referência ativa de preço justo.\n\nSem pânico: aqui a ideia é revisar margem de segurança e fundamentos com calma.`
+          : `${top.holding.symbol} está ${premiumLabel}% acima da referência ativa de preço justo.\n\nNada de decisão no impulso: vale revisar margem de segurança e fundamentos com calma.`,
       ctaLabel: "Ver análise fundamentalista",
       route: `/ativos/${top.holding.symbol}`,
     });
@@ -327,8 +487,8 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
 
   return candidates.sort((a, b) => a.priority - b.priority);
 }
-
 function isEligibleByRecurrence(candidate: SmartAlertCandidate, previous?: SmartAlertHistoryRow): boolean {
+  if (candidate.type === "portfolio_empty") return true;
   if (!previous) return true;
   const cooldownPassed = daysSince(previous.last_shown_at) >= candidate.cooldownDays;
   if (cooldownPassed) return true;
@@ -380,11 +540,12 @@ export function buildSmartAlertPreview(type: SmartAlertType): SmartAlertCandidat
     },
     portfolio_drop: {
       portfolioDailyChangePercent: -4.7,
+      portfolioDailyChangeValue: -320,
       isFirstEntry: false,
       holdings: [
         {
           symbol: "ITUB4",
-          name: "Itaú Unibanco",
+          name: "ItaÃº Unibanco",
           shares: 10,
           price: 33,
           change: -0.3,
@@ -439,7 +600,7 @@ export function buildSmartAlertPreview(type: SmartAlertType): SmartAlertCandidat
           pe: 8,
           dividend: 8,
           sector: "Commodities",
-          subsetor: "Petróleo",
+          subsetor: "PetrÃ³leo",
           pvp: 1.1,
           lpa: 2.1,
           vpa: 12,
@@ -463,7 +624,8 @@ export function buildSmartAlertPreview(type: SmartAlertType): SmartAlertCandidat
       ],
     },
     portfolio_rise: {
-      portfolioDailyChangePercent: 4.6,
+      portfolioDailyChangePercent: 6.2,
+      portfolioDailyChangeValue: 320,
       isFirstEntry: false,
       holdings: [
         {
@@ -481,7 +643,7 @@ export function buildSmartAlertPreview(type: SmartAlertType): SmartAlertCandidat
           pe: 9,
           dividend: 7,
           sector: "Commodities",
-          subsetor: "Mineração",
+          subsetor: "MineraÃ§Ã£o",
           pvp: 1.1,
           lpa: 2.1,
           vpa: 12,
@@ -517,12 +679,12 @@ export function buildSmartAlertPreview(type: SmartAlertType): SmartAlertCandidat
           changePercent: 12.8,
           value: 500,
           allocation: 21,
-          category: "Indústria",
+          category: "IndÃºstria",
           description: "",
           marketCap: "",
           pe: 30,
           dividend: 2,
-          sector: "Indústria",
+          sector: "IndÃºstria",
           subsetor: "Bens de Capital",
           pvp: 8,
           lpa: 1.2,
@@ -565,7 +727,7 @@ export function buildSmartAlertPreview(type: SmartAlertType): SmartAlertCandidat
           pe: 8,
           dividend: 8,
           sector: "Commodities",
-          subsetor: "Petróleo",
+          subsetor: "PetrÃ³leo",
           pvp: 1.1,
           lpa: 2,
           vpa: 12,
@@ -607,7 +769,7 @@ export function buildSmartAlertPreview(type: SmartAlertType): SmartAlertCandidat
           pe: 8,
           dividend: 8,
           sector: "Commodities",
-          subsetor: "Petróleo",
+          subsetor: "PetrÃ³leo",
           pvp: 1.1,
           lpa: 2,
           vpa: 12,
@@ -643,7 +805,7 @@ export function buildSmartAlertPreview(type: SmartAlertType): SmartAlertCandidat
           pe: 9,
           dividend: 7,
           sector: "Commodities",
-          subsetor: "Mineração",
+          subsetor: "MineraÃ§Ã£o",
           pvp: 1.1,
           lpa: 2.1,
           vpa: 12,
@@ -672,7 +834,7 @@ export function buildSmartAlertPreview(type: SmartAlertType): SmartAlertCandidat
       holdings: [
         {
           symbol: "ITUB4",
-          name: "Itaú Unibanco",
+          name: "ItaÃº Unibanco",
           shares: 10,
           price: 50,
           change: 0,
@@ -708,9 +870,87 @@ export function buildSmartAlertPreview(type: SmartAlertType): SmartAlertCandidat
         },
       ],
     },
+    profile_mismatch: {
+      portfolioDailyChangePercent: -0.8,
+      portfolioDailyChangeValue: -180,
+      isFirstEntry: false,
+      investorProfile: {
+        type: "Moderado",
+        score: 11,
+        horizon: "Médio prazo",
+        mainGoal: "Equilibrar crescimento e renda",
+        goalType: "equilibrado",
+        suggestedMix: { rendaPct: 50, crescimentoPct: 50 },
+        updatedAt: new Date().toISOString(),
+        answers: { q1: 2, q2: 2, q3: 2, q4: 2, q5: 2, q6: 1 },
+      },
+      portfolioRisk: {
+        totalScore: 72,
+        classification: "Alto",
+        drivers: ["Exposição a risco acima da política do perfil moderado."],
+        reducers: [],
+        components: {
+          concentrationAssets: 12,
+          concentrationSectors: 18,
+          volatileExposure: 10,
+          structuralRisk: 14,
+          qualityRisk: 65,
+        },
+        riskExposure: {
+          baixo: 10,
+          moderado: 25,
+          alto: 65,
+        },
+        highRiskAssets: [],
+        profileCompatibility: {
+          status: "Acima da política",
+          note: "Carteira está mais arriscada que o perfil.",
+        },
+      },
+      holdings: [
+        {
+          symbol: "ITUB4",
+          name: "Itaú Unibanco",
+          shares: 10,
+          price: 33,
+          change: -0.3,
+          changePercent: -1,
+          value: 330,
+          allocation: 25,
+          category: "Financeiro",
+          description: "",
+          marketCap: "",
+          pe: 10,
+          dividend: 5,
+          sector: "Financeiro",
+          subsetor: "Bancos",
+          pvp: 1.2,
+          lpa: 2,
+          vpa: 10,
+          payout: null,
+          pEbit: null,
+          evEbit: null,
+          evEbitda: null,
+          roe: null,
+          roic: null,
+          margemBruta: null,
+          margemEbit: null,
+          margemLiquida: null,
+          cReceita5a: null,
+          cLucro5a: null,
+          giroAtivos: null,
+          liqCorrente: null,
+          divLiqPl: null,
+          divLiqEbitda: null,
+          plAtivos: null,
+        },
+      ],
+    },
   };
 
   const ctx = mockContextByType[type];
   if (!ctx) return null;
   return evaluateCandidates(ctx).find((c) => c.type === type) ?? null;
 }
+
+
