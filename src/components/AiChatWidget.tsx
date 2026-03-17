@@ -17,6 +17,7 @@ interface AiChatWidgetProps {
   portfolioContext?: {
     summary?: {
       totalCloseValue?: number;
+      totalInvested?: number;
       totalGain?: number;
       dailyChange?: number;
       rentabilityPct?: number;
@@ -66,68 +67,113 @@ function formatSignedMoneyPtBr(value?: number): string {
   return `R$ ${abs}`;
 }
 
+function normalizeTextPtBr(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function formatPctPtBr(value: number): string {
+  if (!Number.isFinite(value)) return "N/D";
+  return `${value.toFixed(2).replace(".", ",")}%`;
+}
+
 function buildDirectPortfolioReply(
   inputText: string,
   portfolioContext?: AiChatWidgetProps["portfolioContext"]
 ): string | null {
   if (!portfolioContext?.summary) return null;
-  const q = String(inputText || "").toLowerCase().trim();
+  const rawText = String(inputText || "").trim();
+  const q = rawText.toLowerCase();
+  const normalizedQ = normalizeTextPtBr(rawText);
   const summary = portfolioContext.summary;
+  const totalInvested = Number(summary.totalInvested);
   const totalGain = Number(summary.totalGain);
   const dailyChange = Number(summary.dailyChange);
   const rentabilityPct = Number(summary.rentabilityPct);
   const totalCloseValue = Number(summary.totalCloseValue);
-
-  const broadAnalysisHints = [
-    "carteira completa",
-    "todos os meus numeros",
-    "todos meus numeros",
-    "todos os números",
-    "todos meus números",
-    "meus ativos",
-    "cada ativo",
-    "preco medio",
-    "preço médio",
-    "setor",
-    "setores",
-    "concentr",
-    "aloc",
-    "analis",
-    "resumo",
-    "historico",
-    "histórico",
-    "posicoes",
-    "posições",
-  ];
-  const hasBroadIntent = broadAnalysisHints.some((hint) => q.includes(hint));
-  const hasMultiIntentSeparators = q.includes(",") || q.includes(";") || q.includes(" e ");
-  const wordCount = q.split(/\s+/).filter(Boolean).length;
-  if (hasBroadIntent || hasMultiIntentSeparators || wordCount > 10) {
-    return null;
-  }
+  const estimatedDividends = Number(summary.estimatedDividends);
 
   const asksTotalResult =
     /(preju[ií]zo|lucro)\s*(total)?/.test(q) ||
     /resultado\s*(total)?/.test(q) ||
-    /quanto\s*(estou|eu)\s*(no|de)\s*(preju[ií]zo|lucro)/.test(q);
+    /quanto\s*(estou|eu)\s*(no|de)\s*(preju[ií]zo|lucro)/.test(q) ||
+    normalizedQ.includes("resultado da carteira");
   const asksDailyResult = /(lucro|preju[ií]zo|resultado)\s*(do|da)?\s*(dia|di[áa]rio)/.test(q);
   const asksRentability = /rentabilidade|retorno\s*acumulado/.test(q);
   const asksPatrimony = /patrim[oô]nio|valor\s*total\s*da\s*carteira/.test(q);
+  const asksInvested = /investid[oa]|aporte(s)?/.test(q);
+  const asksDividends = /provento(s)?|dividendo(s)?|dy\b/.test(q);
+  const asksEverything =
+    normalizedQ.includes("diga tudo") ||
+    normalizedQ.includes("todos os numeros") ||
+    normalizedQ.includes("todos meus numeros") ||
+    normalizedQ.includes("resumo da carteira");
 
-  if (asksTotalResult && Number.isFinite(totalGain)) {
-    if (totalGain < 0) return `Seu prejuízo total atual (posições abertas) é ${formatSignedMoneyPtBr(totalGain)}.`;
-    if (totalGain > 0) return `Seu lucro total atual (posições abertas) é ${formatSignedMoneyPtBr(totalGain)}.`;
-    return `Seu resultado total atual (posições abertas) está em ${formatSignedMoneyPtBr(totalGain)}.`;
+  const positions = portfolioContext.positions || [];
+  const matchedPositions = positions.filter((p) => {
+    const symbol = String(p.symbol || "").toLowerCase();
+    const normalizedName = normalizeTextPtBr(String(p.name || ""));
+    if (symbol && q.includes(symbol)) return true;
+    if (normalizedName && normalizedQ.includes(normalizedName)) return true;
+    if (normalizedQ.includes("ambev") && symbol === "abev3") return true;
+    if (normalizedQ.includes("banco do brasil") && symbol === "bbas3") return true;
+    return false;
+  });
+  const asksPositionPnl =
+    /(equivalente|em r\$|em reais|lucro|preju[ií]zo|rentabilidade|resultado)\b/.test(q) ||
+    normalizedQ.includes("quanto ganhei") ||
+    normalizedQ.includes("quanto perdi");
+
+  if (matchedPositions.length > 0 && asksPositionPnl) {
+    const lines = matchedPositions.map((p) => {
+      const symbol = String(p.symbol || "").toUpperCase();
+      const avg = Number(p.avgPrice);
+      const curr = Number(p.currentPrice);
+      const shares = Number(p.shares);
+      const pnlRaw = Number(p.positionPnl);
+      const pnl = Number.isFinite(pnlRaw)
+        ? pnlRaw
+        : Number.isFinite(avg) && Number.isFinite(curr) && Number.isFinite(shares)
+        ? (curr - avg) * shares
+        : Number.NaN;
+      const pct = Number.isFinite(avg) && avg > 0 && Number.isFinite(curr)
+        ? ((curr / avg) - 1) * 100
+        : Number.NaN;
+      return `${symbol}: ${formatSignedMoneyPtBr(pnl)} (${formatPctPtBr(pct)}).`;
+    });
+    return `Aqui estão os números da sua posição:\n${lines.join("\n")}`;
   }
-  if (asksDailyResult && Number.isFinite(dailyChange)) {
-    return `Seu resultado diário atual é ${formatSignedMoneyPtBr(dailyChange)}.`;
+
+  const responseLines: string[] = [];
+  if ((asksPatrimony || asksEverything) && Number.isFinite(totalCloseValue)) {
+    responseLines.push(
+      `Patrimônio atual: R$ ${totalCloseValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`
+    );
   }
-  if (asksRentability && Number.isFinite(rentabilityPct)) {
-    return `Sua rentabilidade histórica acumulada atual é ${rentabilityPct.toFixed(2).replace(".", ",")}%.`;
+  if ((asksInvested || asksEverything) && Number.isFinite(totalInvested)) {
+    responseLines.push(
+      `Valor investido (posições abertas): R$ ${totalInvested.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`
+    );
   }
-  if (asksPatrimony && Number.isFinite(totalCloseValue)) {
-    return `Seu patrimônio atual consolidado é R$ ${totalCloseValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`;
+  if ((asksTotalResult || asksEverything) && Number.isFinite(totalGain)) {
+    responseLines.push(`Resultado total atual (posições abertas): ${formatSignedMoneyPtBr(totalGain)}.`);
   }
+  if ((asksDailyResult || asksEverything) && Number.isFinite(dailyChange)) {
+    responseLines.push(`Resultado diário atual: ${formatSignedMoneyPtBr(dailyChange)}.`);
+  }
+  if ((asksRentability || asksEverything) && Number.isFinite(rentabilityPct)) {
+    responseLines.push(`Rentabilidade histórica acumulada: ${formatPctPtBr(rentabilityPct)}.`);
+  }
+  if ((asksDividends || asksEverything) && Number.isFinite(estimatedDividends)) {
+    responseLines.push(
+      `Proventos estimados (12M): R$ ${estimatedDividends.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`
+    );
+  }
+
+  if (responseLines.length > 0) return responseLines.join("\n");
+
   return null;
 }
 
