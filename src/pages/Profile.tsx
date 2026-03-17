@@ -24,6 +24,22 @@ interface RiskMisalignmentTracker {
   lastDetectedAt: string;
 }
 
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const maybeMessage = (error as { message?: unknown }).message;
+    if (typeof maybeMessage === "string" && maybeMessage.trim().length > 0) return maybeMessage;
+    const maybeError = (error as { error?: unknown }).error;
+    if (typeof maybeError === "string" && maybeError.trim().length > 0) return maybeError;
+    try {
+      return JSON.stringify(error);
+    } catch {
+      // ignore
+    }
+  }
+  return String(error || "");
+};
+
 const isRiskPolicyType = (value: string | null): value is RiskPolicyType =>
   value === "conservadora" || value === "moderada" || value === "sofisticada";
 
@@ -343,7 +359,7 @@ const Profile = () => {
       localStorage.setItem(getUsernameStorageKey(userId, userEmail), persistedUsername);
       toast({ title: "Nome de usuário salvo", description: "Agora você pode entrar com usuário ou e-mail." });
     } catch (error: unknown) {
-      const errMsg = error instanceof Error ? error.message : String(error || "");
+      const errMsg = getErrorMessage(error);
       toast({
         title: "Erro ao salvar",
         description: errMsg.includes("profiles_username_unique_idx")
@@ -406,7 +422,7 @@ const Profile = () => {
       window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { keys: avatarKeys, url: persistedAvatar } }));
       toast({ title: "Foto atualizada", description: "Sua foto de perfil foi sincronizada entre dispositivos." });
     } catch (error: unknown) {
-      const errMsg = error instanceof Error ? error.message : String(error || "");
+      const errMsg = getErrorMessage(error);
       const normalizedErr = errMsg.toLowerCase();
       toast({
         title: "Erro ao salvar foto",
@@ -414,6 +430,8 @@ const Profile = () => {
           ? "Bucket de avatar não encontrado no Supabase. Aplique a migration de storage e tente novamente."
           : normalizedErr.includes("row-level security") || normalizedErr.includes("new row violates")
             ? "Permissao negada pelo RLS do Storage para avatar. Aplique a migration de bucket/policies de profile-avatars no ambiente atual."
+            : normalizedErr.includes("avatar_url") && normalizedErr.includes("column")
+              ? "Coluna avatar_url ausente na tabela profiles. Aplique a migration de schema para profiles.avatar_url no ambiente atual."
             : errMsg || "Nao foi possivel salvar a foto no perfil.",
         variant: "destructive",
       });
@@ -436,7 +454,7 @@ const Profile = () => {
       window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { keys: avatarKeys, url: null } }));
       toast({ title: "Foto removida", description: "Avatar voltou para o padrao." });
     } catch (error: unknown) {
-      const errMsg = error instanceof Error ? error.message : String(error || "");
+      const errMsg = getErrorMessage(error);
       toast({
         title: "Erro ao remover foto",
         description: errMsg || "Nao foi possivel remover a foto.",
