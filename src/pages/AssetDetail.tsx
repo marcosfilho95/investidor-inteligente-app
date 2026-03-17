@@ -1083,7 +1083,7 @@ const AssetDetail = () => {
                   <h3 className="text-base font-semibold mb-1 flex items-center gap-2">
                     Indicadores de Valuation
                   </h3>
-                  <p className="text-xs text-muted-foreground mb-4">Passe o mouse sobre o ? para entender cada indicador</p>
+                  <p className="text-xs text-muted-foreground mb-4">Passe o mouse para entender cada indicador</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                     <IndicatorCard label="DY" value={`${asset.dividend}%`} tooltip={indicatorTooltips.dividend} />
                     <IndicatorCard label="P/L" value={asset.pe?.toFixed(1) ?? null} tooltip={indicatorTooltips.pe} />
