@@ -1,56 +1,56 @@
 ﻿# Investidor Inteligente
 
-Aplicacao para acompanhamento de investimentos com foco em educacao financeira e desenvolvimento de senso critico. A proposta e ajudar a pessoa a aprender a investir com mais autonomia, usando analise de ativos, assistente inteligente (HODL), dashboard e ferramentas praticas para gerir a carteira com clareza.
+Aplicação para acompanhamento de investimentos com foco em educação financeira e desenvolvimento de senso crítico. A proposta é ajudar a pessoa a aprender a investir com mais autonomia, usando análise de ativos, assistente inteligente (HODL), dashboard e ferramentas práticas para gerir a carteira com clareza.
 
-## Sumario
-- [Visao geral](#visao-geral)
+## Sumário
+- [Visão geral](#visão-geral)
 - [O que o projeto faz](#o-que-o-projeto-faz)
 - [Stack do projeto](#stack-do-projeto)
-- [Arquitetura (visao rapida)](#arquitetura-visao-rapida)
+- [Arquitetura (visão rápida)](#arquitetura-visão-rápida)
 - [IA do projeto (HODL + GPT)](#ia-do-projeto-hodl--gpt)
-- [Governanca de IA (anti-vies e anti-alucinacao)](#governanca-de-ia-anti-vies-e-anti-alucinacao)
+- [Governança de IA (anti-viés e anti-alucinação)](#governança-de-ia-anti-viés-e-anti-alucinação)
 - [Alertas inteligentes](#alertas-inteligentes)
 - [Pipeline de dados com OpenBB](#pipeline-de-dados-com-openbb)
 - [Cron job e workflow](#cron-job-e-workflow)
 - [Estrutura de pastas](#estrutura-de-pastas)
-- [Configuracao de ambiente](#configuracao-de-ambiente)
+- [Configuração de ambiente](#configuração-de-ambiente)
 - [Como rodar localmente](#como-rodar-localmente)
-- [Supabase: migracoes e banco](#supabase-migracoes-e-banco)
+- [Supabase: migrações e banco](#supabase-migrações-e-banco)
 - [Build, testes e qualidade](#build-testes-e-qualidade)
 - [Deploy](#deploy)
 - [Troubleshooting](#troubleshooting)
 
-## Visao geral
-O Investidor Inteligente foi pensado para investidores iniciantes e intermediarios.
-A ideia e simples: transformar dados de carteira e mercado em uma experiencia facil de entender, sem perder profundidade.
+## Visão geral
+O Investidor Inteligente foi pensado para investidores iniciantes e intermediários.
+A ideia é simples: transformar dados de carteira e mercado em uma experiência fácil de entender, sem perder profundidade.
 
-Principios do produto:
-- linguagem clara e didatica
-- contexto antes de decisao
+Princípios do produto:
+- linguagem clara e didática
+- contexto antes de decisão
 - alertas com prioridade e sem spam
 - interface consistente em desktop e mobile
 
 ## O que o projeto faz
 
 ### Dashboard
-- mostra valor total, lucro diario, lucro total e rentabilidade
-- exibe graficos de performance e alocacao
+- mostra valor total, lucro diário, lucro total e rentabilidade
+- exibe gráficos de performance e alocação
 - integra o contexto da carteira com o HODL
 
 ### Carteira
-- consolidacao de posicoes do usuario
-- distribuicao por ativo e setor
+- consolidação de posições do usuário
+- distribuição por ativo e setor
 - leitura de risco e compatibilidade com perfil
 
 ### Ativos e detalhe do ativo
 - lista de ativos com filtros
-- visao de fundamentos e contexto setorial
-- pagina de detalhe com dados e leitura mais aprofundada
+- visão de fundamentos e contexto setorial
+- página de detalhe com dados e leitura mais aprofundada
 
 ### Perfil
 - dados da conta
 - avatar com Supabase Storage
-- onboarding e redefinicao de perfil de investidor
+- onboarding e redefinição de perfil de investidor
 
 ### Tutorial/onboarding
 - tour guiado da plataforma
@@ -59,7 +59,7 @@ Principios do produto:
 ### Alertas inteligentes
 - avalia eventos relevantes da carteira
 - define prioridade entre alertas concorrentes
-- evita repeticao com cooldown + variacao material
+- evita repetição com cooldown + variação material
 
 ## Stack do projeto
 
@@ -84,51 +84,51 @@ Principios do produto:
 - ESLint
 - Vitest
 
-## Arquitetura (visao rapida)
+## Arquitetura (visão rápida)
 Fluxo principal:
-1. usuario autentica
+1. usuário autentica
 2. app carrega holdings/trades
-3. calcula metricas e risco
+3. calcula métricas e risco
 4. avalia alertas inteligentes
 5. renderiza UI e monta contexto para o HODL
 
 ## IA do projeto (HODL + GPT)
-O HODL roda por Edge Function e usa contexto da propria plataforma para responder.
+O HODL roda por Edge Function e usa contexto da própria plataforma para responder.
 
 Arquivo principal:
 - `supabase/functions/chat/index.ts`
 
 Entradas da IA (resumo):
-- dados da carteira do usuario
+- dados da carteira do usuário
 - contexto de mercado carregado no app
-- informacoes de perfil e risco
+- informações de perfil e risco
 
-Saida esperada:
-- explicacao didatica
+Saída esperada:
+- explicação didática
 - leitura de contexto
-- apoio educacional para tomada de decisao
+- apoio educacional para tomada de decisão
 
-## Governanca de IA (anti-vies e anti-alucinacao)
-A IA do projeto segue regras para manter seguranca e confiabilidade:
+## Governança de IA (anti-viés e anti-alucinação)
+A IA do projeto segue regras para manter segurança e confiabilidade:
 
-- nao inventar dado ausente
-- nao buscar dado fora do contexto autorizado
-- nao dar ordem direta de compra/venda
-- priorizar educacao, fundamentos e gestao de risco
+- não inventar dado ausente
+- não buscar dado fora do contexto autorizado
+- não dar ordem direta de compra/venda
+- priorizar educação, fundamentos e gestão de risco
 - sinalizar limites quando faltarem dados
 
 ## Alertas inteligentes
-Implementacao principal:
+Implementação principal:
 - `src/lib/smartAlerts.ts`
-- integracao na dashboard (`src/pages/Index.tsx`)
+- integração na dashboard (`src/pages/Index.tsx`)
 
 Regras centrais:
 - primeiro login: sem alerta de carteira
-- no maximo 1 alerta principal por login
+- no máximo 1 alerta principal por login
 - prioridade entre tipos de alerta
-- controle de recorrencia por cooldown e mudanca material
+- controle de recorrência por cooldown e mudança material
 
-Persistencia:
+Persistência:
 - `user_alert_state`
 - `alert_history`
 
@@ -138,12 +138,12 @@ Tipos de alerta atuais:
 - queda forte de ativo
 - alta forte da carteira
 - alta forte de ativo
-- concentracao em ativo
-- concentracao em setor
+- concentração em ativo
+- concentração em setor
 - ativo sobrevalorizado
 
 ## Pipeline de dados com OpenBB
-A atualizacao de dados usa scripts Python + OpenBB.
+A atualização de dados usa scripts Python + OpenBB.
 
 Arquivos importantes:
 - `scripts/openbb_refresh.py`
@@ -154,24 +154,24 @@ Formato esperado de CSV:
 - `date,open,high,low,close,volume,ticker`
 
 ## Cron job e workflow
-Automacao via GitHub Actions:
+Automação via GitHub Actions:
 - `.github/workflows/data-refresh.yml`
 
 Fluxo:
-1. instala dependencias Python
+1. instala dependências Python
 2. executa refresh de dados (OpenBB)
 3. valida o dataset
 4. publica no Supabase Storage (upsert)
 
 Gatilhos:
-- cron diario
-- execucao manual (`workflow_dispatch`)
+- cron diário
+- execução manual (`workflow_dispatch`)
 
-Secrets necessarios:
+Secrets necessários:
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-Fallback de seguranca:
+Fallback de segurança:
 - se Storage falhar, o frontend usa CSV local em `public/data`
 
 ## Estrutura de pastas
@@ -192,7 +192,7 @@ Fallback de seguranca:
 └─ README.md
 ```
 
-## Configuracao de ambiente
+## Configuração de ambiente
 Crie um `.env` na raiz com:
 
 ```bash
@@ -202,11 +202,11 @@ VITE_SUPABASE_PROJECT_ID=<project-ref>
 ```
 
 Importante:
-- nao exponha `SERVICE_ROLE_KEY` no frontend
+- não exponha `SERVICE_ROLE_KEY` no frontend
 
 ## Como rodar localmente
 
-### 1) Instalar dependencias
+### 1) Instalar dependências
 ```bash
 npm install
 ```
@@ -216,7 +216,7 @@ npm install
 npm run dev
 ```
 
-### 3) Build de producao
+### 3) Build de produção
 ```bash
 npm run build
 ```
@@ -226,8 +226,8 @@ npm run build
 npm run preview
 ```
 
-## Supabase: migracoes e banco
-Migracoes ficam em:
+## Supabase: migrações e banco
+Migrações ficam em:
 - `supabase/migrations`
 
 Para aplicar no seu projeto:
@@ -237,10 +237,10 @@ supabase link --project-ref <project-ref>
 supabase db push
 ```
 
-Exemplos de migracoes relevantes no projeto:
+Exemplos de migrações relevantes no projeto:
 - tabelas de alertas inteligentes
 - bucket de avatar de perfil
-- funcao atomica para contagem de login
+- função atômica para contagem de login
 
 ## Build, testes e qualidade
 Comandos principais:
@@ -263,24 +263,24 @@ Antes de PR/deploy, recomendado:
 - PWA via `vite-plugin-pwa`
 
 Checklist de deploy:
-1. variaveis de ambiente configuradas
-2. migracoes aplicadas no Supabase
+1. variáveis de ambiente configuradas
+2. migrações aplicadas no Supabase
 3. build local validado
 
 ## Troubleshooting
 
 ### Tipos do Supabase quebrando build
-Se `src/integrations/supabase/types.ts` divergir do schema real, regenere tipos a partir do seu Supabase (nao de outro ambiente).
+Se `src/integrations/supabase/types.ts` divergir do schema real, regenere tipos a partir do seu Supabase (não de outro ambiente).
 
-### Alertas nao aparecem
-- confirme migracoes aplicadas
-- valide se nao e primeiro login
-- confirme dados de carteira e autenticacao
+### Alertas não aparecem
+- confirme migrações aplicadas
+- valide se não é primeiro login
+- confirme dados de carteira e autenticação
 
-### Avatar nao salva
+### Avatar não salva
 - confira bucket no Storage
-- confira politicas RLS/permissoes
+- confira políticas RLS/permissões
 
-### Dados de mercado nao carregam
+### Dados de mercado não carregam
 - valide `VITE_SUPABASE_URL`
 - confira fallback local em `public/data`
