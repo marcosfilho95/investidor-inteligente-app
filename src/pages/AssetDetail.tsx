@@ -803,15 +803,15 @@ const AssetDetail = () => {
                     </div>
                     {Number(activeUpsideFormatted) > 15 ? (
                       <div className="bg-gain/5 border border-gain/15 rounded-xl px-5 py-4 flex items-center gap-2">
-                        <p className="text-xs text-gain font-medium">Preço descontado: abaixo do valor estimado por Graham</p>
+                        <p className="text-xs text-gain font-medium">Preço descontado: abaixo do valor estimado por Graham.</p>
                       </div>
                     ) : Number(activeUpsideFormatted) >= -15 ? (
                       <div className="bg-warning/5 border border-warning/15 rounded-xl px-5 py-4 flex items-center gap-2">
-                        <p className="text-xs text-warning font-medium">Preço neutro: dentro da faixa de ±15% do valor estimado por Graham</p>
+                        <p className="text-xs text-warning font-medium">Preço neutro: dentro da faixa do valor estimado por Graham.</p>
                       </div>
                     ) : (
                       <div className="bg-loss/5 border border-loss/15 rounded-xl px-5 py-4 flex items-center gap-2">
-                        <p className="text-xs text-loss font-medium">Preço esticado: acima do valor estimado por Graham</p>
+                        <p className="text-xs text-loss font-medium">Preço esticado: acima do valor estimado por Graham.</p>
                       </div>
                     )}
                   </div>
