@@ -17,6 +17,15 @@ const navItems = [
   { label: "Aprender", icon: BookOpen, href: "/aprender", key: "aprender" as const },
 ];
 
+const getAvatarStorageKeys = (id?: string, email?: string, name?: string) =>
+  Array.from(
+    new Set(
+      [`ii_profile_avatar_${id || ""}`, `ii_profile_avatar_${email || ""}`, `ii_profile_avatar_${name || ""}`].filter(
+        (k) => !k.endsWith("_")
+      )
+    )
+  );
+
 export function AppHeader({ activePage }: AppHeaderProps) {
   const [userName, setUserName] = useState(() => localStorage.getItem("ii_user_name") || "IN");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
@@ -65,15 +74,11 @@ export function AppHeader({ activePage }: AppHeaderProps) {
     setUserName(firstName);
     localStorage.setItem("ii_user_name", firstName);
 
-    const avatarKey = `ii_profile_avatar_${user.email || firstName}`;
-    const localAvatar = localStorage.getItem(avatarKey);
-    if (localAvatar) {
-      setAvatarUrl(localAvatar);
-      localStorage.setItem("ii_profile_avatar_current", localAvatar);
-    } else {
-      setAvatarUrl(null);
-      localStorage.removeItem("ii_profile_avatar_current");
-    }
+    const avatarKeys = getAvatarStorageKeys(user.id, user.email || "", firstName);
+    const localAvatar =
+      [localStorage.getItem("ii_profile_avatar_current"), ...avatarKeys.map((k) => localStorage.getItem(k))].find(
+        (v) => typeof v === "string" && v.length > 0
+      ) || null;
 
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
@@ -81,18 +86,33 @@ export function AppHeader({ activePage }: AppHeaderProps) {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (profileError) return;
+    if (profileError) {
+      if (localAvatar) {
+        setAvatarUrl(localAvatar);
+        localStorage.setItem("ii_profile_avatar_current", localAvatar);
+      } else {
+        setAvatarUrl(null);
+        localStorage.removeItem("ii_profile_avatar_current");
+      }
+      return;
+    }
 
     const dbAvatar = profileData?.avatar_url ?? null;
     if (dbAvatar) {
       setAvatarUrl(dbAvatar);
-      localStorage.setItem(avatarKey, dbAvatar);
+      for (const key of avatarKeys) localStorage.setItem(key, dbAvatar);
       localStorage.setItem("ii_profile_avatar_current", dbAvatar);
       return;
     }
 
+    if (localAvatar) {
+      setAvatarUrl(localAvatar);
+      localStorage.setItem("ii_profile_avatar_current", localAvatar);
+      return;
+    }
+
     setAvatarUrl(null);
-    localStorage.removeItem(avatarKey);
+    for (const key of avatarKeys) localStorage.removeItem(key);
     localStorage.removeItem("ii_profile_avatar_current");
   }, []);
 

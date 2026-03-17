@@ -3,11 +3,13 @@ import { PerformanceChart } from "@/components/PerformanceChart";
 import { AllocationChart } from "@/components/AllocationChart";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { AiChatWidget } from "@/components/AiChatWidget";
+import { SmartInsightModal } from "@/components/SmartInsightModal";
 import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 import { InvestorProfileOnboardingModal } from "@/components/InvestorProfileOnboardingModal";
 import {
@@ -18,8 +20,16 @@ import {
 } from "@/lib/investorIntelligence";
 import { loadInvestorProfileFromDatabase, persistInvestorProfile } from "@/lib/investorProfilePersistence";
 import { getAiTaxonomy } from "@/data/investments";
+import {
+  buildSmartAlertPreview,
+  getOrCreateLoginCount,
+  registerSmartAlertShown,
+  selectTopSmartAlert,
+  type SmartAlertCandidate,
+} from "@/lib/smartAlerts";
 
 const Index = () => {
+  const navigate = useNavigate();
   const [userName, setUserName] = useState(() => localStorage.getItem("ii_user_name") || "Investidor");
   const [minDelayDone, setMinDelayDone] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
@@ -30,7 +40,14 @@ const Index = () => {
   } | null>(null);
   const [investorProfile, setInvestorProfile] = useState<InvestorProfileSummary | null>(null);
   const [showProfileOnboarding, setShowProfileOnboarding] = useState(false);
+  const [smartAlert, setSmartAlert] = useState<SmartAlertCandidate | null>(null);
+  const [showSmartAlert, setShowSmartAlert] = useState(false);
+  const [smartAlertEvaluated, setSmartAlertEvaluated] = useState(false);
   const { enrichedHoldings, loading, userTrades, portfolioMetrics } = useUserHoldings();
+
+  const hasCompletedTour = (userId: string) =>
+    localStorage.getItem(`onboarding_completed_${userId}`) === "true" ||
+    localStorage.getItem("onboarding_completed") === "true";
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -66,7 +83,7 @@ const Index = () => {
       const resolved = dbProfile || metadataProfile || storageProfile;
       setInvestorProfile(resolved);
       if (!resolved) {
-        setShowProfileOnboarding(true);
+        setShowProfileOnboarding(hasCompletedTour(currentUser.id));
       }
     })();
 
@@ -74,6 +91,22 @@ const Index = () => {
       mounted = false;
     };
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const handleTourComplete = (event: Event) => {
+      const customEvent = event as CustomEvent<{ userId?: string | null }>;
+      const completedUserId = customEvent.detail?.userId;
+      if (completedUserId && completedUserId !== currentUser.id) return;
+      if (!investorProfile) setShowProfileOnboarding(true);
+    };
+
+    window.addEventListener("ii:onboarding-tour-complete", handleTourComplete as EventListener);
+    return () => {
+      window.removeEventListener("ii:onboarding-tour-complete", handleTourComplete as EventListener);
+    };
+  }, [currentUser, investorProfile]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setMinDelayDone(true), 180);
@@ -88,6 +121,87 @@ const Index = () => {
     const t = window.setTimeout(() => setShowCharts(true), 90);
     return () => window.clearTimeout(t);
   }, [loading, minDelayDone]);
+
+  useEffect(() => {
+    if (!currentUser?.id || loading || !minDelayDone || smartAlertEvaluated) return;
+    let active = true;
+
+    (async () => {
+      try {
+        const loginCount = await getOrCreateLoginCount(currentUser.id);
+        if (!active) return;
+
+        const sessionEvalKey = `ii_smart_alert_eval_${currentUser.id}_${loginCount}`;
+        if (localStorage.getItem(sessionEvalKey) === "1") {
+          setSmartAlertEvaluated(true);
+          return;
+        }
+
+        if (loginCount <= 1) {
+          localStorage.setItem(sessionEvalKey, "1");
+          setSmartAlertEvaluated(true);
+          return;
+        }
+
+        const selection = await selectTopSmartAlert(currentUser.id, {
+          holdings: enrichedHoldings,
+          portfolioDailyChangePercent: portfolioMetrics.dailyChangePercent,
+          isFirstEntry: false,
+        });
+        if (!active) return;
+
+        if (selection?.shouldShow) {
+          setSmartAlert(selection.alert);
+          setShowSmartAlert(true);
+          await registerSmartAlertShown(currentUser.id, selection.alert);
+        }
+
+        localStorage.setItem(sessionEvalKey, "1");
+      } catch (err) {
+        console.warn("[smart-alerts] failed to evaluate alerts:", err);
+      } finally {
+        if (active) setSmartAlertEvaluated(true);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    currentUser?.id,
+    enrichedHoldings,
+    loading,
+    minDelayDone,
+    portfolioMetrics.dailyChangePercent,
+    smartAlertEvaluated,
+  ]);
+
+  useEffect(() => {
+    const api = {
+      presets: [
+        "portfolio_empty",
+        "portfolio_drop",
+        "asset_drop",
+        "portfolio_rise",
+        "asset_rise",
+        "asset_concentration",
+        "sector_concentration",
+        "asset_overvalued",
+      ] as const,
+      show: (type: Parameters<typeof buildSmartAlertPreview>[0]) => {
+        const preview = buildSmartAlertPreview(type);
+        if (!preview) return null;
+        setSmartAlert(preview);
+        setShowSmartAlert(true);
+        return preview;
+      },
+      hide: () => setShowSmartAlert(false),
+    };
+    (window as Window & { __SMART_ALERT_PREVIEW__?: typeof api }).__SMART_ALERT_PREVIEW__ = api;
+    return () => {
+      delete (window as Window & { __SMART_ALERT_PREVIEW__?: typeof api }).__SMART_ALERT_PREVIEW__;
+    };
+  }, []);
 
   const hour = new Date().toLocaleString("pt-BR", {
     timeZone: "America/Sao_Paulo",
@@ -444,6 +558,17 @@ Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estraté
           if (!currentUser) return;
           await persistInvestorProfile(currentUser, profile);
           setInvestorProfile(profile);
+        }}
+      />
+
+      <SmartInsightModal
+        open={showSmartAlert}
+        alert={smartAlert}
+        onOpenChange={setShowSmartAlert}
+        onPrimaryAction={() => {
+          if (!smartAlert) return;
+          setShowSmartAlert(false);
+          navigate(smartAlert.route);
         }}
       />
     </div>

@@ -104,6 +104,45 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_history: {
+        Row: {
+          alert_type: string
+          cooldown_days: number
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          last_reference_value: number
+          last_shown_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          cooldown_days?: number
+          created_at?: string
+          entity_id?: string
+          entity_type: string
+          id?: string
+          last_reference_value?: number
+          last_shown_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          cooldown_days?: number
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          last_reference_value?: number
+          last_shown_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -149,6 +188,33 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string
+        }
+        Relationships: []
+      }
+      user_alert_state: {
+        Row: {
+          created_at: string
+          last_login_at: string | null
+          last_session_fingerprint: string | null
+          login_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          last_login_at?: string | null
+          last_session_fingerprint?: string | null
+          login_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          last_login_at?: string | null
+          last_session_fingerprint?: string | null
+          login_count?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -220,6 +286,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      increment_login_count_if_new: {
+        Args: {
+          p_session_fingerprint: string
+        }
+        Returns: number
+      }
       get_email_by_username: {
         Args: {
           p_username: string

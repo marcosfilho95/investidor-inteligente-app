@@ -51,6 +51,16 @@ const mapInvestorProfileToRiskPolicy = (type?: InvestorProfileSummary["type"]): 
   if (type === "Arrojado") return "sofisticada";
   return "moderada";
 };
+const AVATAR_BUCKET = "profile-avatars";
+
+const getAvatarStorageKeys = (id?: string, email?: string, name?: string) =>
+  Array.from(
+    new Set(
+      [`ii_profile_avatar_${id || ""}`, `ii_profile_avatar_${email || ""}`, `ii_profile_avatar_${name || ""}`].filter(
+        (k) => !k.endsWith("_")
+      )
+    )
+  );
 
 const Profile = () => {
   const [userName, setUserName] = useState("Investidor");
@@ -71,7 +81,6 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const avatarStorageKey = `ii_profile_avatar_${userEmail || userName}`;
   const getUsernameStorageKey = (id?: string, email?: string) =>
     `ii_profile_username_${id || email || "anonymous"}`;
 
@@ -88,7 +97,7 @@ const Profile = () => {
     return fromEmail || "usuario";
   };
 
-  const resizeImageToDataUrl = (file: File, maxSize = 320): Promise<string> =>
+  const resizeImageToBlob = (file: File, maxSize = 320): Promise<Blob> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -112,7 +121,17 @@ const Profile = () => {
             return;
           }
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL("image/jpeg", 0.82));
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error("Falha ao processar imagem"));
+                return;
+              }
+              resolve(blob);
+            },
+            "image/jpeg",
+            0.86
+          );
         };
         img.onerror = () => reject(new Error("Falha ao carregar imagem"));
         img.src = src;
@@ -160,9 +179,6 @@ const Profile = () => {
           setRiskPolicy("moderada");
         }
 
-        const persistedAvatar = localStorage.getItem(`ii_profile_avatar_${data.user.email || name}`);
-        if (persistedAvatar && mounted) setAvatarUrl(persistedAvatar);
-
         const authUsername = normalizeUsername(String(data.user.user_metadata?.username || ""));
         const usernameStorageKey = getUsernameStorageKey(data.user.id, data.user.email || "");
         const cachedUsername = normalizeUsername(localStorage.getItem(usernameStorageKey) || "");
@@ -205,10 +221,15 @@ const Profile = () => {
           localStorage.setItem(usernameStorageKey, resolvedUsername);
         }
 
+        const avatarKeys = getAvatarStorageKeys(data.user.id, data.user.email || "", name);
         if (profileData?.avatar_url) {
           setAvatarUrl(profileData.avatar_url);
-          localStorage.setItem(`ii_profile_avatar_${data.user.email || name}`, profileData.avatar_url);
+          for (const key of avatarKeys) localStorage.setItem(key, profileData.avatar_url);
           localStorage.setItem("ii_profile_avatar_current", profileData.avatar_url);
+        } else {
+          const cachedAvatar = [localStorage.getItem("ii_profile_avatar_current"), ...avatarKeys.map((k) => localStorage.getItem(k))]
+            .find((v) => typeof v === "string" && v.length > 0) || null;
+          if (cachedAvatar) setAvatarUrl(cachedAvatar);
         }
       } finally {
         if (mounted) setLoading(false);
@@ -326,69 +347,78 @@ const Profile = () => {
   };
 
   const handleAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!userId) {
+      toast({ title: "Perfil indisponível", description: "Tente novamente em instantes.", variant: "destructive" });
+      return;
+    }
     if (!file.type.startsWith("image/")) {
       toast({ title: "Arquivo invalido", description: "Selecione uma imagem.", variant: "destructive" });
       return;
     }
 
     try {
-      const result = await resizeImageToDataUrl(file);
+      const blob = await resizeImageToBlob(file);
+      const avatarPath = `${userId}/avatar.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from(AVATAR_BUCKET)
+        .upload(avatarPath, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "3600" });
+      if (uploadError) throw uploadError;
 
-      const { data: updated, error } = await supabase
+      const { data: publicUrlData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(avatarPath);
+      const storageUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+
+      const { data: upserted, error } = await supabase
         .from("profiles")
-        .update({ avatar_url: result })
-        .eq("user_id", userId)
+        .upsert(
+          {
+            user_id: userId,
+            name: userName || "",
+            email: userEmail || "",
+            username: buildFallbackUsername(),
+            avatar_url: storageUrl,
+          },
+          { onConflict: "user_id" }
+        )
         .select("avatar_url")
         .maybeSingle();
-
       if (error) throw error;
-
-      let persistedAvatar = updated?.avatar_url ?? null;
-      if (!persistedAvatar) {
-        const { data: upserted, error: upsertError } = await supabase
-          .from("profiles")
-          .upsert(
-            {
-              user_id: userId,
-              name: userName || "",
-              email: userEmail || "",
-              username: buildFallbackUsername(),
-              avatar_url: result,
-            },
-            { onConflict: "user_id" }
-          )
-          .select("avatar_url")
-          .maybeSingle();
-        if (upsertError) throw upsertError;
-        persistedAvatar = upserted?.avatar_url ?? result;
-      }
+      const persistedAvatar = upserted?.avatar_url ?? storageUrl;
 
       setAvatarUrl(persistedAvatar);
-      localStorage.setItem(avatarStorageKey, persistedAvatar);
+      const avatarKeys = getAvatarStorageKeys(userId, userEmail, userName);
+      for (const key of avatarKeys) localStorage.setItem(key, persistedAvatar);
       localStorage.setItem("ii_profile_avatar_current", persistedAvatar);
-      window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { key: avatarStorageKey, url: persistedAvatar } }));
+      window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { keys: avatarKeys, url: persistedAvatar } }));
       toast({ title: "Foto atualizada", description: "Sua foto de perfil foi sincronizada entre dispositivos." });
     } catch (error: unknown) {
       const errMsg = error instanceof Error ? error.message : String(error || "");
       toast({
         title: "Erro ao salvar foto",
-        description: errMsg || "Nao foi possivel salvar a foto no perfil.",
+        description: errMsg.toLowerCase().includes("bucket not found")
+          ? "Bucket de avatar não encontrado no Supabase. Aplique a migration de storage e tente novamente."
+          : errMsg || "Nao foi possivel salvar a foto no perfil.",
         variant: "destructive",
       });
     }
-    e.currentTarget.value = "";
+    if (input) input.value = "";
   };
 
   const handleAvatarRemove = async () => {
     try {
+      if (userId) {
+        const avatarPath = `${userId}/avatar.jpg`;
+        await supabase.storage.from(AVATAR_BUCKET).remove([avatarPath]);
+      }
       const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("user_id", userId);
       if (error) throw error;
       setAvatarUrl(null);
-      localStorage.removeItem(avatarStorageKey);
+      const avatarKeys = getAvatarStorageKeys(userId, userEmail, userName);
+      for (const key of avatarKeys) localStorage.removeItem(key);
       localStorage.removeItem("ii_profile_avatar_current");
-      window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { key: avatarStorageKey, url: null } }));
+      window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { keys: avatarKeys, url: null } }));
       toast({ title: "Foto removida", description: "Avatar voltou para o padrao." });
     } catch (error: unknown) {
       const errMsg = error instanceof Error ? error.message : String(error || "");
