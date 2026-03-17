@@ -420,7 +420,7 @@ const Profile = () => {
       for (const key of avatarKeys) localStorage.setItem(key, persistedAvatar);
       localStorage.setItem("ii_profile_avatar_current", persistedAvatar);
       window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { keys: avatarKeys, url: persistedAvatar } }));
-      toast({ title: "Foto atualizada", description: "Sua foto de perfil foi sincronizada entre dispositivos." });
+      toast({ title: "Foto atualizada!", description: "Sua nova foto de perfil já está em uso." });
     } catch (error: unknown) {
       const errMsg = getErrorMessage(error);
       const normalizedErr = errMsg.toLowerCase();
