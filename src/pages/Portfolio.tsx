@@ -794,7 +794,7 @@ const Portfolio = () => {
                         userSymbols={enrichedHoldings.map(h => h.symbol)}
                         userHoldingsData={enrichedHoldings.map(h => ({ symbol: h.symbol, shares: h.shares, avgPrice: h.avgPrice }))}
                         portfolioContext={aiPortfolioContext}
-                        welcomeMessage={`Sua carteira possui ${enrichedHoldings.length} ativos distribuídos em ${Object.keys(sectorMap).length} setores. Posso te ajudar a ajustar alocação, risco e rebalanceamento de forma prática. O que você quer analisar primeiro?${aiCompatibilityWarning ? ` ${aiCompatibilityWarning}` : ""}`}
+                        welcomeMessage={`Sua carteira possui ${enrichedHoldings.length} ativos distribuídos em ${Object.keys(sectorMap).length} setores. Posso te ajudar a ajustar alocação, risco e rebalanceamento de forma prática. O que você quer analisar primeiro?${aiCompatibilityWarning ? `\n\n${aiCompatibilityWarning}` : ""}`}
                       />
                     </div>
                   </div>
