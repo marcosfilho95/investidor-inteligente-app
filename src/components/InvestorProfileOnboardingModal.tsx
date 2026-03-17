@@ -35,9 +35,16 @@ export function InvestorProfileOnboardingModal({
   const [resultProfile, setResultProfile] = useState<InvestorProfileSummary | null>(null);
   const reduceMotion = useReducedMotion();
   const closeTimerRef = useRef<number | null>(null);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      wasOpenRef.current = false;
+      return;
+    }
+    if (wasOpenRef.current) return;
+    wasOpenRef.current = true;
+
     if (closeTimerRef.current) {
       window.clearTimeout(closeTimerRef.current);
       closeTimerRef.current = null;
