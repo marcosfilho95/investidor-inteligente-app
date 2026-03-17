@@ -1,131 +1,286 @@
-## Investidor Inteligente — Arquitetura de Dados
+﻿# Investidor Inteligente
 
-Aplicação construída com Vite + React + TypeScript (Lovable), que consome dados de mercado a partir de CSVs gerados por um pipeline Python (OpenBB) e armazenados no Supabase Storage, com fallback seguro para CSVs locais.
+Aplicacao para acompanhamento de investimentos com foco em educacao financeira e desenvolvimento de senso critico. A proposta e ajudar a pessoa a aprender a investir com mais autonomia, usando analise de ativos, assistente inteligente (HODL), dashboard e ferramentas praticas para gerir a carteira com clareza.
 
-### Arquitetura de dados (OpenBB → GitHub Actions → Supabase → App)
+## Sumario
+- [Visao geral](#visao-geral)
+- [O que o projeto faz](#o-que-o-projeto-faz)
+- [Stack do projeto](#stack-do-projeto)
+- [Arquitetura (visao rapida)](#arquitetura-visao-rapida)
+- [IA do projeto (HODL + GPT)](#ia-do-projeto-hodl--gpt)
+- [Governanca de IA (anti-vies e anti-alucinacao)](#governanca-de-ia-anti-vies-e-anti-alucinacao)
+- [Alertas inteligentes](#alertas-inteligentes)
+- [Pipeline de dados com OpenBB](#pipeline-de-dados-com-openbb)
+- [Cron job e workflow](#cron-job-e-workflow)
+- [Estrutura de pastas](#estrutura-de-pastas)
+- [Configuracao de ambiente](#configuracao-de-ambiente)
+- [Como rodar localmente](#como-rodar-localmente)
+- [Supabase: migracoes e banco](#supabase-migracoes-e-banco)
+- [Build, testes e qualidade](#build-testes-e-qualidade)
+- [Deploy](#deploy)
+- [Troubleshooting](#troubleshooting)
 
-- **OpenBB (Python)**:
-  - Script `scripts/openbb_refresh.py` usa `openbb` (provider `yfinance`) para buscar preços históricos dos mesmos tickers presentes em `public/data/prices_daily_24assets_plus_ibov_5y.csv`.
-  - Gera um CSV no formato **idêntico** ao usado pelo frontend:
-    - Colunas: `date,open,high,low,close,volume,ticker`
-  - Salva o arquivo consolidado em `output/prices_latest.csv`.
+## Visao geral
+O Investidor Inteligente foi pensado para investidores iniciantes e intermediarios.
+A ideia e simples: transformar dados de carteira e mercado em uma experiencia facil de entender, sem perder profundidade.
 
-- **Validação do dataset**:
-  - Script `scripts/validate_dataset.py` garante que o dataset é consistente:
-    - Arquivo existe e não está vazio.
-    - Colunas mínimas presentes: `date`, `ticker`, `close`.
-    - Schema completo esperado: `date,open,high,low,close,volume,ticker` (mesmo formato do CSV original).
-    - Datas são parseáveis.
-  - Em caso de erro, o script finaliza com **exit code != 0**, fazendo o job do GitHub Actions falhar e evitando publicar dados inválidos.
+Principios do produto:
+- linguagem clara e didatica
+- contexto antes de decisao
+- alertas com prioridade e sem spam
+- interface consistente em desktop e mobile
 
-- **GitHub Actions (automação gratuita)**:
-  - Workflow em `.github/workflows/data-refresh.yml`.
-  - Executa diariamente às **18:00 America/Fortaleza (21:00 UTC)** e também permite `workflow_dispatch` manual.
-  - Passos principais:
-    - Instala Python 3.11.
-    - Instala dependências listadas em `requirements_openbb.txt` (`openbb`, `pandas`).
-    - Executa `python scripts/openbb_refresh.py`.
-    - Executa `python scripts/validate_dataset.py output/prices_latest.csv`.
-    - Se tudo for bem-sucedido, faz upload do CSV para o Supabase Storage:
-      - Bucket/objeto: `market-data/prices/prices_latest.csv`
-      - Endpoint: `${SUPABASE_URL}/storage/v1/object/market-data/prices/prices_latest.csv?upsert=true`
-      - Autenticação via `SUPABASE_SERVICE_ROLE_KEY` (GitHub Secrets).
+## O que o projeto faz
 
-- **Supabase Storage → Frontend**:
-  - O frontend utiliza o loader em `src/data/csvLoader.ts` com a seguinte prioridade:
-    1. **Supabase Storage**: `${VITE_SUPABASE_URL}/storage/v1/object/public/market-data/prices/prices_latest.csv` (com cache-busting opcional).
-    2. **Fallback local**: `/data/prices_daily_24assets_plus_ibov_5y.csv` em `public/data/`.
-  - Se o download do Storage falhar (404, erro de rede, CSV muito pequeno ou com poucos tickers), o loader automaticamente faz fallback para o CSV local.
-  - Isso garante que **o app continua funcionando mesmo que o pipeline ou o Storage falhem**.
+### Dashboard
+- mostra valor total, lucro diario, lucro total e rentabilidade
+- exibe graficos de performance e alocacao
+- integra o contexto da carteira com o HODL
 
-- **IA / Edge Function (Governança)**:
-  - A função `supabase/functions/chat/index.ts` recebe:
-    - `contextPack`: resumo derivado dos datasets (preços, retornos, métricas).
-    - `dataset`, `ticker`, `currentData`, `userSymbols` (já usados pela aplicação).
-  - O `SYSTEM_PROMPT` instrui explicitamente o modelo a:
-    - Usar **apenas** os dados fornecidos no contexto / context pack.
-    - Nunca buscar dados externos nem inventar valores.
-    - Explicitar quando um dado não estiver disponível.
-    - Nunca fazer recomendação direta de compra ou venda — apenas educação sobre fundamentos.
+### Carteira
+- consolidacao de posicoes do usuario
+- distribuicao por ativo e setor
+- leitura de risco e compatibilidade com perfil
 
-### GitHub Secrets necessários
+### Ativos e detalhe do ativo
+- lista de ativos com filtros
+- visao de fundamentos e contexto setorial
+- pagina de detalhe com dados e leitura mais aprofundada
 
-No repositório do GitHub, configure os seguintes **Secrets** (Settings → Secrets and variables → Actions → New repository secret):
+### Perfil
+- dados da conta
+- avatar com Supabase Storage
+- onboarding e redefinicao de perfil de investidor
 
-- **`SUPABASE_URL`**:
-  - URL base do seu projeto Supabase, por exemplo:
-  - `https://<project-ref>.supabase.co`
+### Tutorial/onboarding
+- tour guiado da plataforma
+- fluxo integrado com onboarding de perfil
 
-- **`SUPABASE_SERVICE_ROLE_KEY`**:
-  - Chave de serviço (Service Role) do Supabase.
-  - **Nunca** exponha esta chave no frontend ou em logs públicos.
-  - Usada apenas dentro do GitHub Actions para fazer upload do CSV no Storage.
+### Alertas inteligentes
+- avalia eventos relevantes da carteira
+- define prioridade entre alertas concorrentes
+- evita repeticao com cooldown + variacao material
 
-### Como rodar o projeto localmente (frontend)
+## Stack do projeto
 
-1. Instale dependências Node:
+### Frontend
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- shadcn/ui + Radix UI
+- Framer Motion
+- Recharts
+- React Router
+- TanStack Query
 
-```sh
+### Backend e dados
+- Supabase Auth
+- Supabase Postgres
+- Supabase Storage
+- Supabase Edge Functions
+
+### Qualidade
+- ESLint
+- Vitest
+
+## Arquitetura (visao rapida)
+Fluxo principal:
+1. usuario autentica
+2. app carrega holdings/trades
+3. calcula metricas e risco
+4. avalia alertas inteligentes
+5. renderiza UI e monta contexto para o HODL
+
+## IA do projeto (HODL + GPT)
+O HODL roda por Edge Function e usa contexto da propria plataforma para responder.
+
+Arquivo principal:
+- `supabase/functions/chat/index.ts`
+
+Entradas da IA (resumo):
+- dados da carteira do usuario
+- contexto de mercado carregado no app
+- informacoes de perfil e risco
+
+Saida esperada:
+- explicacao didatica
+- leitura de contexto
+- apoio educacional para tomada de decisao
+
+## Governanca de IA (anti-vies e anti-alucinacao)
+A IA do projeto segue regras para manter seguranca e confiabilidade:
+
+- nao inventar dado ausente
+- nao buscar dado fora do contexto autorizado
+- nao dar ordem direta de compra/venda
+- priorizar educacao, fundamentos e gestao de risco
+- sinalizar limites quando faltarem dados
+
+## Alertas inteligentes
+Implementacao principal:
+- `src/lib/smartAlerts.ts`
+- integracao na dashboard (`src/pages/Index.tsx`)
+
+Regras centrais:
+- primeiro login: sem alerta de carteira
+- no maximo 1 alerta principal por login
+- prioridade entre tipos de alerta
+- controle de recorrencia por cooldown e mudanca material
+
+Persistencia:
+- `user_alert_state`
+- `alert_history`
+
+Tipos de alerta atuais:
+- carteira vazia
+- queda forte da carteira
+- queda forte de ativo
+- alta forte da carteira
+- alta forte de ativo
+- concentracao em ativo
+- concentracao em setor
+- ativo sobrevalorizado
+
+## Pipeline de dados com OpenBB
+A atualizacao de dados usa scripts Python + OpenBB.
+
+Arquivos importantes:
+- `scripts/openbb_refresh.py`
+- `scripts/validate_dataset.py`
+- `output/prices_latest.csv`
+
+Formato esperado de CSV:
+- `date,open,high,low,close,volume,ticker`
+
+## Cron job e workflow
+Automacao via GitHub Actions:
+- `.github/workflows/data-refresh.yml`
+
+Fluxo:
+1. instala dependencias Python
+2. executa refresh de dados (OpenBB)
+3. valida o dataset
+4. publica no Supabase Storage (upsert)
+
+Gatilhos:
+- cron diario
+- execucao manual (`workflow_dispatch`)
+
+Secrets necessarios:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+Fallback de seguranca:
+- se Storage falhar, o frontend usa CSV local em `public/data`
+
+## Estrutura de pastas
+```bash
+.
+├─ src/
+│  ├─ components/
+│  ├─ pages/
+│  ├─ lib/
+│  ├─ data/
+│  └─ integrations/supabase/
+├─ supabase/
+│  ├─ migrations/
+│  └─ functions/chat/
+├─ scripts/
+├─ public/
+├─ docs/
+└─ README.md
+```
+
+## Configuracao de ambiente
+Crie um `.env` na raiz com:
+
+```bash
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<anon-or-publishable-key>
+VITE_SUPABASE_PROJECT_ID=<project-ref>
+```
+
+Importante:
+- nao exponha `SERVICE_ROLE_KEY` no frontend
+
+## Como rodar localmente
+
+### 1) Instalar dependencias
+```bash
 npm install
 ```
 
-2. Crie um arquivo `.env` com pelo menos:
-
-```sh
-VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-```
-
-3. Inicie o servidor de desenvolvimento:
-
-```sh
+### 2) Subir ambiente dev
+```bash
 npm run dev
 ```
 
-Mesmo sem pipeline rodando e mesmo sem arquivo em Supabase Storage, o app continuará funcionando com os dados locais em `public/data/`.
-
-### Como testar localmente o pipeline OpenBB
-
-1. Crie e ative um ambiente virtual Python (opcional, mas recomendado).
-2. Instale as dependências:
-
-```sh
-pip install -r requirements_openbb.txt
+### 3) Build de producao
+```bash
+npm run build
 ```
 
-3. Gere o dataset mais recente com OpenBB:
-
-```sh
-python scripts/openbb_refresh.py
+### 4) Preview local
+```bash
+npm run preview
 ```
 
-4. Valide o CSV gerado:
+## Supabase: migracoes e banco
+Migracoes ficam em:
+- `supabase/migrations`
 
-```sh
-python scripts/validate_dataset.py output/prices_latest.csv
+Para aplicar no seu projeto:
+
+```bash
+supabase link --project-ref <project-ref>
+supabase db push
 ```
 
-Se tudo estiver correto, você verá uma mensagem informando que o dataset é válido e o arquivo ficará disponível em `output/prices_latest.csv`.
+Exemplos de migracoes relevantes no projeto:
+- tabelas de alertas inteligentes
+- bucket de avatar de perfil
+- funcao atomica para contagem de login
 
-### Como testar o fallback do Storage
+## Build, testes e qualidade
+Comandos principais:
 
-O loader em `src/data/csvLoader.ts` segue a ordem:
+```bash
+npm run dev
+npm run build
+npm run lint
+npm run test
+npm run test:watch
+```
 
-1. Tentar baixar:
-   - `${VITE_SUPABASE_URL}/storage/v1/object/public/market-data/prices/prices_latest.csv`
-2. Se falhar ou retornar dados suspeitos, cair automaticamente para:
-   - `/data/prices_daily_24assets_plus_ibov_5y.csv`
+Antes de PR/deploy, recomendado:
+- `npm run lint`
+- `npm run build`
+- `npm run test`
 
-Algumas formas de testar o fallback:
+## Deploy
+- pronto para Vercel (`vercel.json`)
+- PWA via `vite-plugin-pwa`
 
-- **Sem objeto no Storage**:
-  - Não faça o upload do arquivo `prices_latest.csv` no Supabase.
-  - Inicie o frontend (`npm run dev`) e acesse o app.
-  - O loader deve registrar em console que usou a fonte `local`.
+Checklist de deploy:
+1. variaveis de ambiente configuradas
+2. migracoes aplicadas no Supabase
+3. build local validado
 
-- **Forçando erro de rede/endpoint**:
-  - Temporariamente altere `VITE_SUPABASE_URL` no `.env` para uma URL inválida (ex.: `https://invalid.local`).
-  - Reinicie o frontend.
-  - O fetch do Storage irá falhar e o app continuará usando o CSV local.
+## Troubleshooting
 
-Em todos os casos, os gráficos e componentes que dependem de preços continuarão funcionando com os dados estáticos de `public/data/`.
+### Tipos do Supabase quebrando build
+Se `src/integrations/supabase/types.ts` divergir do schema real, regenere tipos a partir do seu Supabase (nao de outro ambiente).
 
+### Alertas nao aparecem
+- confirme migracoes aplicadas
+- valide se nao e primeiro login
+- confirme dados de carteira e autenticacao
+
+### Avatar nao salva
+- confira bucket no Storage
+- confira politicas RLS/permissoes
+
+### Dados de mercado nao carregam
+- valide `VITE_SUPABASE_URL`
+- confira fallback local em `public/data`
