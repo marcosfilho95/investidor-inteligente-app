@@ -261,6 +261,7 @@ const Portfolio = () => {
     return {
       summary: {
         totalCloseValue: portfolioMetrics.totalCloseValue,
+        totalInvested: portfolioMetrics.totalInvestedOpen,
         totalGain: portfolioMetrics.totalGain,
         dailyChange: portfolioMetrics.dailyChange,
         rentabilityPct: portfolioMetrics.totalGainPercent,
@@ -794,7 +795,7 @@ const Portfolio = () => {
                         userSymbols={enrichedHoldings.map(h => h.symbol)}
                         userHoldingsData={enrichedHoldings.map(h => ({ symbol: h.symbol, shares: h.shares, avgPrice: h.avgPrice }))}
                         portfolioContext={aiPortfolioContext}
-                        welcomeMessage={`Sua carteira possui ${enrichedHoldings.length} ativos distribuídos em ${Object.keys(sectorMap).length} setores. ${aiCompatibilityWarning ? `${aiCompatibilityWarning} ` : ""}Posso te ajudar a entender onde ajustar para ficar mais alinhado ao seu perfil, de forma simples e prática. O que você quer analisar primeiro?`}
+                        welcomeMessage={`Sua carteira possui ${enrichedHoldings.length} ativos distribuídos em ${Object.keys(sectorMap).length} setores. Posso te ajudar a ajustar alocação, risco e rebalanceamento de forma prática. O que você quer analisar primeiro?${aiCompatibilityWarning ? ` ${aiCompatibilityWarning}` : ""}`}
                       />
                     </div>
                   </div>

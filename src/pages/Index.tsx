@@ -347,21 +347,16 @@ const Index = () => {
 
   const aiDashboardWelcome = useMemo(() => `${greeting}, ${userName}! Sou o Hodl, seu assistente de investimentos.
 
-Meu foco aqui no Dashboard é:
-- explicar indicadores em linguagem simples (P/L, P/VP, DY, ROE, margem e dívida),
-- analisar concentração e risco da carteira,
-- sugerir próximos passos práticos com base no seu perfil.
+No Dashboard, eu te ajudo com indicadores, risco e próximos passos práticos da carteira.
 
 ${loading
-    ? "Estou carregando sua carteira agora. Em instantes eu já te passo uma leitura completa dos seus ativos."
+    ? "Estou carregando sua carteira e já te passo uma leitura completa."
     : isEmpty
-    ? "Sua carteira está vazia. Posso te guiar no primeiro aporte e na escolha dos primeiros ativos com critério."
+    ? "Sua carteira está vazia. Posso te guiar no primeiro aporte com critério."
     : `Sua carteira tem ${enrichedHoldings.length} ativos. Posso te mostrar pontos fortes e ajustes para melhorar o equilíbrio.`}
 
-${aiCompatibilityWarning ? `\n${aiCompatibilityWarning}\n` : ""}
-
-Se quiser aprender do zero, posso te direcionar para a aba Aprender com trilhas sobre:
-Fundamentos do Mercado, Pensando como Sócio, Análise Fundamentalista, Estratégia vs Especulação, Psicologia do Investidor e Gestão de Risco.`, [greeting, userName, loading, isEmpty, enrichedHoldings.length, aiCompatibilityWarning]);
+Se quiser, também te guio na aba Aprender.
+${aiCompatibilityWarning ? `\n${aiCompatibilityWarning}` : ""}`, [greeting, userName, loading, isEmpty, enrichedHoldings.length, aiCompatibilityWarning]);
 
   const profileBadgeTone = useMemo(() => {
     const type = String(investorProfile?.type || "").toLowerCase();
