@@ -1,5 +1,5 @@
 ﻿import { Link } from "react-router-dom";
-import { ArrowDownRight, ArrowUpRight, ChevronDown, ChevronRight, DollarSign, ShoppingCart, Wallet } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, BarChart3, ChevronDown, ChevronRight, CircleDollarSign, Coins, DollarSign, HelpCircle, PiggyBank, ShoppingCart, Wallet } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import {
   PieChart as RechartsPie,
@@ -77,6 +77,8 @@ function formatTradeDateTime(tradedAt: string): string {
 
 const Portfolio = () => {
   const formatPercent = (value: number) =>
+    value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatCurrency = (value: number) =>
     value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const [viewMode, setViewMode] = useState<"ativos" | "setor">("ativos");
   const [isTradeHistoryOpen, setIsTradeHistoryOpen] = useState(false);
@@ -566,7 +568,7 @@ const Portfolio = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="relative z-40 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {loading ? (
               [0, 1, 2, 3].map((i) => (
                 <AnimatedCard key={`skeleton-${i}`} delay={i * 0.08}>
@@ -578,39 +580,93 @@ const Portfolio = () => {
                 </AnimatedCard>
               ))
             ) : [
-              <div className="glass-card p-4" key="1">
-                <span className="text-xs text-muted-foreground">Patrimônio total</span>
-                <p className="text-xl font-semibold font-mono">
-                  R$ {metrics.totalCloseValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </p>
+              <div
+                className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
+                key="1"
+              >
+                <div className="flex items-center gap-2">
+                  <PiggyBank className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Patrimônio total</span>
+                </div>
+                <div className="leading-tight">
+                  <p className="text-[1.35rem] font-bold font-mono text-primary leading-none">R$ {formatCurrency(metrics.totalCloseValue)}</p>
+                  <p className="text-[10px] text-muted-foreground mt-2">Investido</p>
+                  <p className="text-xs font-medium font-mono text-foreground/75 mt-0.5">R$ {formatCurrency(metrics.totalInvested)}</p>
+                </div>
+                <div className="pointer-events-none absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] opacity-0 translate-y-2 scale-[0.96] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/card:opacity-100 group-hover/card:translate-y-0 group-hover/card:scale-100 group-focus-within/card:opacity-100 group-focus-within/card:translate-y-0 group-focus-within/card:scale-100 z-[80]">
+                  <p className="font-semibold text-foreground">Patrimônio total</p>
+                  <p className="mt-1">Representa o valor atual da sua carteira de ações com base nas cotações mais recentes do mercado.</p>
+                  <p className="mt-1">Esse valor indica quanto você receberia se vendesse todos os ativos neste momento, considerando os preços atuais.</p>
+                  <p className="mt-1">Investido: corresponde ao total de capital que você aplicou na compra das ações ao longo do tempo, sem considerar valorização, desvalorização ou dividendos.</p>
+                </div>
               </div>,
-              <div className="glass-card p-4" key="2">
-                <span className="text-xs text-muted-foreground">Lucro total</span>
-                <p className={`text-xl font-semibold font-mono ${metrics.totalGain >= 0 ? "text-gain" : "text-loss"}`}>
-                  R$ {metrics.totalGain.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </p>
+              <div
+                className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
+                key="2"
+              >
+                <div className="flex items-center gap-2">
+                  <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Lucro Total</span>
+                </div>
+                <div className="leading-tight">
+                  <p className={`text-[1.35rem] font-semibold font-mono leading-none ${metrics.totalGain >= 0 ? "text-gain" : "text-loss"}`}>
+                    R$ {formatCurrency(metrics.totalGain)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-2">Carteira atual</p>
+                </div>
+                <div className="pointer-events-none absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] opacity-0 translate-y-2 scale-[0.96] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/card:opacity-100 group-hover/card:translate-y-0 group-hover/card:scale-100 group-focus-within/card:opacity-100 group-focus-within/card:translate-y-0 group-focus-within/card:scale-100 z-[80]">
+                  <p className="font-semibold text-foreground">Lucro Total</p>
+                  <p className="mt-1">Diferença entre o valor atual das ações e o valor investido apenas nos ativos que você possui neste momento.</p>
+                  <p className="mt-1">Esse indicador mostra quanto você ganharia ou perderia se vendesse toda a sua carteira agora.</p>
+                  <p className="mt-1">Não representa o lucro histórico acumulado, apenas o desempenho da carteira ativa.</p>
+                </div>
               </div>,
-              <div className="glass-card p-4" key="3">
-                <span className="text-xs text-muted-foreground">Proventos Estimados (12M)</span>
-                <p className="text-xl font-semibold font-mono">
-                  R$ {metrics.proventos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </p>
+              <div
+                className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
+                key="3"
+              >
+                <div className="flex items-center gap-2">
+                  <Coins className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Proventos (12M)</span>
+                </div>
+                <div className="leading-tight">
+                  <p className="text-[1.35rem] font-semibold font-mono leading-none">R$ {formatCurrency(metrics.proventos)}</p>
+                  <p className="text-[10px] text-muted-foreground mt-2">Estimativa anual</p>
+                </div>
+                <div className="pointer-events-none absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] opacity-0 translate-y-2 scale-[0.96] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/card:opacity-100 group-hover/card:translate-y-0 group-hover/card:scale-100 group-focus-within/card:opacity-100 group-focus-within/card:translate-y-0 group-focus-within/card:scale-100 z-[80]">
+                  <p className="font-semibold text-foreground">Proventos (12M)</p>
+                  <p className="mt-1">Soma dos dividendos e juros sobre capital próprio recebidos nos últimos 12 meses.</p>
+                  <p className="mt-1">Esse valor representa a renda gerada pelas empresas nas quais você investe, independentemente da valorização das ações.</p>
+                  <p className="mt-1">Os proventos podem variar ao longo do tempo, de acordo com os resultados das empresas e suas políticas de distribuição.</p>
+                </div>
               </div>,
-              <div className="glass-card p-4" key="4">
-                <div className="flex items-center justify-between">
+              <div
+                className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
+                key="4"
+              >
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">Rentabilidade</span>
                 </div>
-                <div className="flex items-center justify-start mt-1">
+                <div className="leading-tight">
                   <div className="flex items-center gap-1">
-                    <span className={`text-lg font-semibold font-mono ${metrics.rentabilidade >= 0 ? "text-gain" : "text-loss"}`}>
+                    <span className={`text-[1.35rem] font-semibold font-mono leading-none ${metrics.rentabilidade >= 0 ? "text-gain" : "text-loss"}`}>
                       {metrics.rentabilidade}%
                     </span>
                     {metrics.rentabilidade >= 0 ? (
-                      <ArrowUpRight className="h-3.5 w-3.5 text-gain" />
+                      <ArrowUpRight className="h-4 w-4 text-gain" />
                     ) : (
-                      <ArrowDownRight className="h-3.5 w-3.5 text-loss" />
+                      <ArrowDownRight className="h-4 w-4 text-loss" />
                     )}
                   </div>
+                  <p className="text-[10px] text-muted-foreground mt-2">Performance da carteira</p>
+                </div>
+                <div className="pointer-events-none absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] opacity-0 translate-y-2 scale-[0.96] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/card:opacity-100 group-hover/card:translate-y-0 group-hover/card:scale-100 group-focus-within/card:opacity-100 group-focus-within/card:translate-y-0 group-focus-within/card:scale-100 z-[80]">
+                  <p className="font-semibold text-foreground">Rentabilidade</p>
+                  <p className="mt-1">Mede o desempenho percentual da sua carteira ao longo do tempo, considerando todos os seus aportes.</p>
+                  <p className="mt-1">O cálculo utiliza a Rentabilidade Ponderada no Tempo (TWR), que elimina distorções causadas por novos aportes ou retiradas, permitindo avaliar a performance real da estratégia de investimento.</p>
+                  <p className="mt-1">Diferente do resultado atual, a rentabilidade considera o histórico completo da carteira, incluindo ativos que já foram vendidos.</p>
+                  <p className="mt-1">Também leva em conta os dividendos recebidos.</p>
                 </div>
               </div>,
             ].map((card, i) => (
@@ -768,7 +824,16 @@ const Portfolio = () => {
                           </th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Variacao (dia)</th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
-                            Rentabilidade
+                            <div className="inline-flex items-center gap-1.5 relative group/info cursor-default">
+                              <span className="text-muted-foreground">Rentabilidade</span>
+                              <span className="inline-flex items-center text-muted-foreground/80">
+                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground transition-colors duration-150 hover:text-foreground" />
+                                <span className="pointer-events-none absolute right-0 top-full mt-1.5 w-[360px] rounded-lg border border-white/10 bg-[#161b26] px-3 py-2.5 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] opacity-0 translate-y-2 scale-[0.96] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/info:opacity-100 group-hover/info:translate-y-0 group-hover/info:scale-100 z-20 text-left">
+                                  <span className="block text-foreground font-semibold mb-1">Rentabilidade</span>
+                                  <span className="block leading-relaxed break-words">Passe o mouse para ver quanto você está ganhando ou perdendo em reais (R$)</span>
+                                </span>
+                              </span>
+                            </div>
                           </th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Saldo</th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">% Carteira</th>
@@ -785,6 +850,8 @@ const Portfolio = () => {
                         >
                         {pagedHoldings.map((h) => {
                           const rentab = h.avgPrice > 0 ? (h.price / h.avgPrice - 1) * 100 : 0;
+                          const rentabInReais = (h.price - h.avgPrice) * h.shares;
+                          const rentabSign = rentabInReais >= 0 ? "+" : "-";
                           return (
                             <tr
                               key={h.symbol}
@@ -808,14 +875,15 @@ const Portfolio = () => {
                               </td>
                               <td className="text-right px-4 py-3">
                                 <span
-                                  className={`text-sm font-mono ${h.changePercent >= 0 ? "text-gain" : "text-loss"}`}
+                                  className={`inline-flex items-center gap-1 text-sm font-mono ${h.changePercent >= 0 ? "text-gain" : "text-loss"}`}
                                 >
                                   {h.changePercent >= 0 ? "+" : ""}
-                                  {h.changePercent.toFixed(2)}% {h.changePercent >= 0 ? "▲" : "▼"}
+                                  {h.changePercent.toFixed(2)}%
+                                  <span className="text-[12px] leading-none">{h.changePercent >= 0 ? "▲" : "▼"}</span>
                                 </span>
                               </td>
-                              <td className="text-right px-4 py-3">
-                                <div className="flex items-center justify-end gap-1">
+                              <td className="text-right px-4 py-3 relative z-10 hover:z-[130]">
+                                <div className="relative inline-flex items-center justify-end gap-1 group/rent cursor-default transition-transform duration-200 hover:-translate-y-0.5 isolate">
                                   <span className={`text-sm font-mono ${rentab >= 0 ? "text-gain" : "text-loss"}`}>
                                     {rentab.toFixed(2)}%
                                   </span>
@@ -824,6 +892,16 @@ const Portfolio = () => {
                                   ) : (
                                     <ArrowDownRight className="h-3 w-3 text-loss" />
                                   )}
+                                  <div className="pointer-events-none absolute right-0 top-full mt-1.5 w-fit min-w-[220px] rounded-lg border border-white/15 !bg-[#090b10] px-2 py-1.5 text-left shadow-[0_8px_24px_rgba(0,0,0,0.55)] backdrop-blur-0 opacity-0 translate-y-2 scale-[0.96] transition-[opacity,transform] duration-120 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/rent:opacity-100 group-hover/rent:translate-y-0 group-hover/rent:scale-100 z-[140]">
+                                    <p className="text-[10px] font-semibold text-foreground">Rentabilidade da posição: {rentab.toFixed(2)}%</p>
+
+                                    <div className="mt-1 rounded-md border border-white/10 bg-[#0d1016] px-1.5 py-0.5">
+                                      <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Equivalente em R$</p>
+                                      <p className={`text-[11px] font-mono font-semibold ${rentabInReais >= 0 ? "text-gain" : "text-loss"}`}>
+                                        {rentabSign}R$ {formatCurrency(Math.abs(rentabInReais))}
+                                      </p>
+                                    </div>
+                                  </div>
                                 </div>
                               </td>
                               <td className="text-right px-4 py-3 text-sm font-mono">
@@ -1137,6 +1215,12 @@ const Portfolio = () => {
 };
 
 export default Portfolio;
+
+
+
+
+
+
 
 
 
