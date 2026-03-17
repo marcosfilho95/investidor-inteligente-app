@@ -323,6 +323,7 @@ const Index = () => {
     return {
       summary: {
         totalCloseValue: portfolioMetrics.totalCloseValue,
+        totalInvested: portfolioMetrics.totalInvestedOpen,
         totalGain: portfolioMetrics.totalGain,
         dailyChange: portfolioMetrics.dailyChange,
         rentabilityPct: portfolioMetrics.totalGainPercent,
