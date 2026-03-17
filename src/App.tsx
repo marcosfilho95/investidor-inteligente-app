@@ -150,6 +150,11 @@ function AppContent() {
       localStorage.setItem(`onboarding_completed_${currentUserId}`, "true");
     }
     localStorage.setItem("onboarding_completed", "true");
+    window.dispatchEvent(
+      new CustomEvent("ii:onboarding-tour-complete", {
+        detail: { userId: currentUserId },
+      })
+    );
     setShowTour(false);
   };
 
