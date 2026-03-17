@@ -463,6 +463,20 @@ function buildPortfolioContextBlock(portfolioContext) {
     lines.push("- Score do perfil: " + String(investorProfile.score ?? "N/D") + "/18");
     lines.push("- Horizonte: " + String(investorProfile.horizon || "N/D"));
     lines.push("- Objetivo principal: " + String(investorProfile.mainGoal || "N/D"));
+    const profileType = String(investorProfile.type || "");
+    if (profileType === "Conservador") {
+      lines.push("DIRETRIZ DE TOM DA IA:");
+      lines.push("- Tom protetivo, orientativo e disciplinado.");
+      lines.push("- Priorizar preservação de capital, diversificação e controle de risco.");
+    } else if (profileType === "Moderado") {
+      lines.push("DIRETRIZ DE TOM DA IA:");
+      lines.push("- Tom equilibrado e consultivo.");
+      lines.push("- Priorizar balanceamento entre risco e retorno.");
+    } else if (profileType === "Arrojado") {
+      lines.push("DIRETRIZ DE TOM DA IA:");
+      lines.push("- Tom analítico e menos interventivo.");
+      lines.push("- Evitar sermão; priorizar concentração extrema, risco excessivo sem qualidade, valuation muito esticado e desalinhamento persistente.");
+    }
   }
 
   if (portfolioRisk) {

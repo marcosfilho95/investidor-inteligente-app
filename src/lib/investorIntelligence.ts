@@ -453,12 +453,66 @@ function classifyPositionRiskBucket(position: {
   return { bucket, reason, score };
 }
 
+function readArrojadoDefensiveStreak(): { lastDate: string; streakDays: number } {
+  if (typeof window === "undefined") return { lastDate: "", streakDays: 0 };
+  try {
+    const raw = localStorage.getItem("ii_arrojado_defensive_streak_v1");
+    if (!raw) return { lastDate: "", streakDays: 0 };
+    const parsed = JSON.parse(raw) as { lastDate?: unknown; streakDays?: unknown };
+    return {
+      lastDate: typeof parsed.lastDate === "string" ? parsed.lastDate : "",
+      streakDays: Number.isFinite(Number(parsed.streakDays)) ? Number(parsed.streakDays) : 0,
+    };
+  } catch {
+    return { lastDate: "", streakDays: 0 };
+  }
+}
+
+function saveArrojadoDefensiveStreak(payload: { lastDate: string; streakDays: number }) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("ii_arrojado_defensive_streak_v1", JSON.stringify(payload));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function getTodayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getArrojadoDefensiveStreak(defensiveNow: boolean): number {
+  const today = getTodayKey();
+  const previous = readArrojadoDefensiveStreak();
+  const prevDate = previous.lastDate;
+  const prevStreak = Math.max(0, Number(previous.streakDays || 0));
+
+  let nextStreak = defensiveNow ? 1 : 0;
+  if (prevDate === today) {
+    nextStreak = defensiveNow ? Math.max(prevStreak, 1) : 0;
+  } else if (defensiveNow && prevDate) {
+    const prevTs = new Date(prevDate).getTime();
+    const nowTs = new Date(today).getTime();
+    const dayDiff = Number.isFinite(prevTs) && Number.isFinite(nowTs) ? Math.floor((nowTs - prevTs) / (24 * 60 * 60 * 1000)) : 0;
+    nextStreak = dayDiff === 1 ? prevStreak + 1 : 1;
+  }
+
+  saveArrojadoDefensiveStreak({ lastDate: today, streakDays: nextStreak });
+  return nextStreak;
+}
+
 function evaluateCompatibility(
   profile: InvestorProfileSummary | null,
   highRiskExposurePct: number,
   portfolioRiskScore: number
 ): PortfolioRiskSummary["profileCompatibility"] {
   if (!profile) return undefined;
+  if (portfolioRiskScore <= 0 && highRiskExposurePct <= 0) {
+    return {
+      status: "Dentro da política",
+      note: "Carteira sem posições no momento. A compatibilidade completa será avaliada após os primeiros ativos.",
+    };
+  }
 
   if (profile.type === "Conservador") {
     if (highRiskExposurePct <= 30 && portfolioRiskScore <= 30) {
@@ -474,33 +528,50 @@ function evaluateCompatibility(
   }
 
   if (profile.type === "Moderado") {
-    if (highRiskExposurePct >= 40 && highRiskExposurePct <= 50 && portfolioRiskScore >= 31 && portfolioRiskScore <= 60) {
+    if (portfolioRiskScore >= 30 && portfolioRiskScore <= 65 && highRiskExposurePct >= 30 && highRiskExposurePct <= 65) {
       return {
         status: "Dentro da política",
-        note: `Perfil moderado alinhado: alto risco em ${highRiskExposurePct.toFixed(1)}% (faixa alvo 40%-50%) e score ${portfolioRiskScore.toFixed(1)}/100 (faixa alvo 31-60).`,
+        note: `Perfil moderado alinhado: score ${portfolioRiskScore.toFixed(1)}/100 e alto risco ${highRiskExposurePct.toFixed(1)}% dentro de uma faixa equilibrada.`,
       };
     }
-    if (highRiskExposurePct < 40 || portfolioRiskScore < 31) {
+    if (portfolioRiskScore < 30 || highRiskExposurePct < 30) {
       return {
         status: "Abaixo da política",
-        note: `Você se declarou moderado, mas hoje sua carteira está conservadora demais: alto risco ${highRiskExposurePct.toFixed(1)}% (ideal 40%-50%) e score ${portfolioRiskScore.toFixed(1)}/100 (ideal 31-60). Para subir risco com qualidade, busque empresas/setores com crescimento de lucro, margens robustas e momento favorável. Se esse desalinhamento persistir, vale refazer seu perfil de investidor.`,
+        note: `Você se declarou moderado, mas a carteira está mais defensiva do que o esperado: alto risco ${highRiskExposurePct.toFixed(1)}% e score ${portfolioRiskScore.toFixed(1)}/100. Para equilibrar risco/retorno, considere ampliar exposição em teses de crescimento com fundamentos sólidos.`,
       };
     }
     return {
       status: "Acima da política",
-      note: `Para perfil moderado, a carteira saiu da faixa recomendada: alto risco ${highRiskExposurePct.toFixed(1)}% (ideal 40%-50%) e score ${portfolioRiskScore.toFixed(1)}/100 (ideal 31-60).`,
+      note: `Para perfil moderado, o risco atual ficou acima do intervalo esperado: alto risco ${highRiskExposurePct.toFixed(1)}% e score ${portfolioRiskScore.toFixed(1)}/100.`,
     };
   }
 
-  if (highRiskExposurePct > 60 && portfolioRiskScore > 50) {
+  if (portfolioRiskScore >= 45 || highRiskExposurePct >= 50) {
     return {
       status: "Dentro da política",
-      note: `Perfil arrojado alinhado: alto risco em ${highRiskExposurePct.toFixed(1)}% (alvo >60%) e score ${portfolioRiskScore.toFixed(1)}/100 (alvo >50).`,
+      note: `Perfil arrojado alinhado: score ${portfolioRiskScore.toFixed(1)}/100 e alto risco ${highRiskExposurePct.toFixed(1)}% em faixa compatível com maior tolerância.`,
     };
   }
+
+  if (portfolioRiskScore >= 88 && highRiskExposurePct >= 92) {
+    return {
+      status: "Acima da política",
+      note: `Perfil arrojado com risco extremo: alto risco ${highRiskExposurePct.toFixed(1)}% e score ${portfolioRiskScore.toFixed(1)}/100. Vale revisar concentração e risco de ruína.`,
+    };
+  }
+
+  const clearlyDefensive = portfolioRiskScore < 40 && highRiskExposurePct < 35;
+  const defensiveStreakDays = getArrojadoDefensiveStreak(clearlyDefensive);
+  if (clearlyDefensive && defensiveStreakDays >= 3) {
+    return {
+      status: "Abaixo da política",
+      note: `Você se declarou arrojado, mas a carteira segue defensiva por ${defensiveStreakDays} dias: alto risco ${highRiskExposurePct.toFixed(1)}% e score ${portfolioRiskScore.toFixed(1)}/100. Se for intencional, está tudo bem; se não, vale ajustar gradualmente.`,
+    };
+  }
+
   return {
-    status: "Abaixo da política",
-    note: `Você se declarou arrojado, mas a carteira está conservadora demais: alto risco ${highRiskExposurePct.toFixed(1)}% (alvo >60%) e score ${portfolioRiskScore.toFixed(1)}/100 (alvo >50). Para aumentar risco com critério, procure setores/ativos com crescimento mais acelerado, upside atrativo e melhora operacional. Se continuar assim no dia a dia, vale refazer seu perfil de investidor.`,
+    status: "Dentro da política",
+    note: `Perfil arrojado com liberdade tática no momento: alto risco ${highRiskExposurePct.toFixed(1)}% e score ${portfolioRiskScore.toFixed(1)}/100. Só tratamos como abaixo da política quando o viés defensivo é claro e persistente.`,
   };
 }
 
