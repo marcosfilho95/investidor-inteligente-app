@@ -11,7 +11,8 @@ export type SmartAlertType =
   | "asset_concentration"
   | "sector_concentration"
   | "asset_overvalued"
-  | "profile_mismatch";
+  | "profile_mismatch"
+  | "compound_risk";
 
 export type SmartAlertEntityType = "portfolio" | "asset" | "sector";
 
@@ -26,6 +27,12 @@ export interface SmartAlertCandidate {
   materialDirection: "increase" | "decrease";
   title: string;
   message: string;
+  highlights?: string[];
+  highlightActions?: Array<{
+    label: string;
+    route: string;
+    focus: string;
+  }>;
   ctaLabel: string;
   route: string;
 }
@@ -58,6 +65,29 @@ export interface SmartAlertsContext {
 export interface SelectedSmartAlert {
   alert: SmartAlertCandidate;
   shouldShow: boolean;
+  engine?: SmartAlertEngineSnapshot;
+}
+
+export interface SmartAlertEligibilityItem {
+  type: SmartAlertType;
+  entityType: SmartAlertEntityType;
+  entityId: string;
+  priority: number;
+  referenceValue: number;
+  eligible: boolean;
+  reason: "new" | "cooldown_passed" | "material_change" | "cooldown_blocked";
+  daysSinceLastShown: number | null;
+  cooldownDays: number;
+}
+
+export interface SmartAlertEngineSnapshot {
+  profileType: InvestorProfileType | null;
+  candidateCount: number;
+  eligibleCount: number;
+  selectedType: SmartAlertType | null;
+  selectedPriority: number | null;
+  portfolioDailyChangePercent: number;
+  evaluations: SmartAlertEligibilityItem[];
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -81,7 +111,7 @@ interface AlertProfileConfig {
 type AlertConfigByProfile = Record<ProfileKey, AlertProfileConfig>;
 
 const SMART_ALERT_CONFIG: Record<
-  Exclude<SmartAlertType, "portfolio_empty" | "profile_mismatch">,
+  Exclude<SmartAlertType, "portfolio_empty" | "profile_mismatch" | "compound_risk">,
   AlertConfigByProfile
 > = {
   portfolio_drop: {
@@ -127,6 +157,12 @@ const PROFILE_MISMATCH_CONFIG: AlertConfigByProfile = {
   arrojado: { priority: 6, cooldownDays: 10, materialDelta: 7, materialDirection: "increase", severity: "low", messageTone: "analitico" },
 };
 
+const COMPOUND_RISK_CONFIG: AlertConfigByProfile = {
+  conservador: { priority: 2, cooldownDays: 4, materialDelta: 4, materialDirection: "increase", severity: "critical", messageTone: "protetivo" },
+  moderado: { priority: 3, cooldownDays: 5, materialDelta: 5, materialDirection: "increase", severity: "high", messageTone: "equilibrado" },
+  arrojado: { priority: 4, cooldownDays: 7, materialDelta: 6, materialDirection: "increase", severity: "medium", messageTone: "analitico" },
+};
+
 function daysSince(isoDate: string): number {
   const t = new Date(isoDate).getTime();
   if (!Number.isFinite(t)) return Number.MAX_SAFE_INTEGER;
@@ -157,6 +193,10 @@ function resolveConfig(
 
 function resolveMismatchConfig(profile?: InvestorProfileType | null): AlertProfileConfig {
   return PROFILE_MISMATCH_CONFIG[profileToKey(profile)];
+}
+
+function resolveCompoundRiskConfig(profile?: InvestorProfileType | null): AlertProfileConfig {
+  return COMPOUND_RISK_CONFIG[profileToKey(profile)];
 }
 
 function isMaterialChange(
@@ -485,19 +525,102 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
     });
   }
 
+  const riskyTypes = new Set<SmartAlertType>([
+    "profile_mismatch",
+    "portfolio_drop",
+    "asset_drop",
+    "asset_concentration",
+    "sector_concentration",
+    "asset_overvalued",
+  ]);
+  const riskyCandidates = candidates.filter((candidate) => riskyTypes.has(candidate.type));
+  if (riskyCandidates.length >= 2) {
+    const compoundCfg = resolveCompoundRiskConfig(profileType);
+    const riskLabels: Record<SmartAlertType, string> = {
+      portfolio_empty: "carteira vazia",
+      profile_mismatch: "desalinhamento com seu perfil",
+      portfolio_drop: "queda relevante da carteira",
+      asset_drop: "queda forte em ativo relevante",
+      asset_concentration: "concentração elevada em ativo",
+      sector_concentration: "concentração elevada em setor",
+      asset_overvalued: "ativo(s) com preço esticado",
+      portfolio_rise: "alta da carteira",
+      asset_rise: "alta de ativo relevante",
+      compound_risk: "combinação de riscos",
+    };
+    const topSignals = riskyCandidates
+      .slice()
+      .sort((a, b) => a.priority - b.priority)
+      .slice(0, 3)
+      .map((c) => riskLabels[c.type]);
+    const topHighlights = topSignals.slice(0, 2);
+    const highlightActions = topHighlights.map((label) => {
+      const normalized = label.toLowerCase();
+      if (normalized.includes("perfil")) {
+        return { label, route: "/perfil", focus: "mismatch" };
+      }
+      if (normalized.includes("setor")) {
+        return { label, route: "/carteira", focus: "concentracao_setor" };
+      }
+      if (normalized.includes("ativo")) {
+        return { label, route: "/carteira", focus: "concentracao_ativo" };
+      }
+      if (normalized.includes("queda")) {
+        return { label, route: "/carteira", focus: "queda" };
+      }
+      return { label, route: "/carteira", focus: "risco_composto" };
+    });
+    const riskPressure = normalizePct(
+      (riskyCandidates.length * 10) +
+      (ctx.portfolioRisk?.totalScore ? Number(ctx.portfolioRisk.totalScore) * 0.15 : 0) +
+      Math.abs(portfolioDaily)
+    );
+
+    candidates.push({
+      type: "compound_risk",
+      entityType: "portfolio",
+      entityId: "portfolio",
+      priority: compoundCfg.priority,
+      cooldownDays: compoundCfg.cooldownDays,
+      referenceValue: riskPressure,
+      materialDelta: compoundCfg.materialDelta,
+      materialDirection: compoundCfg.materialDirection,
+      title: "🧩 Quebra-cabeça de risco na mesa!",
+      message: `Hoje o motor identificou sinais combinados na sua carteira: ${topSignals.join(", ")}.\n\nSeparados, esses sinais já pedem atenção; juntos, aumentam o risco de oscilações mais fortes.\n\nSem correria: priorize revisar exposição e concentração por etapas.`,
+      highlights: topHighlights,
+      highlightActions,
+      ctaLabel: "Ver diagnóstico completo",
+      route: "/carteira",
+    });
+  }
+
   return candidates.sort((a, b) => a.priority - b.priority);
 }
-function isEligibleByRecurrence(candidate: SmartAlertCandidate, previous?: SmartAlertHistoryRow): boolean {
-  if (candidate.type === "portfolio_empty") return true;
-  if (!previous) return true;
-  const cooldownPassed = daysSince(previous.last_shown_at) >= candidate.cooldownDays;
-  if (cooldownPassed) return true;
-  return isMaterialChange(
+function evaluateRecurrence(
+  candidate: SmartAlertCandidate,
+  previous?: SmartAlertHistoryRow
+): { eligible: boolean; reason: SmartAlertEligibilityItem["reason"]; daysSinceLastShown: number | null } {
+  if (candidate.type === "portfolio_empty") {
+    return { eligible: true, reason: "new", daysSinceLastShown: null };
+  }
+  if (!previous) {
+    return { eligible: true, reason: "new", daysSinceLastShown: null };
+  }
+  const elapsedDays = daysSince(previous.last_shown_at);
+  const cooldownPassed = elapsedDays >= candidate.cooldownDays;
+  if (cooldownPassed) {
+    return { eligible: true, reason: "cooldown_passed", daysSinceLastShown: elapsedDays };
+  }
+  const material = isMaterialChange(
     candidate.referenceValue,
     previous.last_reference_value,
     candidate.materialDelta,
     candidate.materialDirection
   );
+  if (material) {
+    return { eligible: true, reason: "material_change", daysSinceLastShown: elapsedDays };
+  }
+  return { eligible: false, reason: "cooldown_blocked", daysSinceLastShown: elapsedDays };
 }
 
 export async function selectTopSmartAlert(userId: string, ctx: SmartAlertsContext): Promise<SelectedSmartAlert | null> {
@@ -505,14 +628,49 @@ export async function selectTopSmartAlert(userId: string, ctx: SmartAlertsContex
   const candidates = evaluateCandidates(ctx);
   if (candidates.length === 0) return null;
 
+  const profileType = ctx.investorProfile?.type ?? null;
+  const portfolioDaily = normalizePct(ctx.portfolioDailyChangePercent);
   const history = await loadAlertHistory(userId);
-  const eligible = candidates.filter((candidate) => {
+  const evaluations: SmartAlertEligibilityItem[] = candidates.map((candidate) => {
     const previous = history.get(historyKey(candidate.type, candidate.entityType, candidate.entityId));
-    return isEligibleByRecurrence(candidate, previous);
+    const recurrence = evaluateRecurrence(candidate, previous);
+    return {
+      type: candidate.type,
+      entityType: candidate.entityType,
+      entityId: candidate.entityId,
+      priority: candidate.priority,
+      referenceValue: candidate.referenceValue,
+      eligible: recurrence.eligible,
+      reason: recurrence.reason,
+      daysSinceLastShown: recurrence.daysSinceLastShown,
+      cooldownDays: candidate.cooldownDays,
+    };
+  });
+  const eligible = candidates.filter((candidate) => {
+    const row = evaluations.find(
+      (item) =>
+        item.type === candidate.type &&
+        item.entityType === candidate.entityType &&
+        item.entityId === candidate.entityId
+    );
+    return !!row?.eligible;
   });
   if (eligible.length === 0) return null;
 
-  return { alert: eligible[0], shouldShow: true };
+  const selected = eligible[0];
+  return {
+    alert: selected,
+    shouldShow: true,
+    engine: {
+      profileType,
+      candidateCount: candidates.length,
+      eligibleCount: eligible.length,
+      selectedType: selected.type,
+      selectedPriority: selected.priority,
+      portfolioDailyChangePercent: portfolioDaily,
+      evaluations,
+    },
+  };
 }
 
 export async function registerSmartAlertShown(userId: string, alert: SmartAlertCandidate): Promise<void> {
@@ -927,6 +1085,118 @@ export function buildSmartAlertPreview(type: SmartAlertType): SmartAlertCandidat
           pvp: 1.2,
           lpa: 2,
           vpa: 10,
+          payout: null,
+          pEbit: null,
+          evEbit: null,
+          evEbitda: null,
+          roe: null,
+          roic: null,
+          margemBruta: null,
+          margemEbit: null,
+          margemLiquida: null,
+          cReceita5a: null,
+          cLucro5a: null,
+          giroAtivos: null,
+          liqCorrente: null,
+          divLiqPl: null,
+          divLiqEbitda: null,
+          plAtivos: null,
+        },
+      ],
+    },
+    compound_risk: {
+      portfolioDailyChangePercent: -4.9,
+      portfolioDailyChangeValue: -420,
+      isFirstEntry: false,
+      investorProfile: {
+        type: "Moderado",
+        score: 11,
+        horizon: "Médio prazo",
+        mainGoal: "Equilibrar crescimento e renda",
+        goalType: "equilibrado",
+        suggestedMix: { rendaPct: 50, crescimentoPct: 50 },
+        updatedAt: new Date().toISOString(),
+        answers: { q1: 2, q2: 2, q3: 2, q4: 2, q5: 2, q6: 1 },
+      },
+      portfolioRisk: {
+        totalScore: 78,
+        classification: "Alto",
+        drivers: ["Concentração combinada com risco de perfil."],
+        reducers: [],
+        components: {
+          concentrationAssets: 16,
+          concentrationSectors: 20,
+          volatileExposure: 12,
+          structuralRisk: 14,
+          qualityRisk: 62,
+        },
+        riskExposure: {
+          baixo: 9,
+          moderado: 24,
+          alto: 67,
+        },
+        highRiskAssets: [],
+        profileCompatibility: {
+          status: "Acima da política",
+          note: "Carteira está mais arriscada que o perfil.",
+        },
+      },
+      holdings: [
+        {
+          symbol: "PETR4",
+          name: "Petrobras",
+          shares: 10,
+          price: 35,
+          change: -2.8,
+          changePercent: -8.4,
+          value: 350,
+          allocation: 31,
+          category: "Commodities",
+          description: "",
+          marketCap: "",
+          pe: 8,
+          dividend: 8,
+          sector: "Commodities",
+          subsetor: "PetrÃ³leo",
+          pvp: 1.1,
+          lpa: 2,
+          vpa: 12,
+          payout: null,
+          pEbit: null,
+          evEbit: null,
+          evEbitda: null,
+          roe: null,
+          roic: null,
+          margemBruta: null,
+          margemEbit: null,
+          margemLiquida: null,
+          cReceita5a: null,
+          cLucro5a: null,
+          giroAtivos: null,
+          liqCorrente: null,
+          divLiqPl: null,
+          divLiqEbitda: null,
+          plAtivos: null,
+        },
+        {
+          symbol: "VALE3",
+          name: "Vale",
+          shares: 10,
+          price: 60,
+          change: -1.2,
+          changePercent: -2.0,
+          value: 600,
+          allocation: 13,
+          category: "Commodities",
+          description: "",
+          marketCap: "",
+          pe: 9,
+          dividend: 7,
+          sector: "Commodities",
+          subsetor: "MineraÃ§Ã£o",
+          pvp: 1.1,
+          lpa: 2.1,
+          vpa: 12,
           payout: null,
           pEbit: null,
           evEbit: null,

@@ -1,4 +1,4 @@
-﻿import { Link } from "react-router-dom";
+﻿import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowDownRight, ArrowUpRight, BarChart3, ChevronDown, ChevronRight, CircleDollarSign, Coins, DollarSign, HelpCircle, PiggyBank, ShoppingCart, Wallet } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import {
@@ -76,6 +76,8 @@ function formatTradeDateTime(tradedAt: string): string {
 }
 
 const Portfolio = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const formatPercent = (value: number) =>
     value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formatCurrency = (value: number) =>
@@ -104,8 +106,17 @@ const Portfolio = () => {
   const [showTradeScrollHint, setShowTradeScrollHint] = useState(false);
   const [showTradeMobileScrollbar, setShowTradeMobileScrollbar] = useState(false);
   const [investorProfile, setInvestorProfile] = useState<InvestorProfileSummary | null>(null);
+  const [activeFocusHint, setActiveFocusHint] = useState<string | null>(null);
+  const [focusedSection, setFocusedSection] = useState<"allocation" | "holdings" | null>(null);
+  const [focusChipLabel, setFocusChipLabel] = useState<string | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [activeKpiInfo, setActiveKpiInfo] = useState<"patrimonio" | "lucro" | "proventos" | "rentabilidade" | null>(null);
+  const [showRentabilidadeInfoMobile, setShowRentabilidadeInfoMobile] = useState(false);
+  const [showMobileTapHint, setShowMobileTapHint] = useState(false);
   const holdingsScrollRef = useRef<HTMLDivElement | null>(null);
   const tradeScrollRef = useRef<HTMLDivElement | null>(null);
+  const allocationSectionRef = useRef<HTMLDivElement | null>(null);
+  const holdingsSectionRef = useRef<HTMLDivElement | null>(null);
   const { enrichedHoldings, loading, userTrades, addHolding, sellHolding, portfolioMetrics } = useUserHoldings();
 
   const isEmpty = !loading && enrichedHoldings.length === 0;
@@ -137,6 +148,15 @@ const Portfolio = () => {
     [sectorMap]
   );
   const currentData = viewMode === "ativos" ? assetAllocation : sectorAllocation;
+  const focusHintLabels = useMemo<Record<string, string>>(
+    () => ({
+      concentracao_setor: "Foco em concentração setorial aplicado.",
+      concentracao_ativo: "Foco em concentração por ativo aplicado.",
+      queda: "Foco em ativos/impacto de queda aplicado.",
+      risco_composto: "Foco em risco composto aplicado.",
+    }),
+    []
+  );
 
   const metrics = useMemo(() => {
     const proventos =
@@ -155,6 +175,60 @@ const Portfolio = () => {
       proventos,
     };
   }, [enrichedHoldings, portfolioMetrics]);
+
+  useEffect(() => {
+    const syncViewport = () => {
+      setIsMobileViewport(window.innerWidth < 768);
+    };
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+    return () => window.removeEventListener("resize", syncViewport);
+  }, []);
+
+  useEffect(() => {
+    if (isMobileViewport) return;
+    setActiveKpiInfo(null);
+    setShowRentabilidadeInfoMobile(false);
+    setShowMobileTapHint(false);
+  }, [isMobileViewport]);
+
+  useEffect(() => {
+    if (!isMobileViewport) return;
+    const seen = localStorage.getItem("ii_mobile_tooltip_tap_hint_seen") === "1";
+    if (seen) return;
+
+    setShowMobileTapHint(true);
+    const t = window.setTimeout(() => {
+      setShowMobileTapHint(false);
+      localStorage.setItem("ii_mobile_tooltip_tap_hint_seen", "1");
+    }, 4500);
+
+    return () => window.clearTimeout(t);
+  }, [isMobileViewport]);
+
+  useEffect(() => {
+    const closeOverlays = () => {
+      setActiveKpiInfo(null);
+      setShowRentabilidadeInfoMobile(false);
+    };
+    document.addEventListener("click", closeOverlays);
+    return () => document.removeEventListener("click", closeOverlays);
+  }, []);
+
+  const toggleKpiInfo = (key: "patrimonio" | "lucro" | "proventos" | "rentabilidade") => {
+    if (!isMobileViewport) return;
+    if (showMobileTapHint) {
+      setShowMobileTapHint(false);
+      localStorage.setItem("ii_mobile_tooltip_tap_hint_seen", "1");
+    }
+    setActiveKpiInfo((prev) => (prev === key ? null : key));
+  };
+
+  const consumeMobileTapHint = () => {
+    if (!showMobileTapHint) return;
+    setShowMobileTapHint(false);
+    localStorage.setItem("ii_mobile_tooltip_tap_hint_seen", "1");
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -363,6 +437,72 @@ const Portfolio = () => {
     setShowOrderModal(true);
   };
 
+  useEffect(() => {
+    if (loading) return;
+    const params = new URLSearchParams(location.search);
+    const focus = String(params.get("focus") || "").trim();
+    if (!focus) {
+      setActiveFocusHint(null);
+      setFocusedSection(null);
+      setFocusChipLabel(null);
+      return;
+    }
+
+    const label = focusHintLabels[focus];
+    if (!label) {
+      setActiveFocusHint(null);
+      setFocusedSection(null);
+      setFocusChipLabel(null);
+      return;
+    }
+
+    setActiveFocusHint(label);
+    const runFocus = () => {
+      if (focus === "concentracao_setor") {
+        setViewMode("setor");
+        setFocusedSection("allocation");
+        setFocusChipLabel("Foco: concentração setorial");
+        allocationSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      if (focus === "concentracao_ativo") {
+        setViewMode("ativos");
+        setFocusedSection("allocation");
+        setFocusChipLabel("Foco: concentração por ativo");
+        allocationSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      if (focus === "queda" || focus === "risco_composto") {
+        setFocusedSection("holdings");
+        setFocusChipLabel(focus === "queda" ? "Foco: queda e impacto negativo" : "Foco: risco composto");
+        holdingsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
+
+    const t = window.setTimeout(runFocus, 140);
+    return () => window.clearTimeout(t);
+  }, [focusHintLabels, loading, location.search]);
+
+  const clearFocusHint = () => {
+    const params = new URLSearchParams(location.search);
+    if (!params.has("focus")) return;
+    params.delete("focus");
+    const nextSearch = params.toString();
+    navigate(`${location.pathname}${nextSearch ? `?${nextSearch}` : ""}`, { replace: true });
+    setActiveFocusHint(null);
+    setFocusedSection(null);
+    setFocusChipLabel(null);
+  };
+
+  useEffect(() => {
+    if (!focusedSection) return;
+    const t = window.setTimeout(() => {
+      setFocusedSection(null);
+      setFocusChipLabel(null);
+    }, 3000);
+    return () => window.clearTimeout(t);
+  }, [focusedSection]);
+
   const handleOrder = async () => {
     if (!selectedTradeAsset || !canConfirmOrder) return;
     const now = new Date();
@@ -539,7 +679,7 @@ const Portfolio = () => {
     <div className="min-h-screen bg-background">
       <AppHeader activePage="carteira" />
       <PageTransition>
-        <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
+        <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-6">
           <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-primary/[0.03] p-6 md:p-8">
             <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/[0.06] blur-3xl pointer-events-none" />
             <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-primary/[0.04] blur-3xl pointer-events-none" />
@@ -569,6 +709,19 @@ const Portfolio = () => {
             </div>
           </div>
 
+          {activeFocusHint && (
+            <div className="rounded-xl border border-primary/25 bg-primary/10 px-3 py-2 text-xs text-primary flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <span className="leading-tight">{activeFocusHint}</span>
+              <button
+                type="button"
+                onClick={clearFocusHint}
+                className="w-full sm:w-auto rounded-md border border-primary/30 px-2 py-1 text-[11px] hover:bg-primary/15 transition-colors"
+              >
+                Limpar foco
+              </button>
+            </div>
+          )}
+
           <div className="relative z-40 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {loading ? (
               [0, 1, 2, 3].map((i) => (
@@ -584,17 +737,39 @@ const Portfolio = () => {
               <div
                 className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
                 key="1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleKpiInfo("patrimonio");
+                }}
               >
                 <div className="flex items-center gap-2">
                   <PiggyBank className="h-4 w-4 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">Patrimônio total</span>
+                  {isMobileViewport && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        consumeMobileTapHint();
+                        toggleKpiInfo("patrimonio");
+                      }}
+                      className="ml-auto rounded-md p-1 text-muted-foreground hover:text-foreground"
+                      aria-label="Abrir explicação de patrimônio total"
+                    >
+                      <HelpCircle className={`h-3.5 w-3.5 ${showMobileTapHint ? "text-primary animate-pulse" : ""}`} />
+                    </button>
+                  )}
                 </div>
                 <div className="leading-tight">
                   <p className="text-[1.35rem] font-bold font-mono text-primary leading-none">R$ {formatCurrency(metrics.totalCloseValue)}</p>
                   <p className="text-[10px] text-muted-foreground mt-2">Investido</p>
                   <p className="text-xs font-medium font-mono text-foreground/75 mt-0.5">R$ {formatCurrency(metrics.totalInvested)}</p>
                 </div>
-                <div className="pointer-events-none absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] opacity-0 translate-y-2 scale-[0.96] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/card:opacity-100 group-hover/card:translate-y-0 group-hover/card:scale-100 group-focus-within/card:opacity-100 group-focus-within/card:translate-y-0 group-focus-within/card:scale-100 z-[80]">
+                <div className={`absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] z-[80] ${
+                  activeKpiInfo === "patrimonio"
+                    ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                    : "pointer-events-none opacity-0 translate-y-2 scale-[0.96] md:group-hover/card:opacity-100 md:group-hover/card:translate-y-0 md:group-hover/card:scale-100 md:group-focus-within/card:opacity-100 md:group-focus-within/card:translate-y-0 md:group-focus-within/card:scale-100"
+                }`}>
                   <p className="font-semibold text-foreground">Patrimônio total</p>
                   <p className="mt-1">Representa o valor atual da sua carteira de ações com base nas cotações mais recentes do mercado.</p>
                   <p className="mt-1">Esse valor indica quanto você receberia se vendesse todos os ativos neste momento, considerando os preços atuais.</p>
@@ -604,10 +779,28 @@ const Portfolio = () => {
               <div
                 className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
                 key="2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleKpiInfo("lucro");
+                }}
               >
                 <div className="flex items-center gap-2">
                   <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">Lucro Total</span>
+                  {isMobileViewport && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        consumeMobileTapHint();
+                        toggleKpiInfo("lucro");
+                      }}
+                      className="ml-auto rounded-md p-1 text-muted-foreground hover:text-foreground"
+                      aria-label="Abrir explicação de lucro total"
+                    >
+                      <HelpCircle className={`h-3.5 w-3.5 ${showMobileTapHint ? "text-primary animate-pulse" : ""}`} />
+                    </button>
+                  )}
                 </div>
                 <div className="leading-tight">
                   <p className={`text-[1.35rem] font-semibold font-mono leading-none ${metrics.totalGain >= 0 ? "text-gain" : "text-loss"}`}>
@@ -615,7 +808,11 @@ const Portfolio = () => {
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-2">Carteira atual</p>
                 </div>
-                <div className="pointer-events-none absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] opacity-0 translate-y-2 scale-[0.96] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/card:opacity-100 group-hover/card:translate-y-0 group-hover/card:scale-100 group-focus-within/card:opacity-100 group-focus-within/card:translate-y-0 group-focus-within/card:scale-100 z-[80]">
+                <div className={`absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] z-[80] ${
+                  activeKpiInfo === "lucro"
+                    ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                    : "pointer-events-none opacity-0 translate-y-2 scale-[0.96] md:group-hover/card:opacity-100 md:group-hover/card:translate-y-0 md:group-hover/card:scale-100 md:group-focus-within/card:opacity-100 md:group-focus-within/card:translate-y-0 md:group-focus-within/card:scale-100"
+                }`}>
                   <p className="font-semibold text-foreground">Lucro Total</p>
                   <p className="mt-1">Diferença entre o valor atual das ações e o valor investido apenas nos ativos que você possui neste momento.</p>
                   <p className="mt-1">Esse indicador mostra quanto você ganharia ou perderia se vendesse toda a sua carteira agora.</p>
@@ -625,16 +822,38 @@ const Portfolio = () => {
               <div
                 className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
                 key="3"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleKpiInfo("proventos");
+                }}
               >
                 <div className="flex items-center gap-2">
                   <Coins className="h-4 w-4 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">Proventos (12M)</span>
+                  {isMobileViewport && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        consumeMobileTapHint();
+                        toggleKpiInfo("proventos");
+                      }}
+                      className="ml-auto rounded-md p-1 text-muted-foreground hover:text-foreground"
+                      aria-label="Abrir explicação de proventos"
+                    >
+                      <HelpCircle className={`h-3.5 w-3.5 ${showMobileTapHint ? "text-primary animate-pulse" : ""}`} />
+                    </button>
+                  )}
                 </div>
                 <div className="leading-tight">
                   <p className="text-[1.35rem] font-semibold font-mono leading-none">R$ {formatCurrency(metrics.proventos)}</p>
                   <p className="text-[10px] text-muted-foreground mt-2">Estimativa anual</p>
                 </div>
-                <div className="pointer-events-none absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] opacity-0 translate-y-2 scale-[0.96] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/card:opacity-100 group-hover/card:translate-y-0 group-hover/card:scale-100 group-focus-within/card:opacity-100 group-focus-within/card:translate-y-0 group-focus-within/card:scale-100 z-[80]">
+                <div className={`absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] z-[80] ${
+                  activeKpiInfo === "proventos"
+                    ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                    : "pointer-events-none opacity-0 translate-y-2 scale-[0.96] md:group-hover/card:opacity-100 md:group-hover/card:translate-y-0 md:group-hover/card:scale-100 md:group-focus-within/card:opacity-100 md:group-focus-within/card:translate-y-0 md:group-focus-within/card:scale-100"
+                }`}>
                   <p className="font-semibold text-foreground">Proventos (12M)</p>
                   <p className="mt-1">Soma dos dividendos e juros sobre capital próprio recebidos nos últimos 12 meses.</p>
                   <p className="mt-1">Esse valor representa a renda gerada pelas empresas nas quais você investe, independentemente da valorização das ações.</p>
@@ -644,10 +863,28 @@ const Portfolio = () => {
               <div
                 className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
                 key="4"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleKpiInfo("rentabilidade");
+                }}
               >
                 <div className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">Rentabilidade</span>
+                  {isMobileViewport && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        consumeMobileTapHint();
+                        toggleKpiInfo("rentabilidade");
+                      }}
+                      className="ml-auto rounded-md p-1 text-muted-foreground hover:text-foreground"
+                      aria-label="Abrir explicação de rentabilidade"
+                    >
+                      <HelpCircle className={`h-3.5 w-3.5 ${showMobileTapHint ? "text-primary animate-pulse" : ""}`} />
+                    </button>
+                  )}
                 </div>
                 <div className="leading-tight">
                   <div className="flex items-center gap-1">
@@ -662,7 +899,11 @@ const Portfolio = () => {
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-2">Performance da carteira</p>
                 </div>
-                <div className="pointer-events-none absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] opacity-0 translate-y-2 scale-[0.96] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/card:opacity-100 group-hover/card:translate-y-0 group-hover/card:scale-100 group-focus-within/card:opacity-100 group-focus-within/card:translate-y-0 group-focus-within/card:scale-100 z-[80]">
+                <div className={`absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] z-[80] ${
+                  activeKpiInfo === "rentabilidade"
+                    ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                    : "pointer-events-none opacity-0 translate-y-2 scale-[0.96] md:group-hover/card:opacity-100 md:group-hover/card:translate-y-0 md:group-hover/card:scale-100 md:group-focus-within/card:opacity-100 md:group-focus-within/card:translate-y-0 md:group-focus-within/card:scale-100"
+                }`}>
                   <p className="font-semibold text-foreground">Rentabilidade</p>
                   <p className="mt-1">Mede o desempenho percentual da sua carteira ao longo do tempo, considerando todos os seus aportes.</p>
                   <p className="mt-1">O cálculo utiliza a Rentabilidade Ponderada no Tempo (TWR), que elimina distorções causadas por novos aportes ou retiradas, permitindo avaliar a performance real da estratégia de investimento.</p>
@@ -702,7 +943,21 @@ const Portfolio = () => {
             </AnimatedCard>
           ) : (
             <>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+              <div
+                ref={allocationSectionRef}
+                className={`grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch rounded-2xl transition-all duration-500 ${
+                  focusedSection === "allocation"
+                    ? "ring-1 ring-primary/45 shadow-[0_0_0_1px_rgba(34,197,94,0.15),0_0_24px_rgba(34,197,94,0.2)]"
+                    : ""
+                }`}
+              >
+                {focusedSection === "allocation" && focusChipLabel && (
+                  <div className="lg:col-span-2">
+                    <span className="inline-flex items-center rounded-full border border-primary/35 bg-primary/15 px-2.5 py-1 text-[11px] leading-tight font-medium text-primary">
+                      {focusChipLabel}
+                    </span>
+                  </div>
+                )}
                 <AnimatedCard delay={0.3} className="h-full min-h-[460px] flex flex-col">
                   <div className="glass-card p-5 h-full flex flex-col">
                     <div className="flex items-center justify-between mb-4">
@@ -802,7 +1057,21 @@ const Portfolio = () => {
               </div>
 
               <AnimatedCard delay={0.5}>
-                <div className="glass-card overflow-hidden">
+                <div
+                  className={`glass-card overflow-hidden transition-all duration-500 ${
+                    focusedSection === "holdings"
+                      ? "ring-1 ring-primary/45 shadow-[0_0_0_1px_rgba(34,197,94,0.15),0_0_24px_rgba(34,197,94,0.2)]"
+                      : ""
+                  }`}
+                >
+                    <div ref={holdingsSectionRef} />
+                    {focusedSection === "holdings" && focusChipLabel && (
+                      <div className="px-5 pt-4">
+                        <span className="inline-flex items-center rounded-full border border-primary/35 bg-primary/15 px-2.5 py-1 text-[11px] leading-tight font-medium text-primary">
+                          {focusChipLabel}
+                        </span>
+                      </div>
+                    )}
                   <div className="p-5 border-b border-border/50">
                     <h3 className="text-base font-semibold">Ativos na Carteira</h3>
                   </div>
@@ -826,13 +1095,27 @@ const Portfolio = () => {
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
                             <div className="inline-flex items-center gap-1.5 relative group/info cursor-default">
                               <span className="text-muted-foreground">Rentabilidade</span>
-                              <span className="inline-flex items-center text-muted-foreground/80">
-                                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground transition-colors duration-150 hover:text-foreground" />
-                                <span className="pointer-events-none absolute right-0 top-full mt-1.5 w-[360px] rounded-lg border border-white/10 bg-[#161b26] px-3 py-2.5 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] opacity-0 translate-y-2 scale-[0.96] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/info:opacity-100 group-hover/info:translate-y-0 group-hover/info:scale-100 z-20 text-left">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isMobileViewport) return;
+                                  consumeMobileTapHint();
+                                  setShowRentabilidadeInfoMobile((prev) => !prev);
+                                }}
+                                className="inline-flex items-center text-muted-foreground/80"
+                                aria-label="Abrir explicação de rentabilidade da tabela"
+                              >
+                                <HelpCircle className={`h-3.5 w-3.5 text-muted-foreground transition-colors duration-150 hover:text-foreground ${showMobileTapHint ? "text-primary animate-pulse" : ""}`} />
+                                <span className={`absolute right-0 top-full mt-1.5 w-[min(18rem,calc(100vw-2rem))] sm:w-[360px] rounded-lg border border-white/10 bg-[#161b26] px-3 py-2.5 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] z-20 text-left ${
+                                  showRentabilidadeInfoMobile
+                                    ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+                                    : "pointer-events-none opacity-0 translate-y-2 scale-[0.96] md:group-hover/info:opacity-100 md:group-hover/info:translate-y-0 md:group-hover/info:scale-100"
+                                }`}>
                                   <span className="block text-foreground font-semibold mb-1">Rentabilidade</span>
                                   <span className="block leading-relaxed break-words">Passe o mouse para ver quanto você está ganhando ou perdendo em reais (R$)</span>
                                 </span>
-                              </span>
+                              </button>
                             </div>
                           </th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Saldo</th>
@@ -1215,6 +1498,12 @@ const Portfolio = () => {
 };
 
 export default Portfolio;
+
+
+
+
+
+
 
 
 

@@ -8,9 +8,16 @@ interface SmartInsightModalProps {
   alert: SmartAlertCandidate | null;
   onOpenChange: (open: boolean) => void;
   onPrimaryAction: () => void;
+  onHighlightAction?: (action: { label: string; route: string; focus: string }) => void;
 }
 
-export function SmartInsightModal({ open, alert, onOpenChange, onPrimaryAction }: SmartInsightModalProps) {
+export function SmartInsightModal({
+  open,
+  alert,
+  onOpenChange,
+  onPrimaryAction,
+  onHighlightAction,
+}: SmartInsightModalProps) {
   if (!alert) return null;
   const emojiMatch = alert.title.match(/^([\p{Extended_Pictographic}])\s*/u);
   const titleEmoji = emojiMatch?.[1] ?? null;
@@ -26,6 +33,8 @@ export function SmartInsightModal({ open, alert, onOpenChange, onPrimaryAction }
 
   const highlightRegex =
     highlightPatternParts.length > 0 ? new RegExp(`(${highlightPatternParts.join("|")})`, "g") : null;
+  const topHighlights = (alert.highlights || []).filter(Boolean).slice(0, 2);
+  const topHighlightActions = (alert.highlightActions || []).slice(0, 2);
 
   const renderHighlightedMessage = (message: string) => {
     if (!highlightRegex) return message;
@@ -85,6 +94,33 @@ export function SmartInsightModal({ open, alert, onOpenChange, onPrimaryAction }
             <DialogDescription className="mt-3 whitespace-pre-line text-[0.84rem] leading-snug text-slate-400 sm:text-[0.86rem]">
               {renderHighlightedMessage(alert.message)}
             </DialogDescription>
+            {topHighlights.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {topHighlights.map((item, idx) => {
+                  const action = topHighlightActions.find((candidate) => candidate.label === item);
+                  if (action && onHighlightAction) {
+                    return (
+                      <button
+                        key={`${item}-${idx}`}
+                        type="button"
+                        onClick={() => onHighlightAction(action)}
+                        className="inline-flex min-h-8 items-center rounded-full border border-emerald-300/35 bg-emerald-400/10 px-2.5 py-1.5 text-[11px] leading-tight font-medium text-emerald-100 transition-colors hover:bg-emerald-400/20"
+                      >
+                        {item}
+                      </button>
+                    );
+                  }
+                  return (
+                    <span
+                      key={`${item}-${idx}`}
+                      className="inline-flex min-h-8 items-center rounded-full border border-emerald-300/30 bg-emerald-400/10 px-2.5 py-1.5 text-[11px] leading-tight font-medium text-emerald-100"
+                    >
+                      {item}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="mt-5 flex flex-col-reverse gap-2 sm:mt-6 sm:flex-row sm:items-center sm:justify-end">
               <Button
