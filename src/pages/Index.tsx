@@ -27,6 +27,10 @@ import {
   selectTopSmartAlert,
   type SmartAlertCandidate,
 } from "@/lib/smartAlerts";
+import {
+  buildSmartAlertNarrative,
+  trackSmartAlertBehavior,
+} from "@/lib/smartAlertIntelligence";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -43,6 +47,7 @@ const Index = () => {
   const [smartAlert, setSmartAlert] = useState<SmartAlertCandidate | null>(null);
   const [showSmartAlert, setShowSmartAlert] = useState(false);
   const [smartAlertEvaluated, setSmartAlertEvaluated] = useState(false);
+  const [smartAlertHandled, setSmartAlertHandled] = useState(false);
   const { enrichedHoldings, loading, userTrades, portfolioMetrics } = useUserHoldings();
 
   const hasCompletedTour = (userId: string) =>
@@ -134,6 +139,7 @@ const Index = () => {
         "sector_concentration",
         "asset_overvalued",
         "profile_mismatch",
+        "compound_risk",
       ] as const,
       show: (type: Parameters<typeof buildSmartAlertPreview>[0]) => {
         const preview = buildSmartAlertPreview(type);
@@ -259,7 +265,25 @@ const Index = () => {
         if (!active) return;
 
         if (selection?.shouldShow) {
-          setSmartAlert(selection.alert);
+          const enrichment = await buildSmartAlertNarrative({
+            userId: currentUser.id,
+            alert: selection.alert,
+            engine: selection.engine,
+            holdings: enrichedHoldings,
+            portfolioDailyChangePercent: portfolioMetrics.dailyChangePercent,
+            portfolioDailyChangeValue: portfolioMetrics.dailyChange,
+            portfolioRisk,
+          });
+          if (!active) return;
+
+          const enrichedAlert: SmartAlertCandidate = {
+            ...selection.alert,
+            message: `${selection.alert.message}${enrichment}`,
+          };
+
+          trackSmartAlertBehavior(currentUser.id, selection.alert, "shown");
+          setSmartAlert(enrichedAlert);
+          setSmartAlertHandled(false);
           setShowSmartAlert(true);
           await registerSmartAlertShown(currentUser.id, selection.alert);
         }
@@ -569,11 +593,28 @@ ${aiCompatibilityWarning ? `\n${aiCompatibilityWarning}` : ""}`, [greeting, user
       <SmartInsightModal
         open={showSmartAlert}
         alert={smartAlert}
-        onOpenChange={setShowSmartAlert}
+        onOpenChange={(open) => {
+          if (!open && showSmartAlert && smartAlert && currentUser?.id && !smartAlertHandled) {
+            trackSmartAlertBehavior(currentUser.id, smartAlert, "dismissed");
+          }
+          setShowSmartAlert(open);
+        }}
         onPrimaryAction={() => {
           if (!smartAlert) return;
+          if (currentUser?.id) {
+            trackSmartAlertBehavior(currentUser.id, smartAlert, "clicked");
+          }
+          setSmartAlertHandled(true);
           setShowSmartAlert(false);
           navigate(smartAlert.route);
+        }}
+        onHighlightAction={(action) => {
+          if (smartAlert && currentUser?.id) {
+            trackSmartAlertBehavior(currentUser.id, smartAlert, "clicked");
+          }
+          setSmartAlertHandled(true);
+          setShowSmartAlert(false);
+          navigate(`${action.route}?focus=${encodeURIComponent(action.focus)}`);
         }}
       />
     </div>
