@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, TrendingUp, TrendingDown, PieChart, Sparkles } from "lucide-react";
-import { motion } from "framer-motion";
+import { Search, TrendingUp, TrendingDown, PieChart, Sparkles, ChevronDown } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import {
   getDailyPriceState,
@@ -17,7 +17,10 @@ import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
 
 const Assets = () => {
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("Todos");
+  const [trendFilter, setTrendFilter] = useState<"Todos" | "Em alta" | "Em baixa">("Todos");
+  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+  const [isSectorFilterOpen, setIsSectorFilterOpen] = useState(false);
+  const sectorsFilterRef = useRef<HTMLDivElement | null>(null);
   const [livePoints, setLivePoints] = useState<Record<string, { price: number; datetime: string }>>({});
   const [pricesReady, setPricesReady] = useState<boolean>(() => isRealDataLoaded());
   const [livePointsHydrated, setLivePointsHydrated] = useState(false);
@@ -36,12 +39,30 @@ const Assets = () => {
   }, []);
 
   const categories = useMemo(
-    () => ["Todos", ...Array.from(new Set(holdings.map((h) => canonicalMetaBySymbol.get(h.symbol)?.sector || h.sector)))],
+    () => Array.from(new Set(holdings.map((h) => canonicalMetaBySymbol.get(h.symbol)?.sector || h.sector))),
     [canonicalMetaBySymbol]
   );
+  const dailyChangeBySymbol = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const asset of holdings) {
+      if (pricesReady && livePointsHydrated) {
+        const intradayPoint = livePoints[asset.symbol] ?? null;
+        const dailyState = getDailyPriceState(asset.symbol, intradayPoint);
+        const pct =
+          dailyState.previousClose > 0
+            ? Math.round((((dailyState.lastPrice / dailyState.previousClose) - 1) * 100) * 100) / 100
+            : asset.changePercent;
+        map[asset.symbol] = Number.isFinite(pct) ? pct : asset.changePercent;
+      } else {
+        map[asset.symbol] = asset.changePercent;
+      }
+    }
+    return map;
+  }, [livePoints, livePointsHydrated, pricesReady]);
+
   const totalAssets = holdings.length;
-  const positiveCount = holdings.filter((h) => h.changePercent >= 0).length;
-  const negativeCount = holdings.filter((h) => h.changePercent < 0).length;
+  const positiveCount = holdings.filter((h) => (dailyChangeBySymbol[h.symbol] ?? h.changePercent) >= 0).length;
+  const negativeCount = holdings.filter((h) => (dailyChangeBySymbol[h.symbol] ?? h.changePercent) < 0).length;
 
   const normalizeSearchText = (value: string) =>
     value
@@ -116,18 +137,74 @@ const Assets = () => {
     };
   }, []);
 
-  const filtered = holdings.filter((h) => {
-    const canonical = canonicalMetaBySymbol.get(h.symbol);
-    const canonicalSector = canonical?.sector || h.sector;
-    const displaySymbol = getDisplaySymbol(h.symbol);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (!sectorsFilterRef.current) return;
+      if (!sectorsFilterRef.current.contains(event.target as Node)) {
+        setIsSectorFilterOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsSectorFilterOpen(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
+  const toggleSector = (sector: string) => {
+    setSelectedSectors((prev) =>
+      prev.includes(sector) ? prev.filter((s) => s !== sector) : [...prev, sector]
+    );
+  };
+
+  const filtered = useMemo(() => {
     const normalizedSearch = normalizeSearchText(search);
-    const matchSearch =
-      normalizeSearchText(h.symbol).includes(normalizedSearch) ||
-      normalizeSearchText(displaySymbol).includes(normalizedSearch) ||
-      normalizeSearchText(h.name).includes(normalizedSearch);
-    const matchCategory = categoryFilter === "Todos" || canonicalSector === categoryFilter;
-    return matchSearch && matchCategory;
-  });
+    const items = holdings.filter((h) => {
+      const canonical = canonicalMetaBySymbol.get(h.symbol);
+      const canonicalSector = canonical?.sector || h.sector;
+      const displaySymbol = getDisplaySymbol(h.symbol);
+      const changePercent = dailyChangeBySymbol[h.symbol] ?? h.changePercent;
+      const matchSearch =
+        normalizeSearchText(h.symbol).includes(normalizedSearch) ||
+        normalizeSearchText(displaySymbol).includes(normalizedSearch) ||
+        normalizeSearchText(h.name).includes(normalizedSearch);
+
+      const matchTrend =
+        trendFilter === "Todos" ||
+        (trendFilter === "Em alta" && changePercent > 0) ||
+        (trendFilter === "Em baixa" && changePercent < 0);
+      const matchSector =
+        selectedSectors.length === 0 || selectedSectors.includes(canonicalSector);
+
+      return matchSearch && matchTrend && matchSector;
+    });
+
+    if (trendFilter === "Em alta") {
+      return [...items].sort(
+        (a, b) => (dailyChangeBySymbol[b.symbol] ?? b.changePercent) - (dailyChangeBySymbol[a.symbol] ?? a.changePercent)
+      );
+    }
+    if (trendFilter === "Em baixa") {
+      return [...items].sort(
+        (a, b) => (dailyChangeBySymbol[a.symbol] ?? a.changePercent) - (dailyChangeBySymbol[b.symbol] ?? b.changePercent)
+      );
+    }
+    return items;
+  }, [canonicalMetaBySymbol, dailyChangeBySymbol, search, selectedSectors, trendFilter]);
+
+  const hasAnyActiveFilter = Boolean(
+    search.trim() || trendFilter !== "Todos" || selectedSectors.length > 0
+  );
+  const showClearButton = hasAnyActiveFilter || isSectorFilterOpen;
 
   return (
     <div className="min-h-screen bg-background">
@@ -185,35 +262,114 @@ const Assets = () => {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Buscar por nome ou símbolo..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card/50 backdrop-blur-sm border border-border/40 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-all"
-              />
-            </div>
-            <div className="flex gap-1.5 flex-wrap">
-              {categories.map((cat) => (
+          <div className="relative z-40 rounded-2xl border border-border/30 bg-card/[0.35] backdrop-blur-sm p-3">
+            <div className="grid grid-cols-1 gap-3 sm:items-center sm:grid-cols-[minmax(0,1fr)_200px_auto]">
+              <div className="relative w-full min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Buscar ativo por nome ou símbolo"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background/40 border border-border/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/40 transition-all"
+                />
+              </div>
+              <div className="w-full min-w-0">
+                <div ref={sectorsFilterRef} className="relative group w-full">
+                  <button
+                    type="button"
+                    onClick={() => setIsSectorFilterOpen((prev) => !prev)}
+                    className="h-[42px] w-full px-4 rounded-xl border border-border/50 bg-background/40 text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-between gap-2 cursor-pointer select-none"
+                  >
+                    Setores
+                    {selectedSectors.length > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-primary/15 text-primary text-[10px] font-semibold">
+                        {selectedSectors.length}
+                      </span>
+                    )}
+                    <ChevronDown className={`h-3.5 w-3.5 opacity-70 transition-transform ${isSectorFilterOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  <AnimatePresence>
+                    {isSectorFilterOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                        className="absolute right-0 mt-2 z-30 w-[290px] max-h-72 overflow-auto rounded-xl border border-border/50 bg-card/95 backdrop-blur-xl p-2 shadow-xl origin-top-right"
+                      >
+                        <div className="px-2 py-1.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Filtrar setores</div>
+                        <div className="space-y-1">
+                          {categories.map((cat) => {
+                            const active = selectedSectors.includes(cat);
+                            return (
+                              <label
+                                key={cat}
+                                className={`flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer border transition-all duration-200 ease-out ${
+                                  active
+                                    ? "bg-primary/15 text-primary border-primary/30 shadow-[0_0_12px_-6px] shadow-primary/30"
+                                    : "bg-transparent border-transparent text-muted-foreground hover:text-foreground hover:bg-background/60 hover:border-border/50"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={active}
+                                  onChange={() => toggleSector(cat)}
+                                  className="h-3.5 w-3.5 accent-[hsl(var(--primary))]"
+                                />
+                                <span className="text-sm">{cat}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+              <motion.div
+                initial={false}
+                animate={
+                  showClearButton
+                    ? { width: "120px", opacity: 1, x: 0, height: 42 }
+                    : { width: "0px", opacity: 0, x: 8, height: 0 }
+                }
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden w-full sm:w-auto"
+              >
                 <button
-                  key={cat}
-                  onClick={() => setCategoryFilter(cat)}
-                  className={`px-3 py-2 text-xs font-medium rounded-xl transition-all ${
-                    categoryFilter === cat
+                  onClick={() => {
+                    setSearch("");
+                    setTrendFilter("Todos");
+                    setSelectedSectors([]);
+                    setIsSectorFilterOpen(false);
+                  }}
+                  disabled={!showClearButton}
+                  tabIndex={showClearButton ? 0 : -1}
+                  className="h-[42px] w-full px-3 rounded-xl border border-border/50 bg-background/40 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:pointer-events-none"
+                >
+                  Limpar tudo
+                </button>
+              </motion.div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {(["Todos", "Em alta", "Em baixa"] as const).map((trend) => (
+                <button
+                  key={trend}
+                  onClick={() => setTrendFilter(trend)}
+                  className={`min-w-[108px] px-4 py-2 text-xs font-medium rounded-xl transition-all ${
+                    trendFilter === trend
                       ? "bg-primary/15 text-primary border border-primary/30 shadow-[0_0_12px_-4px] shadow-primary/20"
-                      : "bg-card/50 border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/70"
+                      : "bg-background/30 border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/70"
                   }`}
                 >
-                  {cat}
+                  {trend}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="relative z-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((asset, i) => (
               <AnimatedCard key={asset.symbol} delay={i * 0.03}>
                 {(() => {
@@ -223,10 +379,7 @@ const Assets = () => {
                   const displayName = canonical?.displayName || asset.name;
                   const intradayPoint = livePoints[asset.symbol] ?? null;
                   const dailyState = getDailyPriceState(asset.symbol, intradayPoint);
-                  const dailyChangePercent =
-                    dailyState.previousClose > 0
-                      ? Math.round((((dailyState.lastPrice / dailyState.previousClose) - 1) * 100) * 100) / 100
-                      : 0;
+                  const dailyChangePercent = dailyChangeBySymbol[asset.symbol] ?? 0;
                   const showRealPrice = pricesReady && livePointsHydrated;
                   const isPositive = dailyChangePercent >= 0;
 
