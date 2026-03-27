@@ -773,16 +773,11 @@ const AssetDetail = () => {
                     {valuationCardTitle}
                   </h3>
                 </div>
-                {activeValuationType === "preco_justo" && (
-                  <p className="text-[11px] text-muted-foreground mb-3">
-                    Visão rápida de valor com base nos fundamentos.
-                  </p>
-                )}
                 <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
                   {activeValuationType === "graham"
-                    ? "Benjamin Graham, o pai do Value Investing, criou uma fórmula para estimar o preço justo de uma ação com base nos fundamentos reais da empresa."
+                    ? "Cálculo do preço da ação com base nos fundamentos da empresa."
                     : activeValuationType === "preco_justo"
-                      ? "Estimativa simplificada para indicar uma faixa de valor da ação."
+                      ? "Cálculo do preço justo com base nos fundamentos da empresa."
                       : "Não há valuation disponível para este ativo no momento."}
                 </p>
                 {activeValuationType === "graham" && activeFairPrice !== null && activeUpsideFormatted !== null ? (
