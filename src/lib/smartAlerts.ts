@@ -219,24 +219,32 @@ export async function getOrCreateLoginCount(userId: string): Promise<number> {
   const countKey = `ii_login_count_${userId}`;
   const previousFingerprint = localStorage.getItem(fingerprintKey);
   const cachedCount = Number(localStorage.getItem(countKey) ?? 0);
+  const nextLocalCount = Number.isFinite(cachedCount) && cachedCount > 0 ? cachedCount + 1 : 1;
 
   if (previousFingerprint === tokenFingerprint && cachedCount > 0) {
     return cachedCount;
   }
 
-  const { data, error } = await supabase.rpc("increment_login_count_if_new", {
-    p_session_fingerprint: tokenFingerprint,
-  });
-  if (error) throw error;
+  try {
+    const { data, error } = await supabase.rpc("increment_login_count_if_new", {
+      p_session_fingerprint: tokenFingerprint,
+    });
+    if (error) throw error;
 
-  const resolvedCount = Number(data ?? 0);
-  if (!Number.isFinite(resolvedCount) || resolvedCount <= 0) {
-    throw new Error("Invalid login counter returned by increment_login_count_if_new");
+    const resolvedCount = Number(data ?? 0);
+    if (!Number.isFinite(resolvedCount) || resolvedCount <= 0) {
+      throw new Error("Invalid login counter returned by increment_login_count_if_new");
+    }
+
+    localStorage.setItem(fingerprintKey, tokenFingerprint);
+    localStorage.setItem(countKey, String(resolvedCount));
+    return resolvedCount;
+  } catch (error) {
+    console.warn("[smart-alerts] falling back to local login counter:", error);
+    localStorage.setItem(fingerprintKey, tokenFingerprint);
+    localStorage.setItem(countKey, String(nextLocalCount));
+    return nextLocalCount;
   }
-
-  localStorage.setItem(fingerprintKey, tokenFingerprint);
-  localStorage.setItem(countKey, String(resolvedCount));
-  return resolvedCount;
 }
 
 async function loadAlertHistory(userId: string): Promise<Map<string, SmartAlertHistoryRow>> {

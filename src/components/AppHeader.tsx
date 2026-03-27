@@ -18,26 +18,18 @@ const navItems = [
   { label: "Aprender", icon: BookOpen, href: "/aprender", key: "aprender" as const },
 ];
 
-const getAvatarStorageKeys = (id?: string, email?: string, name?: string) =>
-  Array.from(
-    new Set(
-      [`ii_profile_avatar_${id || ""}`, `ii_profile_avatar_${email || ""}`, `ii_profile_avatar_${name || ""}`].filter(
-        (k) => !k.endsWith("_")
-      )
-    )
-  );
+const AVATAR_STORAGE_PREFIX = "ii_profile_avatar_";
+const getAvatarStorageKeys = (id?: string) => (id ? [`${AVATAR_STORAGE_PREFIX}${id}`] : []);
+const clearAllAvatarCache = () => {
+  Object.keys(localStorage)
+    .filter((k) => k.startsWith(AVATAR_STORAGE_PREFIX))
+    .forEach((k) => localStorage.removeItem(k));
+  localStorage.removeItem("ii_profile_avatar_current");
+};
 
 export function AppHeader({ activePage }: AppHeaderProps) {
   const [userName, setUserName] = useState(() => localStorage.getItem("ii_user_name") || "IN");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
-    const cachedAvatar = localStorage.getItem("ii_profile_avatar_current");
-    if (cachedAvatar) return cachedAvatar;
-    const keys = Object.keys(localStorage).filter((k) => k.startsWith("ii_profile_avatar_"));
-    if (keys.length === 1) {
-      return localStorage.getItem(keys[0]);
-    }
-    return null;
-  });
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showTourMenu, setShowTourMenu] = useState(false);
@@ -65,7 +57,7 @@ export function AppHeader({ activePage }: AppHeaderProps) {
       setUserName("IN");
       setAvatarUrl(null);
       localStorage.removeItem("ii_user_name");
-      localStorage.removeItem("ii_profile_avatar_current");
+      clearAllAvatarCache();
       return;
     }
 
@@ -75,11 +67,8 @@ export function AppHeader({ activePage }: AppHeaderProps) {
     setUserName(firstName);
     localStorage.setItem("ii_user_name", firstName);
 
-    const avatarKeys = getAvatarStorageKeys(user.id, user.email || "", firstName);
-    const localAvatar =
-      [localStorage.getItem("ii_profile_avatar_current"), ...avatarKeys.map((k) => localStorage.getItem(k))].find(
-        (v) => typeof v === "string" && v.length > 0
-      ) || null;
+    const avatarKeys = getAvatarStorageKeys(user.id);
+    const localAvatar = avatarKeys.map((k) => localStorage.getItem(k)).find((v) => typeof v === "string" && v.length > 0) || null;
 
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
@@ -90,10 +79,9 @@ export function AppHeader({ activePage }: AppHeaderProps) {
     if (profileError) {
       if (localAvatar) {
         setAvatarUrl(localAvatar);
-        localStorage.setItem("ii_profile_avatar_current", localAvatar);
       } else {
         setAvatarUrl(null);
-        localStorage.removeItem("ii_profile_avatar_current");
+        for (const key of avatarKeys) localStorage.removeItem(key);
       }
       return;
     }
@@ -115,19 +103,16 @@ export function AppHeader({ activePage }: AppHeaderProps) {
     if (resolvedAvatar) {
       setAvatarUrl(resolvedAvatar);
       for (const key of avatarKeys) localStorage.setItem(key, resolvedAvatar);
-      localStorage.setItem("ii_profile_avatar_current", resolvedAvatar);
       return;
     }
 
     if (localAvatar) {
       setAvatarUrl(localAvatar);
-      localStorage.setItem("ii_profile_avatar_current", localAvatar);
       return;
     }
 
     setAvatarUrl(null);
     for (const key of avatarKeys) localStorage.removeItem(key);
-    localStorage.removeItem("ii_profile_avatar_current");
   }, []);
 
   useEffect(() => {
@@ -191,6 +176,7 @@ export function AppHeader({ activePage }: AppHeaderProps) {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem("ii_user_name");
+    clearAllAvatarCache();
     toast({ title: "Até logo! 👋", description: "Você saiu da sua conta." });
     navigate("/login");
   };

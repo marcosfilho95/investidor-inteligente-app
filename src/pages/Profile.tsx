@@ -68,15 +68,15 @@ const mapInvestorProfileToRiskPolicy = (type?: InvestorProfileSummary["type"]): 
   return "moderada";
 };
 const AVATAR_BUCKET = "profile-avatars";
+const AVATAR_STORAGE_PREFIX = "ii_profile_avatar_";
 
-const getAvatarStorageKeys = (id?: string, email?: string, name?: string) =>
-  Array.from(
-    new Set(
-      [`ii_profile_avatar_${id || ""}`, `ii_profile_avatar_${email || ""}`, `ii_profile_avatar_${name || ""}`].filter(
-        (k) => !k.endsWith("_")
-      )
-    )
-  );
+const getAvatarStorageKeys = (id?: string) => (id ? [`${AVATAR_STORAGE_PREFIX}${id}`] : []);
+const clearAllAvatarCache = () => {
+  Object.keys(localStorage)
+    .filter((k) => k.startsWith(AVATAR_STORAGE_PREFIX))
+    .forEach((k) => localStorage.removeItem(k));
+  localStorage.removeItem("ii_profile_avatar_current");
+};
 
 const Profile = () => {
   const [userName, setUserName] = useState("Investidor");
@@ -237,7 +237,7 @@ const Profile = () => {
           localStorage.setItem(usernameStorageKey, resolvedUsername);
         }
 
-        const avatarKeys = getAvatarStorageKeys(data.user.id, data.user.email || "", name);
+        const avatarKeys = getAvatarStorageKeys(data.user.id);
         let resolvedAvatar = profileData?.avatar_url ?? null;
         if (!resolvedAvatar) {
           const { data: avatarObjects } = await supabase.storage
@@ -253,9 +253,8 @@ const Profile = () => {
         if (resolvedAvatar) {
           setAvatarUrl(resolvedAvatar);
           for (const key of avatarKeys) localStorage.setItem(key, resolvedAvatar);
-          localStorage.setItem("ii_profile_avatar_current", resolvedAvatar);
         } else {
-          const cachedAvatar = [localStorage.getItem("ii_profile_avatar_current"), ...avatarKeys.map((k) => localStorage.getItem(k))]
+          const cachedAvatar = avatarKeys.map((k) => localStorage.getItem(k))
             .find((v) => typeof v === "string" && v.length > 0) || null;
           if (cachedAvatar) setAvatarUrl(cachedAvatar);
         }
@@ -416,9 +415,8 @@ const Profile = () => {
       const persistedAvatar = upserted?.avatar_url ?? storageUrl;
 
       setAvatarUrl(persistedAvatar);
-      const avatarKeys = getAvatarStorageKeys(userId, userEmail, userName);
+      const avatarKeys = getAvatarStorageKeys(userId);
       for (const key of avatarKeys) localStorage.setItem(key, persistedAvatar);
-      localStorage.setItem("ii_profile_avatar_current", persistedAvatar);
       window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { keys: avatarKeys, url: persistedAvatar } }));
       toast({ title: "Foto atualizada!", description: "Sua nova foto de perfil já está em uso." });
     } catch (error: unknown) {
@@ -448,9 +446,8 @@ const Profile = () => {
       const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("user_id", userId);
       if (error) throw error;
       setAvatarUrl(null);
-      const avatarKeys = getAvatarStorageKeys(userId, userEmail, userName);
+      const avatarKeys = getAvatarStorageKeys(userId);
       for (const key of avatarKeys) localStorage.removeItem(key);
-      localStorage.removeItem("ii_profile_avatar_current");
       window.dispatchEvent(new CustomEvent("ii:profile-avatar-updated", { detail: { keys: avatarKeys, url: null } }));
       toast({ title: "Foto removida", description: "Avatar voltou para o padrao." });
     } catch (error: unknown) {
@@ -466,6 +463,7 @@ const Profile = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem("ii_user_name");
+    clearAllAvatarCache();
     toast({ title: "Ate logo!", description: "Voce saiu da sua conta." });
     navigate("/login");
   };
