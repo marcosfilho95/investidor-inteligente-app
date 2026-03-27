@@ -317,12 +317,8 @@ async function tryAiInsight(payload: SmartAlertIntelligencePayload): Promise<str
 }
 
 export async function buildSmartAlertNarrative(input: EnrichInput): Promise<string> {
-  const payload = buildSmartAlertIntelligencePayload(input);
-  try {
-    const ai = await tryAiInsight(payload);
-    if (ai) return ai;
-  } catch {
-    // fallback silently
-  }
-  return buildDeterministicInsight(payload);
+  // Keep the modal focused on the primary alert message.
+  // Optional narrative enrichment is intentionally disabled.
+  void input;
+  return "";
 }

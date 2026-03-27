@@ -282,7 +282,7 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
       entityType: "portfolio",
       entityId: "portfolio",
       priority: 1,
-      cooldownDays: 1,
+      cooldownDays: 2,
       referenceValue: 0,
       materialDelta: 0,
       materialDirection: "increase",
@@ -608,9 +608,6 @@ function evaluateRecurrence(
   candidate: SmartAlertCandidate,
   previous?: SmartAlertHistoryRow
 ): { eligible: boolean; reason: SmartAlertEligibilityItem["reason"]; daysSinceLastShown: number | null } {
-  if (candidate.type === "portfolio_empty") {
-    return { eligible: true, reason: "new", daysSinceLastShown: null };
-  }
   if (!previous) {
     return { eligible: true, reason: "new", daysSinceLastShown: null };
   }
