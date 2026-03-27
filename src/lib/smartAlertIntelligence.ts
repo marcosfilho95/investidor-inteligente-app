@@ -241,7 +241,7 @@ function buildDeterministicInsight(payload: SmartAlertIntelligencePayload): stri
     summaryParts.push("Esse insight foi selecionado pelo motor de risco para evitar ruído e priorizar o que mais importa agora.");
   }
 
-  return `\n\n🧠 Contexto inteligente:\n${summaryParts.join(" ")}`;
+  return `\n\n${summaryParts.join(" ")}`;
 }
 
 async function readSseContent(resp: Response): Promise<string> {
@@ -313,7 +313,7 @@ async function tryAiInsight(payload: SmartAlertIntelligencePayload): Promise<str
 
   const text = await readSseContent(resp);
   if (!text) return null;
-  return `\n\n🧠 Contexto inteligente:\n${text}`;
+  return `\n\n${text}`;
 }
 
 export async function buildSmartAlertNarrative(input: EnrichInput): Promise<string> {
