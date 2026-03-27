@@ -8,6 +8,8 @@ import AnimatedBackground from "@/components/landing/FloatingElements";
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isResetMode, setIsResetMode] = useState(false);
+  const [isForgotPasswordMode, setIsForgotPasswordMode] = useState(false);
   const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -26,8 +28,30 @@ const Login = () => {
     const mode = searchParams.get("mode");
     if (mode === "signup") {
       setIsLogin(false);
+      setIsForgotPasswordMode(false);
+    }
+    if (mode === "reset") {
+      setIsResetMode(true);
+      setIsLogin(false);
+      setIsForgotPasswordMode(false);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsResetMode(true);
+        setIsLogin(false);
+        setIsForgotPasswordMode(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const getPasswordStrength = (value: string) => {
     let score = 0;
@@ -75,6 +99,50 @@ const Login = () => {
     setLoading(true);
 
     try {
+      if (isForgotPasswordMode) {
+        const emailForReset = email.trim();
+        const redirectTo = `${window.location.origin}/login?mode=reset`;
+        const { error } = await supabase.auth.resetPasswordForEmail(emailForReset, { redirectTo });
+        if (error) throw error;
+
+        toast({
+          title: "Link enviado!",
+          description: "Verifique seu e-mail para redefinir sua senha.",
+        });
+
+        setIsForgotPasswordMode(false);
+        setIsLogin(true);
+        return;
+      }
+
+      if (isResetMode) {
+        if (password !== confirmPassword) {
+          toast({ title: "As senhas nao conferem", variant: "destructive" });
+          setLoading(false);
+          return;
+        }
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error("Sessao de recuperacao invalida. Solicite um novo link.");
+        }
+
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+
+        toast({
+          title: "Senha redefinida com sucesso!",
+          description: "Agora voce ja pode entrar com a nova senha.",
+        });
+        setIsResetMode(false);
+        setIsLogin(true);
+        setPassword("");
+        setConfirmPassword("");
+        return;
+      }
+
       if (isLogin) {
         const loginValue = email.trim();
         let emailForLogin = loginValue;
@@ -143,6 +211,21 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  const handleForgotPassword = () => {
+    if (loading) return;
+    setIsForgotPasswordMode(true);
+    setIsLogin(true);
+    setPassword("");
+    setConfirmPassword("");
+  };
+
+  const isSignupMode = !isLogin && !isResetMode && !isForgotPasswordMode;
+  const submitDisabled = isForgotPasswordMode
+    ? loading || !email.trim()
+    : isLogin || isResetMode
+      ? loading
+      : !canSubmitSignup;
 
   return (
     <div
@@ -220,14 +303,28 @@ const Login = () => {
             <span className="font-semibold text-sm">Investidor Inteligente</span>
           </div>
 
-          <h1 className="text-xl font-bold mb-1">{isLogin ? "Que bom te ver por aqui!" : "Criar sua conta"}</h1>
+          <h1 className="text-xl font-bold mb-1">
+            {isResetMode
+              ? "Redefinir senha"
+              : isForgotPasswordMode
+                ? "Recuperar senha"
+                : isLogin
+                  ? "Que bom te ver por aqui!"
+                  : "Criar sua conta"}
+          </h1>
           <p className="text-sm text-muted-foreground mb-6">
-            {isLogin ? "Entre para acessar sua carteira" : "Comece sua jornada de investimentos"}
+            {isResetMode
+              ? "Digite e confirme sua nova senha"
+              : isForgotPasswordMode
+                ? "Informe seu e-mail para receber o link de recuperacao"
+                : isLogin
+                  ? "Entre para acessar sua carteira"
+                  : "Comece sua jornada de investimentos"}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
                 <AnimatePresence initial={false}>
-                  {!isLogin && (
+                  {isSignupMode && (
                     <motion.div
                       key="name-field"
                       initial={{ opacity: 0, height: 0 }}
@@ -253,7 +350,7 @@ const Login = () => {
                 </AnimatePresence>
 
                 <AnimatePresence initial={false}>
-                  {!isLogin && (
+                  {isSignupMode && (
                     <motion.div
                       key="username-field"
                       initial={{ opacity: 0, height: 0 }}
@@ -278,28 +375,46 @@ const Login = () => {
                   )}
                 </AnimatePresence>
 
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{isLogin ? "Usuario ou E-mail" : "E-mail"}</label>
-                  <div className={`relative rounded-lg transition-all duration-300 ${focused === "email" ? "ring-2 ring-primary/40 shadow-lg shadow-primary/10" : ""}`}>
-                    {isLogin ? (
-                      <User className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focused === "email" ? "text-primary" : "text-muted-foreground"}`} />
-                    ) : (
-                      <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focused === "email" ? "text-primary" : "text-muted-foreground"}`} />
-                    )}
-                    <input
-                      type={isLogin ? "text" : "email"}
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      onFocus={() => setFocused("email")}
-                      onBlur={() => setFocused(null)}
-                      placeholder={isLogin ? "Digite seu nome de usuario OU e-mail" : "seu@email.com"}
-                      required
-                      className="w-full pl-10 pr-4 py-3.5 rounded-lg bg-card border border-border/50 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                    />
+                {!isResetMode && (
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                      {isForgotPasswordMode || isSignupMode ? "E-mail" : "Usuario ou E-mail"}
+                    </label>
+                    <div className={`relative rounded-lg transition-all duration-300 ${focused === "email" ? "ring-2 ring-primary/40 shadow-lg shadow-primary/10" : ""}`}>
+                      {!isForgotPasswordMode && isLogin ? (
+                        <User className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focused === "email" ? "text-primary" : "text-muted-foreground"}`} />
+                      ) : (
+                        <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focused === "email" ? "text-primary" : "text-muted-foreground"}`} />
+                      )}
+                      <input
+                        type={!isForgotPasswordMode && isLogin ? "text" : "email"}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        onFocus={() => setFocused("email")}
+                        onBlur={() => setFocused(null)}
+                        placeholder={
+                          isForgotPasswordMode
+                            ? "Digite seu e-mail"
+                            : isLogin
+                              ? "Digite seu nome de usuario OU e-mail"
+                              : "seu@email.com"
+                        }
+                        required
+                        className="w-full pl-10 pr-4 py-3.5 rounded-lg bg-card border border-border/50 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div>
+                <AnimatePresence initial={false}>
+                {!isForgotPasswordMode && (
+                <motion.div
+                  key="password-block"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.28 }}
+                >
                   <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Senha</label>
                   <div className={`relative rounded-lg transition-all duration-300 ${focused === "password" ? "ring-2 ring-primary/40 shadow-lg shadow-primary/10" : ""}`}>
                     <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${focused === "password" ? "text-primary" : "text-muted-foreground"}`} />
@@ -318,8 +433,20 @@ const Login = () => {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  {isLogin && !isResetMode && (
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleForgotPassword}
+                        disabled={loading}
+                        className="text-sm text-primary hover:underline disabled:opacity-50"
+                      >
+                        Esqueci minha senha
+                      </button>
+                    </div>
+                  )}
 
-                  {!isLogin && (
+                  {isSignupMode && (
                     <div className="mt-2">
                       <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                         <div className={`h-full ${strengthMeta.color} transition-all duration-300`} style={{ width: `${(strengthScore / 4) * 100}%` }} />
@@ -329,9 +456,11 @@ const Login = () => {
                       </p>
                     </div>
                   )}
-                </div>
+                </motion.div>
+                )}
+                </AnimatePresence>
 
-                {!isLogin && (
+                {isSignupMode && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.2 }}>
                     <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Confirmar senha</label>
                     <div className={`relative rounded-lg transition-all duration-300 ${focused === "confirmPassword" ? "ring-2 ring-primary/40 shadow-lg shadow-primary/10" : ""}`}>
@@ -361,7 +490,7 @@ const Login = () => {
 
                 <motion.button
                   type="submit"
-                  disabled={isLogin ? loading : !canSubmitSignup}
+                  disabled={submitDisabled}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-all duration-300 disabled:opacity-50 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 relative overflow-hidden"
@@ -376,18 +505,45 @@ const Login = () => {
                     transition={{ duration: 1.2, repeat: Infinity, repeatDelay: 8, ease: "easeInOut" }}
                   />
                   <span className="relative z-10 flex items-center gap-2">
-                    {loading ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
+                    {loading
+                      ? "Carregando..."
+                      : isResetMode
+                        ? "Redefinir senha"
+                        : isForgotPasswordMode
+                          ? "Enviar link"
+                          : isLogin
+                            ? "Entrar"
+                            : "Criar conta"}
                     {!loading && <ArrowRight className="h-4 w-4" />}
                   </span>
                 </motion.button>
               </form>
 
-          <p className="text-center text-sm text-muted-foreground mt-5">
-            {isLogin ? "Nao tem uma conta?" : "Ja tem uma conta?"}{" "}
-            <button onClick={() => setIsLogin(!isLogin)} className="text-primary font-medium hover:underline">
-              {isLogin ? "Criar conta" : "Entrar"}
-            </button>
-          </p>
+          {!isResetMode && !isForgotPasswordMode && (
+            <p className="text-center text-sm text-muted-foreground mt-5">
+              {isLogin ? "Nao tem uma conta?" : "Ja tem uma conta?"}{" "}
+              <button
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setIsForgotPasswordMode(false);
+                }}
+                className="text-primary font-medium hover:underline"
+              >
+                {isLogin ? "Criar conta" : "Entrar"}
+              </button>
+            </p>
+          )}
+          {isForgotPasswordMode && (
+            <p className="text-center text-sm text-muted-foreground mt-5">
+              Lembrou a senha?{" "}
+              <button
+                onClick={() => setIsForgotPasswordMode(false)}
+                className="text-primary font-medium hover:underline"
+              >
+                Voltar ao login
+              </button>
+            </p>
+          )}
 
           <Link to="/" onClick={handleBackToHome} className="block text-center text-sm text-muted-foreground mt-2 py-1 hover:text-foreground transition-colors">
             ← Voltar para a pagina inicial
