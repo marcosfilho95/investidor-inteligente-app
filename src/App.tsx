@@ -3,12 +3,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { getRealPricesSync, loadRealPriceData } from "@/data/csvLoader";
 import { getMacroDataSync, loadMacroData } from "@/data/macroLoader";
 import { setMacroMarketData, setRealMarketData } from "@/data/investments";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { AppHeader } from "@/components/AppHeader";
 import { supabase } from "@/integrations/supabase/client";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -30,6 +31,25 @@ function ScrollToTop() {
   }, [pathname]);
 
   return null;
+}
+
+function AuthenticatedLayout() {
+  const { pathname } = useLocation();
+  const activePage =
+    pathname.startsWith("/carteira")
+      ? "carteira"
+      : pathname.startsWith("/ativos")
+        ? "ativos"
+        : pathname.startsWith("/aprender")
+          ? "aprender"
+          : "dashboard";
+
+  return (
+    <>
+      <AppHeader activePage={activePage} />
+      <Outlet />
+    </>
+  );
 }
 
 function AppContent() {
@@ -165,15 +185,17 @@ function AppContent() {
       <Sonner />
       <ScrollToTop />
       <AnimatePresence mode="sync">
-        <Routes location={location} key={location.pathname}>
+        <Routes location={location}>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/carteira" element={<Portfolio />} />
-          <Route path="/ativos" element={<Assets />} />
-          <Route path="/ativos/:symbol" element={<AssetDetail />} />
-          <Route path="/aprender" element={<Education />} />
-          <Route path="/perfil" element={<Profile />} />
+          <Route element={<AuthenticatedLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/carteira" element={<Portfolio />} />
+            <Route path="/ativos" element={<Assets />} />
+            <Route path="/ativos/:symbol" element={<AssetDetail />} />
+            <Route path="/aprender" element={<Education />} />
+            <Route path="/perfil" element={<Profile />} />
+          </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AnimatePresence>

@@ -4,7 +4,6 @@ import { AllocationChart } from "@/components/AllocationChart";
 import { HoldingsTable } from "@/components/HoldingsTable";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { SmartInsightModal } from "@/components/SmartInsightModal";
-import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -402,7 +401,6 @@ ${aiCompatibilityWarning ? `\n${aiCompatibilityWarning}` : ""}`, [greeting, user
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader activePage="dashboard" />
       <PageTransition>
         <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
           <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-primary/[0.03] p-5 md:p-6">

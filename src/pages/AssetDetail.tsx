@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   TrendingUp,
   TrendingDown,
-  LayoutDashboard,
   ShoppingCart,
   DollarSign,
   Star,
@@ -614,21 +613,14 @@ const AssetDetail = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border/50 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-[1400px] mx-auto px-6 h-14 flex items-center gap-4">
-          <Link to="/ativos" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" /><span className="text-sm">Ativos</span>
-          </Link>
-          <div className="h-4 w-px bg-border" />
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center"><LayoutDashboard className="h-4 w-4 text-primary-foreground" /></div>
-            <span className="font-semibold text-sm tracking-tight">Investidor Inteligente</span>
-          </div>
-        </div>
-      </header>
-
       <PageTransition>
         <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5 sm:py-6 space-y-6">
+          <div className="flex items-center">
+            <Link to="/ativos" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="h-4 w-4" />
+              Voltar para Ativos
+            </Link>
+          </div>
           {/* Hero */}
           <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-card/30 p-4 sm:p-6 md:p-8 backdrop-blur-xl">
             <div className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
