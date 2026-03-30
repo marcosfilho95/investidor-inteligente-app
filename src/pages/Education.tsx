@@ -1,7 +1,6 @@
 ﻿import { ChevronRight, GraduationCap, TrendingUp, Brain, BarChart3, Shield, Bot, Lightbulb } from "lucide-react";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AppHeader } from "@/components/AppHeader";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 
@@ -319,7 +318,6 @@ const Education = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader activePage="aprender" />
       <PageTransition>
         <main className="max-w-[1400px] mx-auto px-6 py-8">
           <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-primary/[0.03] p-6 md:p-8 mb-8">

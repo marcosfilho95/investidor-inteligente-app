@@ -20,6 +20,10 @@ const navItems = [
 
 const AVATAR_STORAGE_PREFIX = "ii_profile_avatar_";
 const getAvatarStorageKeys = (id?: string) => (id ? [`${AVATAR_STORAGE_PREFIX}${id}`] : []);
+const getCurrentAvatarFromCache = () => {
+  const cached = localStorage.getItem("ii_profile_avatar_current");
+  return typeof cached === "string" && cached.length > 0 ? cached : null;
+};
 const clearAllAvatarCache = () => {
   Object.keys(localStorage)
     .filter((k) => k.startsWith(AVATAR_STORAGE_PREFIX))
@@ -29,7 +33,7 @@ const clearAllAvatarCache = () => {
 
 export function AppHeader({ activePage }: AppHeaderProps) {
   const [userName, setUserName] = useState(() => localStorage.getItem("ii_user_name") || "IN");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => getCurrentAvatarFromCache());
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showTourMenu, setShowTourMenu] = useState(false);
@@ -69,6 +73,10 @@ export function AppHeader({ activePage }: AppHeaderProps) {
 
     const avatarKeys = getAvatarStorageKeys(user.id);
     const localAvatar = avatarKeys.map((k) => localStorage.getItem(k)).find((v) => typeof v === "string" && v.length > 0) || null;
+    if (localAvatar) {
+      setAvatarUrl(localAvatar);
+      localStorage.setItem("ii_profile_avatar_current", localAvatar);
+    }
 
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
@@ -82,6 +90,7 @@ export function AppHeader({ activePage }: AppHeaderProps) {
       } else {
         setAvatarUrl(null);
         for (const key of avatarKeys) localStorage.removeItem(key);
+        localStorage.removeItem("ii_profile_avatar_current");
       }
       return;
     }
@@ -103,16 +112,19 @@ export function AppHeader({ activePage }: AppHeaderProps) {
     if (resolvedAvatar) {
       setAvatarUrl(resolvedAvatar);
       for (const key of avatarKeys) localStorage.setItem(key, resolvedAvatar);
+      localStorage.setItem("ii_profile_avatar_current", resolvedAvatar);
       return;
     }
 
     if (localAvatar) {
       setAvatarUrl(localAvatar);
+      localStorage.setItem("ii_profile_avatar_current", localAvatar);
       return;
     }
 
     setAvatarUrl(null);
     for (const key of avatarKeys) localStorage.removeItem(key);
+    localStorage.removeItem("ii_profile_avatar_current");
   }, []);
 
   useEffect(() => {

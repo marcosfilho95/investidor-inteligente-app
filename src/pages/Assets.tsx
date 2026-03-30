@@ -11,14 +11,72 @@ import {
   invalidateIntradayHistoryCache,
 } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
-import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { getAssetRouteSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
+
+type FundamentalFilters = {
+  dy: string;
+  pl: string;
+  roe: string;
+  marketCap: string;
+};
+
+const parseFilterNumber = (value: string): number | null => {
+  const normalized = value.trim().replace(",", ".");
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const matchesThreshold = (
+  value: number | null | undefined,
+  threshold: number | null,
+  mode: "min" | "max"
+): boolean => {
+  if (threshold === null) return true;
+  if (typeof value !== "number" || !Number.isFinite(value)) return false;
+  return mode === "min" ? value >= threshold : value <= threshold;
+};
+
+const parseMarketCapToBillions = (raw: string): number | null => {
+  if (!raw) return null;
+  let normalized = raw.trim().toUpperCase().replace(/\s+/g, "").replace("R$", "");
+  if (!normalized) return null;
+
+  let multiplier = 1;
+  if (normalized.endsWith("T")) {
+    multiplier = 1000;
+    normalized = normalized.slice(0, -1);
+  } else if (normalized.endsWith("B")) {
+    multiplier = 1;
+    normalized = normalized.slice(0, -1);
+  } else if (normalized.endsWith("M")) {
+    multiplier = 0.001;
+    normalized = normalized.slice(0, -1);
+  } else if (normalized.endsWith("K")) {
+    multiplier = 0.000001;
+    normalized = normalized.slice(0, -1);
+  }
+
+  const numericPart =
+    normalized.includes(",") && normalized.includes(".")
+      ? normalized.replace(/\./g, "").replace(",", ".")
+      : normalized.replace(",", ".");
+  const parsed = Number(numericPart);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed * multiplier;
+};
 
 const Assets = () => {
   const [search, setSearch] = useState("");
   const [trendFilter, setTrendFilter] = useState<"Todos" | "Em alta" | "Em baixa">("Todos");
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
+  const [fundamentalFilters, setFundamentalFilters] = useState<FundamentalFilters>({
+    dy: "",
+    pl: "",
+    roe: "",
+    marketCap: "",
+  });
   const [isSectorFilterOpen, setIsSectorFilterOpen] = useState(false);
   const sectorsFilterRef = useRef<HTMLDivElement | null>(null);
   const [livePoints, setLivePoints] = useState<Record<string, { price: number; datetime: string }>>({});
@@ -168,11 +226,17 @@ const Assets = () => {
 
   const filtered = useMemo(() => {
     const normalizedSearch = normalizeSearchText(search);
+    const dyMax = parseFilterNumber(fundamentalFilters.dy);
+    const plMax = parseFilterNumber(fundamentalFilters.pl);
+    const roeMin = parseFilterNumber(fundamentalFilters.roe);
+    const capMin = parseFilterNumber(fundamentalFilters.marketCap);
+
     const items = holdings.filter((h) => {
       const canonical = canonicalMetaBySymbol.get(h.symbol);
       const canonicalSector = canonical?.sector || h.sector;
       const displaySymbol = getDisplaySymbol(h.symbol);
       const changePercent = dailyChangeBySymbol[h.symbol] ?? h.changePercent;
+      const marketCapInBillions = parseMarketCapToBillions(h.marketCap);
       const matchSearch =
         normalizeSearchText(h.symbol).includes(normalizedSearch) ||
         normalizeSearchText(displaySymbol).includes(normalizedSearch) ||
@@ -184,8 +248,12 @@ const Assets = () => {
         (trendFilter === "Em baixa" && changePercent < 0);
       const matchSector =
         selectedSectors.length === 0 || selectedSectors.includes(canonicalSector);
+      const matchDy = matchesThreshold(h.dividend, dyMax, "max");
+      const matchPl = matchesThreshold(h.pe, plMax, "max");
+      const matchRoe = matchesThreshold(h.roe, roeMin, "min");
+      const matchMarketCap = matchesThreshold(marketCapInBillions, capMin, "min");
 
-      return matchSearch && matchTrend && matchSector;
+      return matchSearch && matchTrend && matchSector && matchDy && matchPl && matchRoe && matchMarketCap;
     });
 
     if (trendFilter === "Em alta") {
@@ -199,16 +267,21 @@ const Assets = () => {
       );
     }
     return items;
-  }, [canonicalMetaBySymbol, dailyChangeBySymbol, search, selectedSectors, trendFilter]);
+  }, [canonicalMetaBySymbol, dailyChangeBySymbol, fundamentalFilters, search, selectedSectors, trendFilter]);
 
   const hasAnyActiveFilter = Boolean(
-    search.trim() || trendFilter !== "Todos" || selectedSectors.length > 0
+    search.trim() ||
+    trendFilter !== "Todos" ||
+    selectedSectors.length > 0 ||
+    fundamentalFilters.dy ||
+    fundamentalFilters.pl ||
+    fundamentalFilters.roe ||
+    fundamentalFilters.marketCap
   );
   const showClearButton = hasAnyActiveFilter || isSectorFilterOpen;
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader activePage="ativos" />
       <PageTransition>
         <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
           <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-primary/[0.03] p-6 md:p-8">
@@ -262,7 +335,15 @@ const Assets = () => {
             </div>
           </div>
 
-          <div className="relative z-40 rounded-2xl border border-border/30 bg-card/[0.35] backdrop-blur-sm p-3">
+          <div className="relative z-40 overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-b from-card/[0.72] via-card/[0.55] to-card/[0.45] p-3.5 shadow-[0_12px_34px_-22px_rgba(0,0,0,0.75)] backdrop-blur-xl">
+            <div className="pointer-events-none absolute -top-12 -right-10 h-28 w-28 rounded-full bg-primary/[0.08] blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-14 -left-10 h-28 w-28 rounded-full bg-primary/[0.06] blur-2xl" />
+            <div className="relative mb-2 flex items-center justify-between gap-2 px-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Filtros rápidos
+              </p>
+              <p className="text-[10px] text-muted-foreground/80">Refine por tendência e fundamentos</p>
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:items-center sm:grid-cols-[minmax(0,1fr)_200px_auto]">
               <div className="relative w-full min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -271,7 +352,7 @@ const Assets = () => {
                   placeholder="Buscar ativo por nome ou símbolo"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background/40 border border-border/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/40 transition-all"
+                  className="h-11 w-full rounded-xl border border-border/60 bg-background/55 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground/90 transition-all focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/45"
                 />
               </div>
               <div className="w-full min-w-0">
@@ -279,11 +360,11 @@ const Assets = () => {
                   <button
                     type="button"
                     onClick={() => setIsSectorFilterOpen((prev) => !prev)}
-                    className="h-[42px] w-full px-4 rounded-xl border border-border/50 bg-background/40 text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center justify-between gap-2 cursor-pointer select-none"
+                    className="h-11 w-full select-none rounded-xl border border-border/60 bg-background/55 px-4 text-sm text-muted-foreground transition-colors hover:text-foreground inline-flex items-center justify-between gap-2 cursor-pointer"
                   >
                     Setores
                     {selectedSectors.length > 0 && (
-                      <span className="px-1.5 py-0.5 rounded-md bg-primary/15 text-primary text-[10px] font-semibold">
+                      <span className="rounded-md border border-primary/30 bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
                         {selectedSectors.length}
                       </span>
                     )}
@@ -342,29 +423,60 @@ const Assets = () => {
                     setSearch("");
                     setTrendFilter("Todos");
                     setSelectedSectors([]);
+                    setFundamentalFilters({
+                      dy: "",
+                      pl: "",
+                      roe: "",
+                      marketCap: "",
+                    });
                     setIsSectorFilterOpen(false);
                   }}
                   disabled={!showClearButton}
                   tabIndex={showClearButton ? 0 : -1}
-                  className="h-[42px] w-full px-3 rounded-xl border border-border/50 bg-background/40 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:pointer-events-none"
+                  className="h-11 w-full rounded-xl border border-border/60 bg-background/55 px-3 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none"
                 >
                   Limpar tudo
                 </button>
               </motion.div>
             </div>
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="mt-3 flex flex-wrap gap-1.5 rounded-xl border border-border/35 bg-background/25 p-1.5">
               {(["Todos", "Em alta", "Em baixa"] as const).map((trend) => (
                 <button
                   key={trend}
                   onClick={() => setTrendFilter(trend)}
-                  className={`min-w-[108px] px-4 py-2 text-xs font-medium rounded-xl transition-all ${
+                  className={`min-w-[108px] rounded-lg px-4 py-2 text-xs font-medium transition-all ${
                     trendFilter === trend
-                      ? "bg-primary/15 text-primary border border-primary/30 shadow-[0_0_12px_-4px] shadow-primary/20"
-                      : "bg-background/30 border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/70"
+                      ? "border border-primary/35 bg-primary/15 text-primary shadow-[0_0_14px_-6px] shadow-primary/35"
+                      : "border border-transparent bg-background/30 text-muted-foreground hover:text-foreground hover:border-border/60"
                   }`}
                 >
                   {trend}
                 </button>
+              ))}
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+              {[
+                { key: "dy", label: "DY MÁX (%)", hint: "Ex: 5" },
+                { key: "pl", label: "P/L MÁX", hint: "Ex: 10" },
+                { key: "roe", label: "ROE MÍN (%)", hint: "Ex: 8" },
+                { key: "marketCap", label: "Market Cap MÍN (B)", hint: "Ex: 10" },
+              ].map((item) => (
+                <div key={item.key} className="rounded-xl border border-border/45 bg-background/35 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90">{item.label}</p>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={fundamentalFilters[item.key as keyof FundamentalFilters]}
+                    onChange={(e) =>
+                      setFundamentalFilters((prev) => ({
+                        ...prev,
+                        [item.key]: e.target.value,
+                      }))
+                    }
+                    placeholder={item.hint}
+                    className="mt-2 h-9 w-full rounded-lg border border-border/60 bg-background/65 px-2.5 text-xs text-foreground placeholder:text-muted-foreground transition-all focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/45"
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -486,3 +598,4 @@ const Assets = () => {
 };
 
 export default Assets;
+

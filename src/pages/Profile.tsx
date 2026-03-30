@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { User, Mail, Calendar, LogOut, ChevronRight, Wallet, TrendingUp, PieChart, Camera, GraduationCap, ShieldCheck, BellRing } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
-import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { useUserHoldings } from "@/hooks/useUserHoldings";
 import { useToast } from "@/hooks/use-toast";
@@ -619,7 +618,6 @@ const Profile = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <AppHeader activePage="dashboard" />
         <div className="flex items-center justify-center h-[60vh]">
           <div className="animate-pulse text-muted-foreground text-sm">Carregando perfil...</div>
         </div>
@@ -629,7 +627,6 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader activePage="dashboard" />
       <PageTransition>
         <main className="max-w-3xl mx-auto px-6 py-8 space-y-6">
           <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-primary/[0.04]">

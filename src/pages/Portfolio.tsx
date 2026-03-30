@@ -9,7 +9,6 @@ import {
   Tooltip
 } from "recharts";
 import { AiChatWidget } from "@/components/AiChatWidget";
-import { AppHeader } from "@/components/AppHeader";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -677,7 +676,6 @@ const Portfolio = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader activePage="carteira" />
       <PageTransition>
         <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-6">
           <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-primary/[0.03] p-6 md:p-8">
