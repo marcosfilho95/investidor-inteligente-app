@@ -349,7 +349,7 @@ const Assets = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Buscar ativo por nome ou símbolo"
+                  placeholder="Buscar ativo por nome ou ticker"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="h-11 w-full rounded-xl border border-border/60 bg-background/55 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground/90 transition-all focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/45"
