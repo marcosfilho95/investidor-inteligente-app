@@ -199,6 +199,7 @@ Crie um `.env` na raiz com:
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=<anon-or-publishable-key>
 VITE_SUPABASE_PROJECT_ID=<project-ref>
+VITE_PUBLIC_APP_URL=https://<seu-dominio-publico>
 ```
 
 Importante:
