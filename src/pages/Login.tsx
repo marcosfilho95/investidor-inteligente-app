@@ -230,6 +230,7 @@ const Login = () => {
   };
 
   const isSignupMode = !isLogin && !isResetMode && !isForgotPasswordMode;
+  const needsPasswordConfirmation = isSignupMode || isResetMode;
   const submitDisabled = isForgotPasswordMode
     ? loading || !email.trim()
     : isLogin || isResetMode
@@ -469,7 +470,7 @@ const Login = () => {
                 )}
                 </AnimatePresence>
 
-                {isSignupMode && (
+                {needsPasswordConfirmation && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.2 }}>
                     <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Confirmar senha</label>
                     <div className={`relative rounded-lg transition-all duration-300 ${focused === "confirmPassword" ? "ring-2 ring-primary/40 shadow-lg shadow-primary/10" : ""}`}>
