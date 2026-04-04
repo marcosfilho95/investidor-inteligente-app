@@ -6,6 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AnimatedBackground from "@/components/landing/FloatingElements";
 
+const getAppBaseUrl = () => {
+  const configuredUrl = (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined)?.trim();
+  const baseUrl = configuredUrl || window.location.origin;
+  return baseUrl.replace(/\/+$/, "");
+};
+
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isResetMode, setIsResetMode] = useState(false);
@@ -26,11 +32,14 @@ const Login = () => {
 
   useEffect(() => {
     const mode = searchParams.get("mode");
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const isRecoveryLink = hashParams.get("type") === "recovery" || !!hashParams.get("access_token");
+
     if (mode === "signup") {
       setIsLogin(false);
       setIsForgotPasswordMode(false);
     }
-    if (mode === "reset") {
+    if (mode === "reset" || isRecoveryLink) {
       setIsResetMode(true);
       setIsLogin(false);
       setIsForgotPasswordMode(false);
@@ -101,7 +110,7 @@ const Login = () => {
     try {
       if (isForgotPasswordMode) {
         const emailForReset = email.trim();
-        const redirectTo = `${window.location.origin}/login?mode=reset`;
+        const redirectTo = `${getAppBaseUrl()}/login?mode=reset`;
         const { error } = await supabase.auth.resetPasswordForEmail(emailForReset, { redirectTo });
         if (error) throw error;
 
