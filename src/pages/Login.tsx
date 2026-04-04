@@ -47,6 +47,25 @@ const Login = () => {
   }, [searchParams]);
 
   useEffect(() => {
+    const mode = searchParams.get("mode");
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const isRecoveryLink = hashParams.get("type") === "recovery" || !!hashParams.get("access_token");
+    if (mode === "reset" || isRecoveryLink || isForgotPasswordMode) return;
+
+    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) return;
+      if (data.user) {
+        navigate("/dashboard", { replace: true });
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [navigate, searchParams, isForgotPasswordMode]);
+
+  useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
@@ -141,14 +160,17 @@ const Login = () => {
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
 
+        await supabase.auth.signOut();
+
         toast({
           title: "Senha redefinida com sucesso!",
-          description: "Agora voce ja pode entrar com a nova senha.",
+          description: "Entre novamente com sua nova senha.",
         });
         setIsResetMode(false);
         setIsLogin(true);
         setPassword("");
         setConfirmPassword("");
+        navigate("/login", { replace: true });
         return;
       }
 

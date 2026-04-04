@@ -5,6 +5,7 @@ import { motion, useInView, useReducedMotion } from "framer-motion";
 import AnimatedBackground from "@/components/landing/FloatingElements";
 import FoldSection from "@/components/landing/FoldSection";
 import ChatSimulation from "@/components/landing/ChatSimulation";
+import { supabase } from "@/integrations/supabase/client";
 
 const features = [
   { icon: Bot, title: "Hodl - Assistente IA", description: "Tire dúvidas sobre investimentos a qualquer momento. O Hodl explica conceitos de forma simples e te ajuda a tomar decisões." },
@@ -72,6 +73,21 @@ const Landing = () => {
   const navigate = useNavigate();
   const [isLeaving, setIsLeaving] = useState(false);
   const prefersReducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) return;
+      if (data.user) {
+        navigate("/dashboard", { replace: true });
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [navigate]);
 
   const fadeUp = {
     hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 18 },
