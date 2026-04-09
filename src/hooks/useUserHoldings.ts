@@ -33,6 +33,8 @@ export interface PortfolioMetrics {
   dailyChange: number;
   dailyChangePercent: number;
   totalGainPercent: number;
+  marketDataFresh: boolean;
+  latestMarketDate: string | null;
 }
 
 type HoldingsCacheEntry = {
@@ -49,6 +51,31 @@ let memoryCacheByUser: Record<string, HoldingsCacheEntry> = {};
 let inFlightByUser: Record<string, Promise<UserHolding[]> | null> = {};
 let activeUserCache: HoldingsCacheEntry | null = null;
 const MONEY_EPSILON = 0.005;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function toDateOnlyKeyInBrt(input: Date): string {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(input);
+}
+
+function dateKeyDiffInDays(latestDateKey: string, now = new Date()): number {
+  const todayKey = toDateOnlyKeyInBrt(now);
+  const latestMs = new Date(`${latestDateKey}T00:00:00Z`).getTime();
+  const todayMs = new Date(`${todayKey}T00:00:00Z`).getTime();
+  if (!Number.isFinite(latestMs) || !Number.isFinite(todayMs)) return Number.MAX_SAFE_INTEGER;
+  return Math.floor((todayMs - latestMs) / DAY_MS);
+}
+
+function isMarketSnapshotFresh(latestDateKey: string | null): boolean {
+  if (!latestDateKey) return false;
+  // 0-3 days covers current day, previous close, and weekend/holiday gaps.
+  return dateKeyDiffInDays(latestDateKey) <= 3;
+}
 
 function isFresh(entry?: HoldingsCacheEntry): boolean {
   if (!entry) return false;
@@ -513,6 +540,24 @@ export function useUserHoldings() {
       lastTradeDate: string | null;
     })[];
 
+  const latestMarketDate = useMemo<string | null>(() => {
+    const dates = enrichedHoldings
+      .map((h) => {
+        const series = getMarketHistory()[h.symbol] || [];
+        const latest = series.length > 0 ? series[series.length - 1] : null;
+        return (latest?.date || "").slice(0, 10) || null;
+      })
+      .filter((d): d is string => Boolean(d));
+
+    if (dates.length === 0) return null;
+    return dates.sort()[dates.length - 1];
+  }, [enrichedHoldings]);
+
+  const marketDataFresh = useMemo(() => {
+    if (enrichedHoldings.length === 0) return true;
+    return isMarketSnapshotFresh(latestMarketDate);
+  }, [enrichedHoldings.length, latestMarketDate]);
+
   const totalValue = enrichedHoldings.reduce((sum, h) => sum + h.value, 0);
   enrichedHoldings.forEach((h) => {
     h.allocation = totalValue > 0 ? Math.round((h.value / totalValue) * 10000) / 100 : 0;
@@ -590,8 +635,10 @@ export function useUserHoldings() {
       dailyChange: Math.round(dailyChange * 100) / 100,
       dailyChangePercent,
       totalGainPercent,
+      marketDataFresh,
+      latestMarketDate,
     };
-  }, [enrichedHoldings, effectiveTrades, userHoldings]);
+  }, [enrichedHoldings, effectiveTrades, latestMarketDate, marketDataFresh, userHoldings]);
 
   return {
     userHoldings,

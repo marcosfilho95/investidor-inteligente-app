@@ -58,6 +58,7 @@ export interface SmartAlertsContext {
   portfolioDailyChangePercent: number;
   portfolioDailyChangeValue?: number;
   isFirstEntry: boolean;
+  marketDataFresh?: boolean;
   investorProfile?: InvestorProfileSummary | null;
   portfolioRisk?: PortfolioRiskSummary | null;
 }
@@ -275,6 +276,7 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
   const isEmpty = holdings.length === 0;
   const profileType = ctx.investorProfile?.type ?? null;
   const profileKey = profileToKey(profileType);
+  const canUseDailyMovementSignals = ctx.marketDataFresh !== false;
 
   if (isEmpty) {
     candidates.push({
@@ -333,6 +335,7 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
 
   const portfolioDropCfg = resolveConfig("portfolio_drop", profileType);
   if (
+    canUseDailyMovementSignals &&
     portfolioDaily <= Number(portfolioDropCfg.threshold) &&
     (!Number.isFinite(portfolioDropCfg.minImpactValue) ||
       Math.abs(Number(ctx.portfolioDailyChangeValue ?? 0)) >= Number(portfolioDropCfg.minImpactValue))
@@ -359,13 +362,15 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
   }
 
   const assetDropCfg = resolveConfig("asset_drop", profileType);
-  const droppedAssets = holdings
+  const droppedAssets = canUseDailyMovementSignals
+    ? holdings
     .filter(
       (h) =>
         h.allocation >= Number(assetDropCfg.minWeight ?? 0) &&
         normalizePct(h.changePercent) <= Number(assetDropCfg.threshold)
     )
-    .sort((a, b) => a.changePercent - b.changePercent);
+    .sort((a, b) => a.changePercent - b.changePercent)
+    : [];
 
   if (droppedAssets.length > 0) {
     const worst = droppedAssets[0];
@@ -391,6 +396,7 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
 
   const portfolioRiseCfg = resolveConfig("portfolio_rise", profileType);
   if (
+    canUseDailyMovementSignals &&
     portfolioDaily >= Number(portfolioRiseCfg.threshold) &&
     (!Number.isFinite(portfolioRiseCfg.minImpactValue) ||
       Math.abs(Number(ctx.portfolioDailyChangeValue ?? 0)) >= Number(portfolioRiseCfg.minImpactValue))
@@ -413,13 +419,15 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
   }
 
   const assetRiseCfg = resolveConfig("asset_rise", profileType);
-  const risingAssets = holdings
+  const risingAssets = canUseDailyMovementSignals
+    ? holdings
     .filter(
       (h) =>
         h.allocation >= Number(assetRiseCfg.minWeight ?? 0) &&
         normalizePct(h.changePercent) >= Number(assetRiseCfg.threshold)
     )
-    .sort((a, b) => b.changePercent - a.changePercent);
+    .sort((a, b) => b.changePercent - a.changePercent)
+    : [];
 
   if (risingAssets.length > 0) {
     const best = risingAssets[0];

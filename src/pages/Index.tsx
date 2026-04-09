@@ -258,6 +258,7 @@ const Index = () => {
           portfolioDailyChangePercent: portfolioMetrics.dailyChangePercent,
           portfolioDailyChangeValue: portfolioMetrics.dailyChange,
           isFirstEntry: false,
+          marketDataFresh: portfolioMetrics.marketDataFresh,
           investorProfile,
           portfolioRisk,
         });
