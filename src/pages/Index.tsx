@@ -256,6 +256,7 @@ const Index = () => {
         const selection = await selectTopSmartAlert(currentUser.id, {
           holdings: enrichedHoldings,
           portfolioDailyChangePercent: portfolioMetrics.dailyChangePercent,
+          portfolioRecent2dChangePercent: portfolioMetrics.recent2dChangePercent,
           portfolioDailyChangeValue: portfolioMetrics.dailyChange,
           isFirstEntry: false,
           marketDataFresh: portfolioMetrics.marketDataFresh,

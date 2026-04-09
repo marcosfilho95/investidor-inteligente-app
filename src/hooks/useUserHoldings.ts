@@ -32,6 +32,7 @@ export interface PortfolioMetrics {
   openGainPercent: number;
   dailyChange: number;
   dailyChangePercent: number;
+  recent2dChangePercent: number;
   totalGainPercent: number;
   marketDataFresh: boolean;
   latestMarketDate: string | null;
@@ -501,6 +502,9 @@ export function useUserHoldings() {
       const prevClose = marketSeries.length > 1 ? marketSeries[marketSeries.length - 2].close : latestClose;
       const displayedPrice = Number(latestClose);
       const referenceClose = Number(prevClose);
+      const prev2Close = marketSeries.length > 2 ? marketSeries[marketSeries.length - 3].close : referenceClose;
+      const recent2dChangePercent =
+        Number(prev2Close) > 0 ? Math.round((((displayedPrice / Number(prev2Close)) - 1) * 100) * 100) / 100 : 0;
       const value = uh.shares * displayedPrice;
       const dayChangeValue = (displayedPrice - referenceClose) * uh.shares;
       const totalGainValue = (displayedPrice - uh.avg_price) * uh.shares;
@@ -513,6 +517,7 @@ export function useUserHoldings() {
         price: displayedPrice,
         change: displayedPrice - referenceClose,
         changePercent: referenceClose > 0 ? Math.round((((displayedPrice / referenceClose) - 1) * 100) * 100) / 100 : 0,
+        recent2dChangePercent,
         shares: uh.shares,
         avgPrice: uh.avg_price,
         value,
@@ -634,6 +639,7 @@ export function useUserHoldings() {
       openGainPercent,
       dailyChange: Math.round(dailyChange * 100) / 100,
       dailyChangePercent,
+      recent2dChangePercent: perf.last2dReturnPct,
       totalGainPercent,
       marketDataFresh,
       latestMarketDate,

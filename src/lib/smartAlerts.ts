@@ -53,9 +53,11 @@ export interface SmartAlertsContext {
       allocation: number;
       changePercent: number;
       price: number;
+      recent2dChangePercent?: number;
     }
   >;
   portfolioDailyChangePercent: number;
+  portfolioRecent2dChangePercent?: number;
   portfolioDailyChangeValue?: number;
   isFirstEntry: boolean;
   marketDataFresh?: boolean;
@@ -372,7 +374,7 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
   const portfolioDropCfg = resolveConfig("portfolio_drop", profileType);
   if (
     canUseDailyMovementSignals &&
-    portfolioDaily <= Number(portfolioDropCfg.threshold) &&
+    portfolioDownPressure <= Number(portfolioDropCfg.threshold) &&
     (!Number.isFinite(portfolioDropCfg.minImpactValue) ||
       Math.abs(Number(ctx.portfolioDailyChangeValue ?? 0)) >= Number(portfolioDropCfg.minImpactValue))
   ) {
@@ -382,7 +384,7 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
       entityId: "portfolio",
       priority: portfolioDropCfg.priority,
       cooldownDays: portfolioDropCfg.cooldownDays,
-      referenceValue: portfolioDaily,
+      referenceValue: portfolioDownPressure,
       materialDelta: portfolioDropCfg.materialDelta,
       materialDirection: portfolioDropCfg.materialDirection,
       title: "😨 Haaaja coração!",
@@ -401,11 +403,24 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
   const droppedAssets = canUseDailyMovementSignals
     ? holdings
     .filter(
-      (h) =>
-        h.allocation >= Number(assetDropCfg.minWeight ?? 0) &&
-        normalizePct(h.changePercent) <= Number(assetDropCfg.threshold)
+      (h) => {
+        const daily = normalizePct(h.changePercent);
+        const recent2d = normalizePct(h.recent2dChangePercent ?? h.changePercent);
+        const downPressure = Math.min(daily, recent2d);
+        return h.allocation >= Number(assetDropCfg.minWeight ?? 0) && downPressure <= Number(assetDropCfg.threshold);
+      }
     )
-    .sort((a, b) => a.changePercent - b.changePercent)
+    .sort((a, b) => {
+      const aDown = Math.min(
+        normalizePct(a.changePercent),
+        normalizePct(a.recent2dChangePercent ?? a.changePercent)
+      );
+      const bDown = Math.min(
+        normalizePct(b.changePercent),
+        normalizePct(b.recent2dChangePercent ?? b.changePercent)
+      );
+      return aDown - bDown;
+    })
     : [];
 
   if (droppedAssets.length > 0) {
@@ -420,7 +435,10 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
       entityId: worst.symbol,
       priority: assetDropCfg.priority,
       cooldownDays: assetDropCfg.cooldownDays,
-      referenceValue: normalizePct(worst.changePercent),
+      referenceValue: Math.min(
+        normalizePct(worst.changePercent),
+        normalizePct(worst.recent2dChangePercent ?? worst.changePercent)
+      ),
       materialDelta: assetDropCfg.materialDelta,
       materialDirection: assetDropCfg.materialDirection,
       title: droppedAssets.length > 1 ? "🩸 Sangue no pregão!" : "🐻 O urso acordou com fome!",
@@ -679,6 +697,8 @@ export async function selectTopSmartAlert(userId: string, ctx: SmartAlertsContex
 
   const profileType = ctx.investorProfile?.type ?? null;
   const portfolioDaily = normalizePct(ctx.portfolioDailyChangePercent);
+  const portfolioRecent2d = normalizePct(ctx.portfolioRecent2dChangePercent ?? ctx.portfolioDailyChangePercent);
+  const portfolioDownPressure = Math.min(portfolioDaily, portfolioRecent2d);
   const history = await loadAlertHistory(userId);
   await pruneResolvedAlertHistory(userId, history, candidates);
   const evaluations: SmartAlertEligibilityItem[] = candidates.map((candidate) => {
