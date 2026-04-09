@@ -79,6 +79,49 @@ function formatPctPtBr(value: number): string {
   return `${value.toFixed(2).replace(".", ",")}%`;
 }
 
+function sanitizeMathForDisplay(text: string): string {
+  if (!text || typeof text !== "string") return text;
+
+  let sanitized = text
+    .replace(/\\\(/g, "")
+    .replace(/\\\)/g, "")
+    .replace(/\\\[/g, "")
+    .replace(/\\\]/g, "")
+    .replace(/\\left/g, "")
+    .replace(/\\right/g, "")
+    .replace(/\$\$/g, "")
+    .replace(/\$/g, "")
+    .replace(/```math/gi, "```")
+    .replace(/\\times/g, "x")
+    .replace(/\\cdot/g, "x")
+    .replace(/\\pm/g, "+/-")
+    .replace(/\\leq/g, "<=")
+    .replace(/\\geq/g, ">=")
+    .replace(/\\neq/g, "!=")
+    .replace(/\\approx/g, "~=")
+    .replace(/\\div/g, "/")
+    .replace(/\\operatorname\{([^}]*)\}/g, "$1")
+    .replace(/\\text\{([^}]*)\}/g, "$1")
+    .replace(/\\mathrm\{([^}]*)\}/g, "$1")
+    .replace(/\\mathbf\{([^}]*)\}/g, "$1")
+    .replace(/\^\{([^}]*)\}/g, "^$1")
+    .replace(/_\{([^}]*)\}/g, "_$1")
+    .replace(/\\sqrt\[([^\]]+)\]\{([^}]*)\}/g, "root($1, $2)")
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, "$1/$2")
+    .replace(/\\sqrt\{([^}]*)\}/g, "sqrt($1)")
+    .replace(/\\_/g, "_")
+    .replace(/\\%/g, "%");
+
+  for (let i = 0; i < 3; i++) {
+    const next = sanitized.replace(/\\frac\{([^{}]*)\}\{([^{}]*)\}/g, "$1/$2");
+    if (next === sanitized) break;
+    sanitized = next;
+  }
+
+  sanitized = sanitized.replace(/\\/g, "");
+  return sanitized;
+}
+
 const BROAD_ANALYTICAL_TERMS = [
   "fale sobre",
   "me explique",
@@ -632,7 +675,7 @@ export function AiChatWidget({
                     : "max-w-[88%] bg-secondary/60 border border-border/30 text-foreground rounded-bl-md prose prose-sm prose-invert [&_p]:m-0 [&_p]:mb-1.5 [&_ul]:m-0 [&_ol]:m-0 [&_li]:m-0 [&_strong]:text-primary/90 [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:mt-1.5 [&_h2]:mb-0.5 [&_h3]:mt-1 [&_h3]:mb-0.5 [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[11px]"
                 }`}
               >
-                {msg.role === "user" ? msg.content : <ReactMarkdown>{msg.content}</ReactMarkdown>}
+                {msg.role === "user" ? msg.content : <ReactMarkdown>{sanitizeMathForDisplay(msg.content)}</ReactMarkdown>}
               </div>
             </motion.div>
           ))}
