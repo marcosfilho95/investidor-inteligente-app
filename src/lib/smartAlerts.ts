@@ -58,6 +58,10 @@ export interface SmartAlertsContext {
   >;
   portfolioDailyChangePercent: number;
   portfolioRecent2dChangePercent?: number;
+  portfolioWorstDailyChangePercentInWindow?: number;
+  portfolioBestDailyChangePercentInWindow?: number;
+  assetWorstDailyChangePercentInWindowBySymbol?: Record<string, number>;
+  assetBestDailyChangePercentInWindowBySymbol?: Record<string, number>;
   portfolioDailyChangeValue?: number;
   isFirstEntry: boolean;
   marketDataFresh?: boolean;
@@ -370,6 +374,15 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
   }
 
   const portfolioDaily = normalizePct(ctx.portfolioDailyChangePercent);
+  const portfolioRecent2d = normalizePct(ctx.portfolioRecent2dChangePercent ?? ctx.portfolioDailyChangePercent);
+  const portfolioWindowWorst = normalizePct(
+    ctx.portfolioWorstDailyChangePercentInWindow ?? ctx.portfolioDailyChangePercent
+  );
+  const portfolioWindowBest = normalizePct(
+    ctx.portfolioBestDailyChangePercentInWindow ?? ctx.portfolioDailyChangePercent
+  );
+  const portfolioDownPressure = Math.min(portfolioDaily, portfolioRecent2d, portfolioWindowWorst);
+  const portfolioUpPressure = Math.max(portfolioDaily, portfolioWindowBest);
 
   const portfolioDropCfg = resolveConfig("portfolio_drop", profileType);
   if (
@@ -404,20 +417,37 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
     ? holdings
     .filter(
       (h) => {
+        const symbol = String(h.symbol || "").toUpperCase();
+        const windowWorstRaw = ctx.assetWorstDailyChangePercentInWindowBySymbol?.[symbol];
         const daily = normalizePct(h.changePercent);
         const recent2d = normalizePct(h.recent2dChangePercent ?? h.changePercent);
-        const downPressure = Math.min(daily, recent2d);
+        const windowWorst = normalizePct(
+          Number.isFinite(Number(windowWorstRaw)) ? Number(windowWorstRaw) : daily
+        );
+        const downPressure = Math.min(daily, recent2d, windowWorst);
         return h.allocation >= Number(assetDropCfg.minWeight ?? 0) && downPressure <= Number(assetDropCfg.threshold);
       }
     )
     .sort((a, b) => {
+      const aSymbol = String(a.symbol || "").toUpperCase();
+      const bSymbol = String(b.symbol || "").toUpperCase();
+      const aWindowWorstRaw = ctx.assetWorstDailyChangePercentInWindowBySymbol?.[aSymbol];
+      const bWindowWorstRaw = ctx.assetWorstDailyChangePercentInWindowBySymbol?.[bSymbol];
+      const aWindowWorst = normalizePct(
+        Number.isFinite(Number(aWindowWorstRaw)) ? Number(aWindowWorstRaw) : a.changePercent
+      );
+      const bWindowWorst = normalizePct(
+        Number.isFinite(Number(bWindowWorstRaw)) ? Number(bWindowWorstRaw) : b.changePercent
+      );
       const aDown = Math.min(
         normalizePct(a.changePercent),
-        normalizePct(a.recent2dChangePercent ?? a.changePercent)
+        normalizePct(a.recent2dChangePercent ?? a.changePercent),
+        aWindowWorst
       );
       const bDown = Math.min(
         normalizePct(b.changePercent),
-        normalizePct(b.recent2dChangePercent ?? b.changePercent)
+        normalizePct(b.recent2dChangePercent ?? b.changePercent),
+        bWindowWorst
       );
       return aDown - bDown;
     })
@@ -425,6 +455,11 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
 
   if (droppedAssets.length > 0) {
     const worst = droppedAssets[0];
+    const worstSymbol = String(worst.symbol || "").toUpperCase();
+    const worstWindowRaw = ctx.assetWorstDailyChangePercentInWindowBySymbol?.[worstSymbol];
+    const worstWindow = normalizePct(
+      Number.isFinite(Number(worstWindowRaw)) ? Number(worstWindowRaw) : worst.changePercent
+    );
     const message =
       droppedAssets.length > 1
         ? "Alguns ativos relevantes da sua carteira caíram forte hoje.\n\nVale analisar quem puxou esse movimento e verificar se os fundamentos continuam os mesmos."
@@ -437,7 +472,8 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
       cooldownDays: assetDropCfg.cooldownDays,
       referenceValue: Math.min(
         normalizePct(worst.changePercent),
-        normalizePct(worst.recent2dChangePercent ?? worst.changePercent)
+        normalizePct(worst.recent2dChangePercent ?? worst.changePercent),
+        worstWindow
       ),
       materialDelta: assetDropCfg.materialDelta,
       materialDirection: assetDropCfg.materialDirection,
@@ -451,7 +487,7 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
   const portfolioRiseCfg = resolveConfig("portfolio_rise", profileType);
   if (
     canUseDailyMovementSignals &&
-    portfolioDaily >= Number(portfolioRiseCfg.threshold) &&
+    portfolioUpPressure >= Number(portfolioRiseCfg.threshold) &&
     (!Number.isFinite(portfolioRiseCfg.minImpactValue) ||
       Math.abs(Number(ctx.portfolioDailyChangeValue ?? 0)) >= Number(portfolioRiseCfg.minImpactValue))
   ) {
@@ -461,7 +497,7 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
       entityId: "portfolio",
       priority: portfolioRiseCfg.priority,
       cooldownDays: portfolioRiseCfg.cooldownDays,
-      referenceValue: portfolioDaily,
+      referenceValue: portfolioUpPressure,
       materialDelta: portfolioRiseCfg.materialDelta,
       materialDirection: portfolioRiseCfg.materialDirection,
       title: "🚀 Quem veio pelas cabeças hoje tá rindo à toa!",
@@ -476,15 +512,41 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
   const risingAssets = canUseDailyMovementSignals
     ? holdings
     .filter(
-      (h) =>
-        h.allocation >= Number(assetRiseCfg.minWeight ?? 0) &&
-        normalizePct(h.changePercent) >= Number(assetRiseCfg.threshold)
+      (h) => {
+        const symbol = String(h.symbol || "").toUpperCase();
+        const windowBestRaw = ctx.assetBestDailyChangePercentInWindowBySymbol?.[symbol];
+        const daily = normalizePct(h.changePercent);
+        const windowBest = normalizePct(
+          Number.isFinite(Number(windowBestRaw)) ? Number(windowBestRaw) : daily
+        );
+        const upPressure = Math.max(daily, windowBest);
+        return h.allocation >= Number(assetRiseCfg.minWeight ?? 0) && upPressure >= Number(assetRiseCfg.threshold);
+      }
     )
-    .sort((a, b) => b.changePercent - a.changePercent)
+    .sort((a, b) => {
+      const aSymbol = String(a.symbol || "").toUpperCase();
+      const bSymbol = String(b.symbol || "").toUpperCase();
+      const aWindowBestRaw = ctx.assetBestDailyChangePercentInWindowBySymbol?.[aSymbol];
+      const bWindowBestRaw = ctx.assetBestDailyChangePercentInWindowBySymbol?.[bSymbol];
+      const aUp = Math.max(
+        normalizePct(a.changePercent),
+        normalizePct(Number.isFinite(Number(aWindowBestRaw)) ? Number(aWindowBestRaw) : a.changePercent)
+      );
+      const bUp = Math.max(
+        normalizePct(b.changePercent),
+        normalizePct(Number.isFinite(Number(bWindowBestRaw)) ? Number(bWindowBestRaw) : b.changePercent)
+      );
+      return bUp - aUp;
+    })
     : [];
 
   if (risingAssets.length > 0) {
     const best = risingAssets[0];
+    const bestSymbol = String(best.symbol || "").toUpperCase();
+    const bestWindowRaw = ctx.assetBestDailyChangePercentInWindowBySymbol?.[bestSymbol];
+    const bestWindow = normalizePct(
+      Number.isFinite(Number(bestWindowRaw)) ? Number(bestWindowRaw) : best.changePercent
+    );
     const risingTickers = risingAssets
       .slice(0, 3)
       .map((a) => a.symbol)
@@ -500,7 +562,7 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
       entityId: best.symbol,
       priority: assetRiseCfg.priority,
       cooldownDays: assetRiseCfg.cooldownDays,
-      referenceValue: normalizePct(best.changePercent),
+      referenceValue: Math.max(normalizePct(best.changePercent), bestWindow),
       materialDelta: assetRiseCfg.materialDelta,
       materialDirection: assetRiseCfg.materialDirection,
       title: risingAssets.length > 1 ? "🐂 O touro pegou impulso!" : "🚀 Atenção! Foguete decolando...",
@@ -656,7 +718,7 @@ function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
       materialDelta: compoundCfg.materialDelta,
       materialDirection: compoundCfg.materialDirection,
       title: "🧩 Quebra-cabeça de risco na mesa!",
-      message: `Hoje o motor identificou sinais combinados na sua carteira: ${topSignals.join(", ")}.\n\nSeparados, esses sinais já pedem atenção; juntos, aumentam o risco de oscilações mais fortes.\n\nSem correria: priorize revisar exposição e concentração por etapas.`,
+      message: `As peças de risco se encaixaram na sua carteira: ${topSignals.join(", ")}.\n\nCada peça, sozinha, já pede atenção. Juntas, como diz na terra do sol: vixeee...\n\nMas calma: vamos resolver esse quebra-cabeça, começando pela peça que mais concentra risco.`,
       highlights: topHighlights,
       highlightActions,
       ctaLabel: "Ver diagnóstico completo",
@@ -697,8 +759,6 @@ export async function selectTopSmartAlert(userId: string, ctx: SmartAlertsContex
 
   const profileType = ctx.investorProfile?.type ?? null;
   const portfolioDaily = normalizePct(ctx.portfolioDailyChangePercent);
-  const portfolioRecent2d = normalizePct(ctx.portfolioRecent2dChangePercent ?? ctx.portfolioDailyChangePercent);
-  const portfolioDownPressure = Math.min(portfolioDaily, portfolioRecent2d);
   const history = await loadAlertHistory(userId);
   await pruneResolvedAlertHistory(userId, history, candidates);
   const evaluations: SmartAlertEligibilityItem[] = candidates.map((candidate) => {

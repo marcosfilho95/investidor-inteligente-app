@@ -18,7 +18,7 @@ import {
   type InvestorProfileSummary,
 } from "@/lib/investorIntelligence";
 import { loadInvestorProfileFromDatabase, persistInvestorProfile } from "@/lib/investorProfilePersistence";
-import { getAiTaxonomy } from "@/data/investments";
+import { getAiTaxonomy, getMarketHistory } from "@/data/investments";
 import {
   buildSmartAlertPreview,
   getOrCreateLoginCount,
@@ -47,7 +47,7 @@ const Index = () => {
   const [showSmartAlert, setShowSmartAlert] = useState(false);
   const [smartAlertEvaluated, setSmartAlertEvaluated] = useState(false);
   const [smartAlertHandled, setSmartAlertHandled] = useState(false);
-  const { enrichedHoldings, loading, userTrades, portfolioMetrics } = useUserHoldings();
+  const { enrichedHoldings, loading, userTrades, portfolioMetrics, portfolioPerfSeries } = useUserHoldings();
 
   const hasCompletedTour = (userId: string) =>
     localStorage.getItem(`onboarding_completed_${userId}`) === "true" ||
@@ -239,6 +239,9 @@ const Index = () => {
       try {
         const loginCount = await getOrCreateLoginCount(currentUser.id);
         if (!active) return;
+        const evaluationStartedAt = new Date().toISOString();
+        const loginWindowKey = `ii_smart_alert_last_eval_at_${currentUser.id}`;
+        const previousEvalAt = localStorage.getItem(loginWindowKey);
 
         const sessionEvalKey = `ii_smart_alert_eval_${currentUser.id}_${loginCount}`;
         if (localStorage.getItem(sessionEvalKey) === "1") {
@@ -249,14 +252,55 @@ const Index = () => {
         const shouldSkipByFirstLogin = loginCount <= 1;
         if (shouldSkipByFirstLogin) {
           localStorage.setItem(sessionEvalKey, "1");
+          localStorage.setItem(loginWindowKey, evaluationStartedAt);
           setSmartAlertEvaluated(true);
           return;
+        }
+
+        const marketHistory = getMarketHistory();
+        const startDateKey = previousEvalAt ? previousEvalAt.slice(0, 10) : null;
+        const windowPerfPoints = startDateKey
+          ? portfolioPerfSeries.filter((point) => point.date > startDateKey)
+          : portfolioPerfSeries;
+        const portfolioWorstDailyInWindow =
+          windowPerfPoints.length > 0
+            ? Math.min(...windowPerfPoints.map((p) => Number((p.dayReturn * 100).toFixed(2))))
+            : portfolioMetrics.dailyChangePercent;
+        const portfolioBestDailyInWindow =
+          windowPerfPoints.length > 0
+            ? Math.max(...windowPerfPoints.map((p) => Number((p.dayReturn * 100).toFixed(2))))
+            : portfolioMetrics.dailyChangePercent;
+
+        const assetWorstBySymbol: Record<string, number> = {};
+        const assetBestBySymbol: Record<string, number> = {};
+        for (const h of enrichedHoldings) {
+          const symbol = String(h.symbol || "").toUpperCase();
+          const rows = marketHistory[symbol] || [];
+          const changes: number[] = [];
+          for (let i = 1; i < rows.length; i++) {
+            const curr = rows[i];
+            const prev = rows[i - 1];
+            if (startDateKey && curr.date <= startDateKey) continue;
+            const prevClose = Number(prev?.close);
+            const currClose = Number(curr?.close);
+            if (!Number.isFinite(prevClose) || !Number.isFinite(currClose) || prevClose <= 0) continue;
+            const pct = Number((((currClose / prevClose) - 1) * 100).toFixed(2));
+            changes.push(pct);
+          }
+          if (changes.length > 0) {
+            assetWorstBySymbol[symbol] = Math.min(...changes);
+            assetBestBySymbol[symbol] = Math.max(...changes);
+          }
         }
 
         const selection = await selectTopSmartAlert(currentUser.id, {
           holdings: enrichedHoldings,
           portfolioDailyChangePercent: portfolioMetrics.dailyChangePercent,
           portfolioRecent2dChangePercent: portfolioMetrics.recent2dChangePercent,
+          portfolioWorstDailyChangePercentInWindow: portfolioWorstDailyInWindow,
+          portfolioBestDailyChangePercentInWindow: portfolioBestDailyInWindow,
+          assetWorstDailyChangePercentInWindowBySymbol: assetWorstBySymbol,
+          assetBestDailyChangePercentInWindowBySymbol: assetBestBySymbol,
           portfolioDailyChangeValue: portfolioMetrics.dailyChange,
           isFirstEntry: false,
           marketDataFresh: portfolioMetrics.marketDataFresh,
@@ -290,6 +334,7 @@ const Index = () => {
         }
 
         localStorage.setItem(sessionEvalKey, "1");
+        localStorage.setItem(loginWindowKey, evaluationStartedAt);
       } catch (err) {
         console.warn("[smart-alerts] failed to evaluate alerts:", err);
       } finally {
@@ -309,6 +354,9 @@ const Index = () => {
     portfolioRisk,
     portfolioMetrics.dailyChange,
     portfolioMetrics.dailyChangePercent,
+    portfolioMetrics.marketDataFresh,
+    portfolioMetrics.recent2dChangePercent,
+    portfolioPerfSeries,
     showProfileOnboarding,
     smartAlertEvaluated,
   ]);
