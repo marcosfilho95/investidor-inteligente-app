@@ -22,6 +22,24 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+const SESSION_START_KEY_PREFIX = "ii_auth_session_started_at_";
+const SESSION_MAX_AGE_HOURS_RAW = Number(import.meta.env.VITE_SESSION_MAX_AGE_HOURS ?? "48");
+const SESSION_MAX_AGE_HOURS =
+  Number.isFinite(SESSION_MAX_AGE_HOURS_RAW) && SESSION_MAX_AGE_HOURS_RAW > 0
+    ? SESSION_MAX_AGE_HOURS_RAW
+    : 48;
+const SESSION_MAX_AGE_MS = SESSION_MAX_AGE_HOURS * 60 * 60 * 1000;
+
+function getSessionStartKey(userId: string) {
+  return `${SESSION_START_KEY_PREFIX}${userId}`;
+}
+
+function getSessionStart(userId: string): number | null {
+  const raw = localStorage.getItem(getSessionStartKey(userId));
+  if (!raw) return null;
+  const timestamp = Number(raw);
+  return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : null;
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -57,18 +75,67 @@ function AppContent() {
   const [showTour, setShowTour] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null | undefined>(undefined);
   const location = useLocation();
+  const isAuthResolved = currentUserId !== undefined;
   const isPublicRoute = location.pathname === "/" || location.pathname === "/login";
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return;
-      setCurrentUserId(data.user?.id ?? null);
+      const session = data.session;
+      const userId = session?.user?.id ?? null;
+      if (!userId) {
+        setCurrentUserId(null);
+        return;
+      }
+
+      const currentStart = getSessionStart(userId);
+      const now = Date.now();
+      if (currentStart == null) {
+        localStorage.setItem(getSessionStartKey(userId), String(now));
+      } else if (now - currentStart > SESSION_MAX_AGE_MS) {
+        await supabase.auth.signOut({ scope: "local" });
+        localStorage.removeItem(getSessionStartKey(userId));
+        setCurrentUserId(null);
+        return;
+      }
+
+      setCurrentUserId(userId);
     });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setCurrentUserId(session?.user?.id ?? null);
+    const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const userId = session?.user?.id ?? null;
+
+      if (!userId) {
+        setCurrentUserId(null);
+        return;
+      }
+
+      const key = getSessionStartKey(userId);
+      const now = Date.now();
+      const currentStart = getSessionStart(userId);
+
+      if (event === "SIGNED_IN") {
+        localStorage.setItem(key, String(now));
+        setCurrentUserId(userId);
+        return;
+      }
+
+      if (currentStart == null) {
+        localStorage.setItem(key, String(now));
+        setCurrentUserId(userId);
+        return;
+      }
+
+      if (now - currentStart > SESSION_MAX_AGE_MS) {
+        await supabase.auth.signOut({ scope: "local" });
+        localStorage.removeItem(key);
+        setCurrentUserId(null);
+        return;
+      }
+
+      setCurrentUserId(userId);
     });
 
     return () => {
@@ -189,10 +256,13 @@ function AppContent() {
           <Route
             path="/"
             element={
-              currentUserId === undefined ? null : currentUserId ? <Navigate to="/dashboard" replace /> : <Landing />
+              !isAuthResolved ? null : currentUserId ? <Navigate to="/dashboard" replace /> : <Landing />
             }
           />
-          <Route path="/login" element={<Login />} />
+          <Route
+            path="/login"
+            element={!isAuthResolved ? null : currentUserId ? <Navigate to="/dashboard" replace /> : <Login />}
+          />
           <Route element={<AuthenticatedLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/carteira" element={<Portfolio />} />
