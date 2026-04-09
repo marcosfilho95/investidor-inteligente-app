@@ -164,6 +164,8 @@ const Portfolio = () => {
             enrichedHoldings.reduce((sum, h) => sum + (h.closeValue ?? h.value) * ((h.dividend || 0) / 100), 0) * 100
           ) / 100
         : 0;
+    const rentabilidadeEmReais =
+      Math.round(((portfolioMetrics.totalCloseValue * portfolioMetrics.totalGainPercent) / 100) * 100) / 100;
     return {
       totalInvested: portfolioMetrics.totalInvestedOpen,
       totalCloseValue: portfolioMetrics.totalCloseValue,
@@ -171,6 +173,7 @@ const Portfolio = () => {
       dailyChange: portfolioMetrics.dailyChange,
       variacao: portfolioMetrics.dailyChangePercent,
       rentabilidade: portfolioMetrics.totalGainPercent,
+      rentabilidadeEmReais,
       proventos,
     };
   }, [enrichedHoldings, portfolioMetrics]);
@@ -859,7 +862,7 @@ const Portfolio = () => {
                 </div>
               </div>,
               <div
-                className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
+                className="glass-card px-4 pt-4 pb-2.5 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
                 key="4"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -887,7 +890,8 @@ const Portfolio = () => {
                 <div className="leading-tight">
                   <div className="flex items-center gap-1">
                     <span className={`text-[1.35rem] font-semibold font-mono leading-none ${metrics.rentabilidade >= 0 ? "text-gain" : "text-loss"}`}>
-                      {metrics.rentabilidade}%
+                      {metrics.rentabilidade >= 0 ? "+" : "-"}
+                      {formatPercent(Math.abs(metrics.rentabilidade))}%
                     </span>
                     {metrics.rentabilidade >= 0 ? (
                       <ArrowUpRight className="h-4 w-4 text-gain" />
@@ -895,7 +899,11 @@ const Portfolio = () => {
                       <ArrowDownRight className="h-4 w-4 text-loss" />
                     )}
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-2">Performance da carteira</p>
+                  <p className="text-[10px] text-muted-foreground mt-2">Resultado acumulado (R$)</p>
+                  <p className={`text-sm font-semibold font-mono mt-0 tracking-tight ${metrics.rentabilidadeEmReais >= 0 ? "text-gain/90" : "text-loss/90"}`}>
+                    {metrics.rentabilidadeEmReais >= 0 ? "R$ " : "-R$ "}
+                    {formatCurrency(Math.abs(metrics.rentabilidadeEmReais))}
+                  </p>
                 </div>
                 <div className={`absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] z-[80] ${
                   activeKpiInfo === "rentabilidade"

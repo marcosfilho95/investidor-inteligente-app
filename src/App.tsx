@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Outlet, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet, useLocation, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { getRealPricesSync, loadRealPriceData } from "@/data/csvLoader";
 import { getMacroDataSync, loadMacroData } from "@/data/macroLoader";
@@ -55,7 +55,7 @@ function AuthenticatedLayout() {
 function AppContent() {
   const [dataVersion, setDataVersion] = useState(0);
   const [showTour, setShowTour] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null | undefined>(undefined);
   const location = useLocation();
   const isPublicRoute = location.pathname === "/" || location.pathname === "/login";
 
@@ -186,7 +186,12 @@ function AppContent() {
       <ScrollToTop />
       <AnimatePresence mode="sync">
         <Routes location={location}>
-          <Route path="/" element={<Landing />} />
+          <Route
+            path="/"
+            element={
+              currentUserId === undefined ? null : currentUserId ? <Navigate to="/dashboard" replace /> : <Landing />
+            }
+          />
           <Route path="/login" element={<Login />} />
           <Route element={<AuthenticatedLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
