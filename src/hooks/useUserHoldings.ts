@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, createElement } from "react"
 import { supabase } from "@/integrations/supabase/client";
 import { holdings as allAssets, getMarketHistory } from "@/data/investments";
 import { useToast } from "@/hooks/use-toast";
-import { computePortfolioPerformance } from "@/lib/portfolioPerformance";
+import { computePortfolioPerformance, type PortfolioPerfPoint } from "@/lib/portfolioPerformance";
 import { TradeOperationToast } from "@/components/TradeOperationToast";
 
 export interface UserHolding {
@@ -646,12 +646,27 @@ export function useUserHoldings() {
     };
   }, [enrichedHoldings, effectiveTrades, latestMarketDate, marketDataFresh, userHoldings]);
 
+  const portfolioPerfSeries = useMemo<PortfolioPerfPoint[]>(() => {
+    const perf = computePortfolioPerformance(
+      effectiveTrades.map((t) => ({
+        symbol: t.symbol,
+        side: t.side,
+        shares: t.shares,
+        traded_at: t.traded_at,
+        price: t.price,
+      })),
+      userHoldings.map((h) => ({ symbol: h.symbol, shares: h.shares }))
+    );
+    return perf.series;
+  }, [effectiveTrades, userHoldings]);
+
   return {
     userHoldings,
     userTrades: orderedUserTrades,
     enrichedHoldings,
     totalValue,
     portfolioMetrics,
+    portfolioPerfSeries,
     loading,
     addHolding,
     sellHolding,
