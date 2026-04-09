@@ -192,6 +192,12 @@ const Login = () => {
 
         const { error } = await supabase.auth.signInWithPassword({ email: emailForLogin, password });
         if (error) throw error;
+        // FREE plan workaround: keep only the newest device session.
+        // This revokes refresh tokens from other devices while preserving current session.
+        const { error: signOutOthersError } = await supabase.auth.signOut({ scope: "others" });
+        if (signOutOthersError) {
+          console.warn("Nao foi possivel encerrar outras sessoes:", signOutOthersError.message);
+        }
         navigate("/dashboard");
       } else {
         if (!name.trim()) {
