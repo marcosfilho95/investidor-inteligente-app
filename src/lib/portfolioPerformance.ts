@@ -27,6 +27,7 @@ export interface PortfolioPerfResult {
   cumulativeReturnPct: number;
   lastDayReturnPct: number;
   lastDayPnl: number;
+  last2dReturnPct: number;
 }
 
 export function computePortfolioPerformance(
@@ -42,7 +43,7 @@ export function computePortfolioPerformance(
   ]);
 
   if (!relevantSymbols.size) {
-    return { series: [], cumulativeReturnPct: 0, lastDayReturnPct: 0, lastDayPnl: 0 };
+    return { series: [], cumulativeReturnPct: 0, lastDayReturnPct: 0, lastDayPnl: 0, last2dReturnPct: 0 };
   }
 
   const closeBySymbol = new Map<string, Array<{ date: string; close: number }>>();
@@ -55,7 +56,7 @@ export function computePortfolioPerformance(
   }
 
   if (!closeBySymbol.size) {
-    return { series: [], cumulativeReturnPct: 0, lastDayReturnPct: 0, lastDayPnl: 0 };
+    return { series: [], cumulativeReturnPct: 0, lastDayReturnPct: 0, lastDayPnl: 0, last2dReturnPct: 0 };
   }
 
   const allDates = Array.from(
@@ -67,7 +68,7 @@ export function computePortfolioPerformance(
   ).sort((a, b) => a.localeCompare(b));
 
   if (!allDates.length) {
-    return { series: [], cumulativeReturnPct: 0, lastDayReturnPct: 0, lastDayPnl: 0 };
+    return { series: [], cumulativeReturnPct: 0, lastDayReturnPct: 0, lastDayPnl: 0, last2dReturnPct: 0 };
   }
 
   const orderedTrades = [...trades].sort((a, b) => a.traded_at.localeCompare(b.traded_at));
@@ -161,14 +162,18 @@ export function computePortfolioPerformance(
   }
 
   if (!series.length) {
-    return { series: [], cumulativeReturnPct: 0, lastDayReturnPct: 0, lastDayPnl: 0 };
+    return { series: [], cumulativeReturnPct: 0, lastDayReturnPct: 0, lastDayPnl: 0, last2dReturnPct: 0 };
   }
 
   const last = series[series.length - 1];
+  const trailing = series.slice(-2);
+  const trailingFactor = trailing.reduce((acc, point) => acc * (1 + point.dayReturn), 1);
+  const last2dReturnPct = Math.round(((trailingFactor - 1) * 100) * 100) / 100;
   return {
     series,
     cumulativeReturnPct: last.cumReturnPct,
     lastDayReturnPct: Math.round(last.dayReturn * 10000) / 100,
     lastDayPnl: Math.round(last.dayPnl * 100) / 100,
+    last2dReturnPct,
   };
 }
