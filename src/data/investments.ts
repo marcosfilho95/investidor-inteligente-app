@@ -969,19 +969,19 @@ let IPCA_MONTHLY: Record<number, number[]> = {
   2021: [0.25, 0.86, 0.93, 0.31, 0.83, 0.53, 0.96, 0.87, 1.16, 1.25, 0.95, 0.73],
   2022: [0.54, 1.01, 1.62, 1.06, 0.47, 0.67, -0.68, -0.36, -0.29, 0.59, 0.41, 0.62],
   2023: [0.53, 0.84, 0.71, 0.61, 0.23, -0.08, 0.12, 0.23, 0.26, 0.24, 0.28, 0.56],
-  2024: [0.42, 0.83, 0.16, 0.38, 0.46, 0.21, 0.38, -0.02, 0.44, 0.56, 0.39, 0.52],
+  2024: [0.42, 0.83, 0.16, 0.38, 0.46, 0.21, 0.38, -0.02, 0.44, 0.56, 0.56, 0.52],
   2025: [0.16, 1.31, 0.56, 0.43, 0.26, 0.24, 0.26, -0.11, 0.48, 0.09, 0.18, 0.33],
-  2026: [0.33, 0.70, 0.325, 0.325, 0.325, 0.325, 0.325, 0.325, 0.325, 0.325, 0.325, 0.325],
+  2026: [0.55, 0.70, 0.44, 0.30, 0.30, 0.30, 0.30, 0.30, 0.30, 0.30, 0.30, 0.30],
 };
 
 // Real/projected CDI monthly rates (%)
 let CDI_MONTHLY: Record<number, number[]> = {
   2021: [0.15, 0.13, 0.20, 0.21, 0.27, 0.31, 0.36, 0.43, 0.44, 0.49, 0.59, 0.77],
   2022: [0.73, 0.76, 0.93, 0.83, 1.03, 1.02, 1.03, 1.17, 1.07, 1.02, 1.02, 1.12],
-  2023: [1.12, 0.92, 1.17, 0.92, 1.12, 1.07, 1.07, 1.14, 1.05, 1.00, 0.92, 0.89],
+  2023: [1.12, 0.92, 1.17, 0.92, 1.12, 1.07, 1.07, 1.14, 0.97, 1.00, 0.92, 0.89],
   2024: [0.97, 0.80, 0.83, 0.89, 0.83, 0.79, 0.91, 0.87, 0.84, 0.93, 0.79, 0.93],
   2025: [1.01, 0.99, 0.96, 1.06, 1.14, 1.10, 1.28, 1.16, 1.22, 1.28, 1.05, 1.22],
-  2026: [1.16, 1.00, 1.21, 1.01, 1.01, 1.01, 1.01, 1.01, 1.01, 1.01, 1.01, 1.01],
+  2026: [1.16, 1.00, 1.21, 0.27, 0.27, 0.27, 0.27, 0.27, 0.27, 0.27, 0.27, 0.27],
 };
 
 export interface MacroMarketData {
@@ -1378,9 +1378,9 @@ export function getFilteredBenchmarks(
   minStartDate?: string,
   userPortfolio?: Array<{ symbol: string; shares: number; avgPrice?: number; firstBuyDate?: string | null }>
 ): { date: string; month: string; tooltipLabel?: string; carteira: number; ibovespa: number; cdi: number; ipca: number }[] {
-  void minStartDate;
   const benchmarks = getBenchmarkHistory();
   const now = getLatestMarketDate();
+  const latestMarketDateKey = getLatestMarketDateKey();
   let startDate: Date;
   
   switch (period) {
@@ -1397,17 +1397,29 @@ export function getFilteredBenchmarks(
   }
   
   const startStrFromPeriod = startDate.toISOString().slice(0, 10);
-  // Always honor selected chart period for benchmark context.
-  // Portfolio line stays flat (0%) before first buy date.
-  const startStr = startStrFromPeriod;
+  // Unified rule for every period:
+  // effectiveStart = max(periodStart, portfolioStart)
+  let startStr = startStrFromPeriod;
+  const clampedMinStartDate = minStartDate
+    ? minStartDate.slice(0, 10) > latestMarketDateKey
+      ? latestMarketDateKey
+      : minStartDate.slice(0, 10)
+    : undefined;
+  if (clampedMinStartDate && clampedMinStartDate > startStr) {
+    startStr = clampedMinStartDate;
+  }
   
   const ibovFromMarket = getIbovSeriesFromMarketData(getMarketHistory());
   const ibovSource = ibovFromMarket.length > 0 ? ibovFromMarket : benchmarks.IBOV;
   let ibovData = ibovSource.filter(d => d.date >= startStr);
+  if (clampedMinStartDate) {
+    ibovData = ibovData.filter((d) => d.date >= clampedMinStartDate);
+  }
   if (ibovData.length === 0 && ibovSource.length > 0) {
     // Fallback: keep at least the latest available market point to avoid empty chart.
     ibovData = [ibovSource[ibovSource.length - 1]];
   }
+  // Anchor CDI/IPCA to the first visible point in the chart (same reference as IBOV/carteira).
   const benchmarkStart = ibovData[0]?.date ?? startStr;
   const cdiData = benchmarks.CDI.filter(d => d.date >= benchmarkStart);
   const ipcaData = benchmarks.IPCA.filter(d => d.date >= benchmarkStart);
@@ -1490,16 +1502,11 @@ export function getFilteredBenchmarks(
       }
       const tooltipLabel = `${day}/${month}`;
       
-      const portfolioDelta =
-        positionsAtDate.length === 0
-          ? 0
-          : portfolioVal - (investedAtDate > 0 ? investedAtDate : referenceBase);
-
       return {
         date: ibov.date,
         month: label,
         tooltipLabel,
-        carteira: Number(portfolioDelta.toFixed(2)),
+        carteira: Number((portfolioVal - (investedAtDate > 0 ? investedAtDate : referenceBase)).toFixed(2)),
         ibovespa: Number((ibovNorm - referenceBase).toFixed(2)),
         cdi: Number((cdiNorm - referenceBase).toFixed(2)),
         ipca: Number((ipcaNorm - referenceBase).toFixed(2)),
