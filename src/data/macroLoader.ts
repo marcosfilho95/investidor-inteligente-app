@@ -22,10 +22,10 @@ const STORAGE_STATUS_PATH = STORAGE_BASE ? `${STORAGE_BASE}/data-status.json` : 
 const STORAGE_MACRO_PATH = STORAGE_BASE ? `${STORAGE_BASE}/macro/macro_latest.csv` : "";
 const LOCAL_MACRO_PATH = "/data/macro_latest.csv";
 
-const IDB_DB_NAME = "ii-market-cache-v1";
+const IDB_DB_NAME = "ii-market-cache-v2";
 const IDB_STORE_NAME = "datasets";
-const MACRO_CURRENT_VERSION_KEY = "ii_macro_current_version";
-const MACRO_KEY_PREFIX = "macro:";
+const MACRO_CURRENT_VERSION_KEY = "ii_macro_current_version_v2";
+const MACRO_KEY_PREFIX = "macro_v2:";
 
 let _cache: MacroMarketData | null = null;
 let _loadingPromise: Promise<MacroMarketData> | null = null;

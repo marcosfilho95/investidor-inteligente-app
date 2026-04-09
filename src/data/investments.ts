@@ -971,7 +971,7 @@ let IPCA_MONTHLY: Record<number, number[]> = {
   2023: [0.53, 0.84, 0.71, 0.61, 0.23, -0.08, 0.12, 0.23, 0.26, 0.24, 0.28, 0.56],
   2024: [0.42, 0.83, 0.16, 0.38, 0.46, 0.21, 0.38, -0.02, 0.44, 0.56, 0.39, 0.52],
   2025: [0.16, 1.31, 0.56, 0.43, 0.26, 0.24, 0.26, -0.11, 0.48, 0.09, 0.18, 0.33],
-  2026: [0.33, 0.20], // Jan + estimated Feb
+  2026: [0.33, 0.70, 0.325, 0.325, 0.325, 0.325, 0.325, 0.325, 0.325, 0.325, 0.325, 0.325],
 };
 
 // Real/projected CDI monthly rates (%)
@@ -981,7 +981,7 @@ let CDI_MONTHLY: Record<number, number[]> = {
   2023: [1.12, 0.92, 1.17, 0.92, 1.12, 1.07, 1.07, 1.14, 1.05, 1.00, 0.92, 0.89],
   2024: [0.97, 0.80, 0.83, 0.89, 0.83, 0.79, 0.91, 0.87, 0.84, 0.93, 0.79, 0.93],
   2025: [1.01, 0.99, 0.96, 1.06, 1.14, 1.10, 1.28, 1.16, 1.22, 1.28, 1.05, 1.22],
-  2026: [1.16, 1.00, 0.98, 0.96, 0.94, 0.92, 0.90, 0.88, 0.86, 0.84, 0.82, 0.80],
+  2026: [1.16, 1.00, 1.21, 1.01, 1.01, 1.01, 1.01, 1.01, 1.01, 1.01, 1.01, 1.01],
 };
 
 export interface MacroMarketData {
@@ -1288,6 +1288,7 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
   if (!allData || allData.length === 0) return [];
   
   const now = getLatestMarketDate();
+  const endStr = now.toISOString().slice(0, 10);
   let startDate: Date;
   
   switch (period) {
@@ -1318,10 +1319,10 @@ export function getFilteredPriceHistory(symbol: string, period: string): { month
   const startStr = startDate.toISOString().slice(0, 10);
   let filtered =
     period === "7D"
-      ? allData.slice(-7)
+      ? allData.filter((d) => d.date <= endStr).slice(-7)
       : period === "30D"
-        ? allData.filter(d => d.date >= startStr)
-        : allData.filter(d => d.date >= startStr);
+        ? allData.filter((d) => d.date >= startStr && d.date <= endStr)
+        : allData.filter((d) => d.date >= startStr && d.date <= endStr);
 
   // If a ticker is stale (e.g. stopped updating months ago), short ranges can go empty.
   // In that case, fallback to the most recent available window for that period
@@ -1547,7 +1548,7 @@ type InvestmentComparisonResponse = {
   meta: InvestmentComparisonMeta;
 };
 
-const BENCHMARKS_API_CACHE_KEY = "ii_benchmarks_api_cache_v1";
+const BENCHMARKS_API_CACHE_KEY = "ii_benchmarks_api_cache_v2";
 const BENCHMARKS_API_CACHE_TTL_MS = 2 * 60 * 1000;
 const DEFAULT_COMPARISON_META: InvestmentComparisonMeta = {
   lastUpdatedAt: null,
@@ -1943,7 +1944,7 @@ export async function getInvestmentComparisonData(symbol: string, period: string
   try {
     const assetRaw = (marketData[symbol] || [])
       .map((r) => ({ date: r.date, value: r.close }))
-      .filter((r) => !!r.date && Number.isFinite(r.value))
+      .filter((r) => !!r.date && Number.isFinite(r.value) && r.date <= endStr)
       .sort((a, b) => a.date.localeCompare(b.date));
     if (assetRaw.length === 0) {
       return buildNeverEmptyFallback(DEFAULT_COMPARISON_META);
@@ -2076,14 +2077,46 @@ export async function getInvestmentComparisonData(symbol: string, period: string
 
       const assetFilled = forwardFillOnCalendar(normalizeIntraday(assetSeries), calendar);
       const ibovFilled = forwardFillOnCalendar(normalizeIntraday(ibovSeries), calendar);
+      const cdiDaily = cdiRaw
+        .filter((r) => !!r.date && Number.isFinite(r.value))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      const ipcaDaily = ipcaRaw
+        .filter((r) => !!r.date && Number.isFinite(r.value))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      const buildMacroIntradaySeries = (daily: SeriesPoint[], dayKey: string, cal: string[]): SeriesPoint[] => {
+        if (!cal.length) return [];
+        if (!daily.length) return cal.map((date) => ({ date, value: 1000 }));
+
+        const dayClose = getSeriesValueOnOrBefore(daily, dayKey);
+        const prevDay = [...daily]
+          .reverse()
+          .find((p0) => p0.date < dayKey && Number.isFinite(p0.value));
+
+        const startValueRaw = prevDay?.value ?? dayClose ?? daily[0].value;
+        const endValueRaw = dayClose ?? startValueRaw;
+        const startValue = Number.isFinite(startValueRaw) && startValueRaw > 0 ? startValueRaw : 1000;
+        const endValue = Number.isFinite(endValueRaw) && endValueRaw > 0 ? endValueRaw : startValue;
+
+        if (cal.length === 1) return [{ date: cal[0], value: startValue }];
+
+        const dailyGrowth = startValue > 0 ? endValue / startValue : 1;
+        return cal.map((date, idx) => {
+          const t = idx / (cal.length - 1);
+          return { date, value: Number((startValue * Math.pow(dailyGrowth, t)).toFixed(8)) };
+        });
+      };
+
+      const cdiIntraday = normalizeSeriesByBase(buildMacroIntradaySeries(cdiDaily, targetDay, calendar), 1000);
+      const ipcaIntraday = normalizeSeriesByBase(buildMacroIntradaySeries(ipcaDaily, targetDay, calendar), 1000);
 
       const points: InvestmentComparisonPoint[] = calendar.map((dt, i) => ({
         date: dt,
         month: dt.split(" ")[1]?.slice(0, 5) || dt.slice(11, 16),
         [symbol]: Number(assetFilled[i].value.toFixed(2)),
         IBOV: Number(ibovFilled[i].value.toFixed(2)),
-        CDI: 1000,
-        IPCA: 1000,
+        CDI: Number(cdiIntraday[i].value.toFixed(2)),
+        IPCA: Number(ipcaIntraday[i].value.toFixed(2)),
       }));
 
       const todayKey = getBrtDateKey(new Date());
