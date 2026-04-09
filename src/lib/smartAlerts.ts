@@ -270,6 +270,42 @@ async function loadAlertHistory(userId: string): Promise<Map<string, SmartAlertH
   return map;
 }
 
+async function pruneResolvedAlertHistory(
+  userId: string,
+  history: Map<string, SmartAlertHistoryRow>,
+  activeCandidates: SmartAlertCandidate[]
+): Promise<void> {
+  if (history.size === 0) return;
+
+  const activeKeys = new Set(
+    activeCandidates.map((candidate) => historyKey(candidate.type, candidate.entityType, candidate.entityId))
+  );
+
+  const resolvedRows = Array.from(history.entries())
+    .filter(([key]) => !activeKeys.has(key))
+    .map(([, row]) => row);
+
+  if (resolvedRows.length === 0) return;
+
+  // Condition-based alerts should "reset" once the condition is no longer active.
+  // This ensures a future recurrence is treated as a new event.
+  await Promise.all(
+    resolvedRows.map((row) =>
+      supabase
+        .from("alert_history")
+        .delete()
+        .eq("user_id", userId)
+        .eq("alert_type", row.alert_type)
+        .eq("entity_type", row.entity_type)
+        .eq("entity_id", row.entity_id)
+    )
+  );
+
+  for (const row of resolvedRows) {
+    history.delete(historyKey(row.alert_type, row.entity_type, row.entity_id));
+  }
+}
+
 function evaluateCandidates(ctx: SmartAlertsContext): SmartAlertCandidate[] {
   const candidates: SmartAlertCandidate[] = [];
   const holdings = ctx.holdings;
@@ -644,6 +680,7 @@ export async function selectTopSmartAlert(userId: string, ctx: SmartAlertsContex
   const profileType = ctx.investorProfile?.type ?? null;
   const portfolioDaily = normalizePct(ctx.portfolioDailyChangePercent);
   const history = await loadAlertHistory(userId);
+  await pruneResolvedAlertHistory(userId, history, candidates);
   const evaluations: SmartAlertEligibilityItem[] = candidates.map((candidate) => {
     const previous = history.get(historyKey(candidate.type, candidate.entityType, candidate.entityId));
     const recurrence = evaluateRecurrence(candidate, previous);
