@@ -750,7 +750,7 @@ const AssetDetail = () => {
             <AnimatedCard delay={0.1}>
               <div className="glass-card p-5 flex h-full flex-col items-center justify-center">
                 <h3 className="text-base font-semibold mb-3 self-start flex items-center gap-2">
-                  Recomendação
+                  Score Fundamentalista
                 </h3>
                 <RecommendationGauge score={recommendation.score} label={recommendation.label} color={recommendation.color} />
                 <p className="text-[11px] text-muted-foreground/90 mt-1.5 text-center self-center">
