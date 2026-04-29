@@ -122,45 +122,6 @@ function sanitizeMathForDisplay(text: string): string {
   return sanitized;
 }
 
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function boldMatch(text: string, regex: RegExp): string {
-  return text.replace(regex, (_full, capture: string) => `**${capture}**`);
-}
-
-function highlightPortfolioVariables(
-  text: string,
-  portfolioContext?: AiChatWidgetProps["portfolioContext"]
-): string {
-  if (!text) return text;
-
-  let out = text;
-  const termsRegex =
-    /\b(patrim[oô]nio(?:\s+atual|\s+total)?|aloca[cç][aã]o(?:\s+por\s+setor)?|score(?:\s+de\s+risco)?|risco(?:\s+total)?|rentabilidade|resultado(?:\s+di[áa]rio|\s+total)?|proventos?|dividendos?|setores?|ativos?)\b/gi;
-
-  out = boldMatch(out, termsRegex);
-  out = boldMatch(out, /([+-]?\s*R\$\s?\d{1,3}(?:\.\d{3})*,\d{2})/g);
-  out = boldMatch(out, /([+-]?\d+(?:[.,]\d+)?%)/g);
-  out = boldMatch(out, /(\d+(?:[.,]\d+)?\/100)/g);
-
-  const symbols = Array.from(
-    new Set(
-      (portfolioContext?.positions || [])
-        .map((p) => String(p.symbol || "").trim().toUpperCase())
-        .filter(Boolean)
-    )
-  );
-
-  for (const symbol of symbols) {
-    const regex = new RegExp(`\\b(${escapeRegExp(symbol)})\\b`, "gi");
-    out = boldMatch(out, regex);
-  }
-
-  return out;
-}
-
 const BROAD_ANALYTICAL_TERMS = [
   "fale sobre",
   "me explique",
@@ -384,26 +345,18 @@ const QUICK_PROMPTS_DEFAULT = [
   { icon: "🛡️", label: "Como reduzir risco sem perder tanto potencial?" },
 ];
 
-const QUICK_PROMPTS_DASHBOARD = [
-  { icon: "🤖", label: "Como o HODL pode me ajudar?" },
-  { icon: "📊", label: "Analise minha carteira" },
-  { icon: "💡", label: "Como diversificar?" },
-  { icon: "💰", label: "Quais ativos parecem caros?" },
-  { icon: "🛡️", label: "Como reduzir risco sem perder potencial?" },
-];
-
 const QUICK_PROMPTS_PORTFOLIO = [
   { icon: "📊", label: "Minha alocação está equilibrada?" },
   { icon: "⚖️", label: "Quais posições devo rebalancear primeiro?" },
-  { icon: "🧩", label: "Quais setores estão sub-representados?" },
-  { icon: "🎯", label: "Como reduzir concentração com qualidade?" },
+  { icon: "🧩", label: "Quais setores estão sub-representados na carteira?" },
+  { icon: "🎯", label: "Como reduzir concentração sem perder qualidade?" },
 ];
 
 const QUICK_PROMPTS_LEARN = [
-  { icon: "📘", label: "Entender vem antes de investir?" },
-  { icon: "🧠", label: "Explique Value Investing" },
-  { icon: "📊", label: "Diferença P/L vs P/VP" },
-  { icon: "💰", label: "Como avaliar dividendos?" },
+  { icon: "📘", label: "Por qual trilha eu devo começar?" },
+  { icon: "🧠", label: "Explique Value Investing de forma simples" },
+  { icon: "📊", label: "Qual a diferença entre P/L e P/VP?" },
+  { icon: "💰", label: "Como avaliar se um dividendo é sustentável?" },
 ];
 
 const QUICK_PROMPTS_ASSET = [
@@ -518,45 +471,11 @@ export function AiChatWidget({
   const inputLocked = isLoading || isAssistantTyping;
   const showQuickPrompts = messages.length <= 1 && !isLoading;
   const quickPrompts = useMemo(() => {
-    if (page === "dashboard") return QUICK_PROMPTS_DASHBOARD;
-    if (page === "carteira") return QUICK_PROMPTS_LEARN;
+    if (page === "carteira") return QUICK_PROMPTS_PORTFOLIO;
     if (page === "aprender") return QUICK_PROMPTS_LEARN;
     if (page === "ativo") return QUICK_PROMPTS_ASSET;
     return QUICK_PROMPTS_DEFAULT;
   }, [page]);
-  const isLearnPage = page === "aprender";
-  const isAssetPage = page === "ativo";
-  const isPortfolioPage = page === "carteira";
-  const isDashboardPage = page === "dashboard";
-  const isLearnLikeLayout = isLearnPage || isPortfolioPage;
-  const visibleQuickPrompts = useMemo(
-    () => quickPrompts.slice(0, isLearnLikeLayout ? 4 : 5),
-    [isLearnLikeLayout, quickPrompts]
-  );
-  const quickPromptRows = useMemo(() => {
-    if (isLearnLikeLayout) {
-      return [
-        visibleQuickPrompts.slice(0, 1),
-        visibleQuickPrompts.slice(1, 2),
-        visibleQuickPrompts.slice(2, 4),
-      ].filter((row) => row.length > 0);
-    }
-
-    if (isDashboardPage) {
-      return [
-        visibleQuickPrompts.slice(0, 1),
-        visibleQuickPrompts.slice(1, 3),
-        visibleQuickPrompts.slice(3, 4),
-        visibleQuickPrompts.slice(4, 5),
-      ].filter((row) => row.length > 0);
-    }
-
-    return [
-      visibleQuickPrompts.slice(0, 2),
-      visibleQuickPrompts.slice(2, 4),
-      visibleQuickPrompts.slice(4, 5),
-    ].filter((row) => row.length > 0);
-  }, [isDashboardPage, isLearnLikeLayout, visibleQuickPrompts]);
 
   const handleSend = async (overrideInput?: string) => {
     const text = overrideInput ?? input;
@@ -757,13 +676,7 @@ export function AiChatWidget({
                     : "max-w-[88%] bg-secondary/60 border border-border/30 text-foreground rounded-bl-md prose prose-sm prose-invert [&_p]:m-0 [&_p]:mb-1.5 [&_ul]:m-0 [&_ol]:m-0 [&_li]:m-0 [&_strong]:text-primary/90 [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:mt-1.5 [&_h2]:mb-0.5 [&_h3]:mt-1 [&_h3]:mb-0.5 [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[11px]"
                 }`}
               >
-                {msg.role === "user" ? (
-                  msg.content
-                ) : (
-                  <ReactMarkdown>
-                    {highlightPortfolioVariables(sanitizeMathForDisplay(msg.content), portfolioContext)}
-                  </ReactMarkdown>
-                )}
+                {msg.role === "user" ? msg.content : <ReactMarkdown>{sanitizeMathForDisplay(msg.content)}</ReactMarkdown>}
               </div>
             </motion.div>
           ))}
@@ -787,27 +700,16 @@ export function AiChatWidget({
             className="pt-2"
           >
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Sugestões rápidas</p>
-            <div className="space-y-1.5 w-full">
-              {quickPromptRows.map((row, rowIdx) => (
-                <div
-                  key={`quick-row-${rowIdx}`}
-                  className={`grid gap-1.5 ${row.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+            <div className="flex flex-wrap gap-1.5">
+              {quickPrompts.map((prompt) => (
+                <button
+                  key={prompt.label}
+                  onClick={() => handleSend(prompt.label)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/80 border border-border/40 text-[11px] text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/10 transition-all duration-200"
                 >
-                  {row.map((prompt) => (
-                    <button
-                      key={prompt.label}
-                      onClick={() => handleSend(prompt.label)}
-                      className="inline-flex min-w-0 items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary/80 border border-border/40 text-[12px] text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/10 transition-all duration-200 text-left"
-                    >
-                      <span className="shrink-0 inline-flex h-4 w-4 items-center justify-center text-[12px] leading-none">
-                        {prompt.icon}
-                      </span>
-                      <span className="min-w-0 leading-[1.2] whitespace-nowrap overflow-hidden text-ellipsis">
-                        {prompt.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                  <span>{prompt.icon}</span>
+                  {prompt.label}
+                </button>
               ))}
             </div>
           </motion.div>
