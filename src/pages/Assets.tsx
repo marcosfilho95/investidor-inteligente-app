@@ -226,7 +226,7 @@ const Assets = () => {
 
   const filtered = useMemo(() => {
     const normalizedSearch = normalizeSearchText(search);
-    const dyMax = parseFilterNumber(fundamentalFilters.dy);
+    const dyMin = parseFilterNumber(fundamentalFilters.dy);
     const plMax = parseFilterNumber(fundamentalFilters.pl);
     const roeMin = parseFilterNumber(fundamentalFilters.roe);
     const capMin = parseFilterNumber(fundamentalFilters.marketCap);
@@ -248,7 +248,7 @@ const Assets = () => {
         (trendFilter === "Em baixa" && changePercent < 0);
       const matchSector =
         selectedSectors.length === 0 || selectedSectors.includes(canonicalSector);
-      const matchDy = matchesThreshold(h.dividend, dyMax, "max");
+      const matchDy = matchesThreshold(h.dividend, dyMin, "min");
       const matchPl = matchesThreshold(h.pe, plMax, "max");
       const matchRoe = matchesThreshold(h.roe, roeMin, "min");
       const matchMarketCap = matchesThreshold(marketCapInBillions, capMin, "min");
@@ -456,7 +456,7 @@ const Assets = () => {
             </div>
             <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
               {[
-                { key: "dy", label: "DY MÁX (%)", hint: "Ex: 5" },
+                { key: "dy", label: "DY MÍN (%)", hint: "Ex: 5" },
                 { key: "pl", label: "P/L MÁX", hint: "Ex: 10" },
                 { key: "roe", label: "ROE MÍN (%)", hint: "Ex: 8" },
                 { key: "marketCap", label: "Market Cap MÍN (B)", hint: "Ex: 10" },
