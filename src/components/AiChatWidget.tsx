@@ -338,6 +338,7 @@ const SUPABASE_PUBLISHABLE_KEY =
   "";
 const CHAT_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/chat` : "";
 const QUICK_PROMPTS_DEFAULT = [
+  { icon: "🤖", label: "Como o HODL pode me ajudar?" },
   { icon: "📊", label: "Analise minha carteira" },
   { icon: "💡", label: "Como diversificar?" },
   { icon: "💰", label: "Quais ativos parecem caros pelos fundamentos?" },
