@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, TrendingUp, TrendingDown, PieChart, Sparkles, ChevronDown } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Search, TrendingUp, TrendingDown, PieChart, Sparkles, ChevronDown, Check } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import {
@@ -79,9 +80,27 @@ const Assets = () => {
   });
   const [isSectorFilterOpen, setIsSectorFilterOpen] = useState(false);
   const sectorsFilterRef = useRef<HTMLDivElement | null>(null);
+  const sectorsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const sectorsPanelRef = useRef<HTMLDivElement | null>(null);
+  const [sectorsPanelStyle, setSectorsPanelStyle] = useState<{ top: number; left: number; width: number }>({
+    top: 0,
+    left: 0,
+    width: 290,
+  });
   const [livePoints, setLivePoints] = useState<Record<string, { price: number; datetime: string }>>({});
   const [pricesReady, setPricesReady] = useState<boolean>(() => isRealDataLoaded());
   const [livePointsHydrated, setLivePointsHydrated] = useState(false);
+
+  const getSectorsPanelPosition = () => {
+    if (!sectorsButtonRef.current) return null;
+    const rect = sectorsButtonRef.current.getBoundingClientRect();
+    const panelWidth = 290;
+    return {
+      top: rect.bottom + 8,
+      left: Math.max(12, Math.min(rect.left, window.innerWidth - panelWidth - 12)),
+      width: panelWidth,
+    };
+  };
 
   const canonicalMetaBySymbol = useMemo(() => {
     return new Map(
@@ -197,8 +216,10 @@ const Assets = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-      if (!sectorsFilterRef.current) return;
-      if (!sectorsFilterRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const clickedTrigger = sectorsFilterRef.current?.contains(target) ?? false;
+      const clickedPanel = sectorsPanelRef.current?.contains(target) ?? false;
+      if (!clickedTrigger && !clickedPanel) {
         setIsSectorFilterOpen(false);
       }
     };
@@ -217,6 +238,29 @@ const Assets = () => {
       window.removeEventListener("keydown", handleEscape);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isSectorFilterOpen) return;
+    let rafId = 0;
+    const syncPosition = () => {
+      const next = getSectorsPanelPosition();
+      if (next) {
+        setSectorsPanelStyle((prev) => {
+          const sameTop = Math.abs(prev.top - next.top) < 0.5;
+          const sameLeft = Math.abs(prev.left - next.left) < 0.5;
+          return sameTop && sameLeft ? prev : next;
+        });
+      }
+      rafId = window.requestAnimationFrame(syncPosition);
+    };
+    const initial = getSectorsPanelPosition();
+    if (initial) setSectorsPanelStyle(initial);
+    rafId = window.requestAnimationFrame(syncPosition);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [isSectorFilterOpen]);
 
   const toggleSector = (sector: string) => {
     setSelectedSectors((prev) =>
@@ -335,7 +379,7 @@ const Assets = () => {
             </div>
           </div>
 
-          <div className="relative z-40 overflow-x-hidden overflow-y-visible rounded-2xl border border-border/40 bg-gradient-to-b from-card/[0.72] via-card/[0.55] to-card/[0.45] p-3.5 shadow-[0_12px_34px_-22px_rgba(0,0,0,0.75)] backdrop-blur-xl">
+          <div className="relative z-40 overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-b from-card/[0.72] via-card/[0.55] to-card/[0.45] p-3.5 shadow-[0_12px_34px_-22px_rgba(0,0,0,0.75)] backdrop-blur-xl">
             <div className="pointer-events-none absolute -top-12 -right-10 h-28 w-28 rounded-full bg-primary/[0.08] blur-2xl" />
             <div className="pointer-events-none absolute -bottom-14 -left-10 h-28 w-28 rounded-full bg-primary/[0.06] blur-2xl" />
             <div className="relative mb-2 flex items-center justify-between gap-2 px-1">
@@ -358,8 +402,17 @@ const Assets = () => {
               <div className="w-full min-w-0">
                 <div ref={sectorsFilterRef} className="relative group w-full">
                   <button
+                    ref={sectorsButtonRef}
                     type="button"
-                    onClick={() => setIsSectorFilterOpen((prev) => !prev)}
+                    onClick={() =>
+                      setIsSectorFilterOpen((prev) => {
+                        if (!prev) {
+                          const initial = getSectorsPanelPosition();
+                          if (initial) setSectorsPanelStyle(initial);
+                        }
+                        return !prev;
+                      })
+                    }
                     className="h-11 w-full select-none rounded-xl border border-border/60 bg-background/55 px-4 text-sm text-muted-foreground transition-colors hover:text-foreground inline-flex items-center justify-between gap-2 cursor-pointer"
                   >
                     Setores
@@ -370,42 +423,6 @@ const Assets = () => {
                     )}
                     <ChevronDown className={`h-3.5 w-3.5 opacity-70 transition-transform ${isSectorFilterOpen ? "rotate-180" : ""}`} />
                   </button>
-                  <AnimatePresence>
-                    {isSectorFilterOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                        className="absolute right-0 mt-2 z-30 w-[290px] max-h-72 overflow-auto rounded-xl border border-border/50 bg-card/95 backdrop-blur-xl p-2 shadow-xl origin-top-right"
-                      >
-                        <div className="px-2 py-1.5 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Filtrar setores</div>
-                        <div className="space-y-1">
-                          {categories.map((cat) => {
-                            const active = selectedSectors.includes(cat);
-                            return (
-                              <label
-                                key={cat}
-                                className={`flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer border transition-all duration-200 ease-out ${
-                                  active
-                                    ? "bg-primary/15 text-primary border-primary/30 shadow-[0_0_12px_-6px] shadow-primary/30"
-                                    : "bg-transparent border-transparent text-muted-foreground hover:text-foreground hover:bg-background/60 hover:border-border/50"
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={active}
-                                  onChange={() => toggleSector(cat)}
-                                  className="h-3.5 w-3.5 accent-[hsl(var(--primary))]"
-                                />
-                                <span className="text-sm">{cat}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
               </div>
               <motion.div
@@ -480,6 +497,82 @@ const Assets = () => {
               ))}
             </div>
           </div>
+          {typeof document !== "undefined" &&
+            createPortal(
+              <AnimatePresence>
+                {isSectorFilterOpen && (
+                  <motion.div
+                    ref={sectorsPanelRef}
+                    initial={{ opacity: 0, y: -6, scale: 0.98, top: sectorsPanelStyle.top, left: sectorsPanelStyle.left }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      scale: 1,
+                      top: sectorsPanelStyle.top,
+                      left: sectorsPanelStyle.left,
+                    }}
+                    exit={{ opacity: 0, y: -4, scale: 0.985 }}
+                    transition={{
+                      opacity: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
+                      y: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
+                      scale: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
+                      top: { type: "spring", stiffness: 500, damping: 38, mass: 0.7 },
+                      left: { type: "spring", stiffness: 500, damping: 38, mass: 0.7 },
+                    }}
+                    style={{
+                      position: "fixed",
+                      width: sectorsPanelStyle.width,
+                    }}
+                    className="z-[120] max-h-[360px] overflow-auto rounded-2xl border border-border/50 bg-[linear-gradient(170deg,rgba(15,22,36,0.96)_0%,rgba(11,17,29,0.98)_100%)] p-2.5 shadow-[0_18px_50px_-24px_rgba(0,0,0,0.9)] origin-top-right backdrop-blur-xl supports-[backdrop-filter]:bg-[linear-gradient(170deg,rgba(15,22,36,0.82)_0%,rgba(11,17,29,0.9)_100%)] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/70 hover:[&::-webkit-scrollbar-thumb]:bg-border"
+                  >
+                    <div className="sticky top-0 z-10 mb-2 rounded-xl border border-border/50 bg-background/55 px-3 py-2 backdrop-blur-md">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Filtrar setores</span>
+                        <span className="rounded-full border border-border/60 bg-background/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          {selectedSectors.length}/{categories.length}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      {categories.map((cat) => {
+                        const active = selectedSectors.includes(cat);
+                        return (
+                          <label
+                            key={cat}
+                            className={`group flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer border transition-all duration-200 ease-out ${
+                              active
+                                ? "bg-primary/16 text-foreground border-primary/35 shadow-[0_8px_20px_-14px] shadow-primary/70"
+                                : "bg-transparent border-transparent text-muted-foreground hover:text-foreground hover:bg-background/55 hover:border-border/60"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={active}
+                              onChange={() => toggleSector(cat)}
+                              className="peer sr-only"
+                            />
+                            <span
+                              className={`flex h-4.5 w-4.5 items-center justify-center rounded-[5px] border transition-all ${
+                                active
+                                  ? "border-primary/60 bg-primary text-primary-foreground"
+                                  : "border-border/70 bg-background/60 text-transparent group-hover:border-border"
+                              }`}
+                            >
+                              <Check className="h-3 w-3" />
+                            </span>
+                            <span className={`text-[22px] leading-none ${active ? "text-primary/70" : "text-muted-foreground/35 group-hover:text-muted-foreground/50"}`}>
+                              •
+                            </span>
+                            <span className={`text-sm ${active ? "font-medium text-foreground" : ""}`}>{cat}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>,
+              document.body
+            )}
 
           <div className="relative z-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((asset, i) => (
