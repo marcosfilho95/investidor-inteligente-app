@@ -335,7 +335,7 @@ const Assets = () => {
             </div>
           </div>
 
-          <div className="relative z-40 overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-b from-card/[0.72] via-card/[0.55] to-card/[0.45] p-3.5 shadow-[0_12px_34px_-22px_rgba(0,0,0,0.75)] backdrop-blur-xl">
+          <div className="relative z-40 overflow-x-hidden overflow-y-visible rounded-2xl border border-border/40 bg-gradient-to-b from-card/[0.72] via-card/[0.55] to-card/[0.45] p-3.5 shadow-[0_12px_34px_-22px_rgba(0,0,0,0.75)] backdrop-blur-xl">
             <div className="pointer-events-none absolute -top-12 -right-10 h-28 w-28 rounded-full bg-primary/[0.08] blur-2xl" />
             <div className="pointer-events-none absolute -bottom-14 -left-10 h-28 w-28 rounded-full bg-primary/[0.06] blur-2xl" />
             <div className="relative mb-2 flex items-center justify-between gap-2 px-1">
