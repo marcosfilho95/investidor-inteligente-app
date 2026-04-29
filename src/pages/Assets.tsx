@@ -229,7 +229,7 @@ const Assets = () => {
     const dyMin = parseFilterNumber(fundamentalFilters.dy);
     const plMax = parseFilterNumber(fundamentalFilters.pl);
     const roeMin = parseFilterNumber(fundamentalFilters.roe);
-    const capMin = parseFilterNumber(fundamentalFilters.marketCap);
+    const capMax = parseFilterNumber(fundamentalFilters.marketCap);
 
     const items = holdings.filter((h) => {
       const canonical = canonicalMetaBySymbol.get(h.symbol);
@@ -251,7 +251,7 @@ const Assets = () => {
       const matchDy = matchesThreshold(h.dividend, dyMin, "min");
       const matchPl = matchesThreshold(h.pe, plMax, "max");
       const matchRoe = matchesThreshold(h.roe, roeMin, "min");
-      const matchMarketCap = matchesThreshold(marketCapInBillions, capMin, "min");
+      const matchMarketCap = matchesThreshold(marketCapInBillions, capMax, "max");
 
       return matchSearch && matchTrend && matchSector && matchDy && matchPl && matchRoe && matchMarketCap;
     });
@@ -459,7 +459,7 @@ const Assets = () => {
                 { key: "dy", label: "DY MÍN (%)", hint: "Ex: 5" },
                 { key: "pl", label: "P/L MÁX", hint: "Ex: 10" },
                 { key: "roe", label: "ROE MÍN (%)", hint: "Ex: 8" },
-                { key: "marketCap", label: "Market Cap MÍN (B)", hint: "Ex: 10" },
+                { key: "marketCap", label: "Market Cap MÁX (B)", hint: "Ex: 10" },
               ].map((item) => (
                 <div key={item.key} className="rounded-xl border border-border/45 bg-background/35 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90">{item.label}</p>
