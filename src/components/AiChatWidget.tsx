@@ -471,6 +471,14 @@ export function AiChatWidget({
   const inputLocked = isLoading || isAssistantTyping;
   const showQuickPrompts = messages.length <= 1 && !isLoading;
   const quickPrompts = useMemo(() => {
+    if (page === "dashboard") {
+      return [
+        QUICK_PROMPTS_DEFAULT[0],
+        QUICK_PROMPTS_DEFAULT.slice(1, 3),
+        QUICK_PROMPTS_DEFAULT[3],
+        QUICK_PROMPTS_DEFAULT[4],
+      ] as const;
+    }
     if (page === "carteira") return QUICK_PROMPTS_PORTFOLIO;
     if (page === "aprender") return QUICK_PROMPTS_LEARN;
     if (page === "ativo") return QUICK_PROMPTS_ASSET;
@@ -701,15 +709,30 @@ export function AiChatWidget({
           >
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Sugestões rápidas</p>
             <div className="flex flex-wrap gap-1.5">
-              {quickPrompts.map((prompt) => (
-                <button
-                  key={prompt.label}
-                  onClick={() => handleSend(prompt.label)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/80 border border-border/40 text-[11px] text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/10 transition-all duration-200"
-                >
-                  <span>{prompt.icon}</span>
-                  {prompt.label}
-                </button>
+              {quickPrompts.map((prompt, idx) => (
+                Array.isArray(prompt) ? (
+                  <div key={`pair-${idx}`} className="w-full flex gap-1.5">
+                    {prompt.map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={() => handleSend(item.label)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/80 border border-border/40 text-[11px] text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/10 transition-all duration-200"
+                      >
+                        <span>{item.icon}</span>
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <button
+                    key={prompt.label}
+                    onClick={() => handleSend(prompt.label)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/80 border border-border/40 text-[11px] text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/10 transition-all duration-200"
+                  >
+                    <span>{prompt.icon}</span>
+                    {prompt.label}
+                  </button>
+                )
               ))}
             </div>
           </motion.div>
