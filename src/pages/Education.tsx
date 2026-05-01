@@ -1,8 +1,10 @@
 ﻿import { ChevronRight, GraduationCap, TrendingUp, Brain, BarChart3, Shield, Bot, Lightbulb } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
+import { useUserHoldings } from "@/hooks/useUserHoldings";
+import { getAiTaxonomy } from "@/data/investments";
 
 interface Trail {
   id: string;
@@ -313,8 +315,66 @@ const withAlpha = (color: string, alpha: number): string => {
 };
 
 const Education = () => {
+  const { enrichedHoldings, userTrades, portfolioMetrics } = useUserHoldings();
   const [openTrail, setOpenTrail] = useState<string | null>("fundamentos");
   const [openModule, setOpenModule] = useState<string | null>(null);
+  const userSymbols = useMemo(() => enrichedHoldings.map((h) => h.symbol), [enrichedHoldings]);
+  const userHoldingsData = useMemo(
+    () =>
+      enrichedHoldings.map((h) => ({
+        symbol: h.symbol,
+        shares: h.shares,
+        avgPrice: h.avgPrice,
+      })),
+    [enrichedHoldings]
+  );
+  const sectorAllocation = useMemo(() => {
+    const map: Record<string, number> = {};
+    enrichedHoldings.forEach((h) => {
+      const sector = getAiTaxonomy(h.symbol, h.sector, h.subsetor).setor_macro;
+      map[sector] = (map[sector] || 0) + h.allocation;
+    });
+    return Object.entries(map)
+      .map(([sector, allocationPct]) => ({ sector, allocationPct }))
+      .sort((a, b) => b.allocationPct - a.allocationPct);
+  }, [enrichedHoldings]);
+  const portfolioContext = useMemo(
+    () => ({
+      summary: {
+        totalCloseValue: portfolioMetrics.totalCloseValue,
+        totalInvested: portfolioMetrics.totalInvestedOpen,
+        totalGain: portfolioMetrics.totalGain,
+        dailyChange: portfolioMetrics.dailyChange,
+        rentabilityPct: portfolioMetrics.totalGainPercent,
+        assetCount: enrichedHoldings.length,
+        sectorCount: sectorAllocation.length,
+      },
+      sectorAllocation,
+      positions: enrichedHoldings.map((h) => ({
+        symbol: h.symbol,
+        name: h.name,
+        sector: getAiTaxonomy(h.symbol, h.sector, h.subsetor).setor_macro,
+        subsetor: getAiTaxonomy(h.symbol, h.sector, h.subsetor).subsetor,
+        shares: h.shares,
+        avgPrice: h.avgPrice,
+        currentPrice: h.price,
+        positionValue: h.value,
+        allocationPct: h.allocation,
+      })),
+      recentTrades: userTrades
+        .slice()
+        .sort((a, b) => new Date(b.traded_at).getTime() - new Date(a.traded_at).getTime())
+        .slice(0, 30)
+        .map((t) => ({
+          symbol: t.symbol,
+          side: t.side,
+          shares: t.shares,
+          price: t.price,
+          traded_at: t.traded_at,
+        })),
+    }),
+    [enrichedHoldings, portfolioMetrics, sectorAllocation, userTrades]
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -463,6 +523,9 @@ const Education = () => {
                   <AiChatWidget
                     page="aprender"
                     welcomeMessage={fixMojibake("Olá! Sou o Hodl 🤖, seu assistente educacional de investimentos. Estou aqui para tirar suas dúvidas sobre qualquer conceito das trilhas — desde o básico até análise fundamentalista avançada. Pergunte-me qualquer coisa! 📚")}
+                    userSymbols={userSymbols}
+                    userHoldingsData={userHoldingsData}
+                    portfolioContext={portfolioContext}
                   />
                 </div>
               </AnimatedCard>

@@ -56,7 +56,11 @@ interface AiChatWidgetProps {
 }
 
 type Msg = { role: "user" | "assistant"; content: string };
+type PersistedMsg = Msg & { ts: number };
 const HODL_AVATAR_SRC = "/images/dffsfd.png";
+const CHAT_MEMORY_KEY = "ii_hodl_chat_memory_v1";
+const CHAT_MEMORY_LIMIT = 20;
+const CHAT_MEMORY_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 function formatSignedMoneyPtBr(value?: number): string {
   const num = Number(value);
@@ -414,6 +418,7 @@ export function AiChatWidget({
   fullHeight = false,
 }: AiChatWidgetProps) {
   const initialWelcome = welcomeMessage || "Olá! Sou o Hodl 🤖, seu assistente inteligente. Como posso te ajudar hoje?";
+  const storageKey = CHAT_MEMORY_KEY;
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: initialWelcome },
@@ -433,6 +438,46 @@ export function AiChatWidget({
     }
     return "h-[30rem] min-h-[24rem] max-h-[72vh]";
   }, [fullHeight, page]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as PersistedMsg[];
+      if (!Array.isArray(parsed)) return;
+      const now = Date.now();
+      const valid = parsed
+        .filter((m) =>
+          m &&
+          (m.role === "user" || m.role === "assistant") &&
+          typeof m.content === "string" &&
+          typeof m.ts === "number" &&
+          now - m.ts <= CHAT_MEMORY_TTL_MS
+        )
+        .slice(-CHAT_MEMORY_LIMIT)
+        .map((m) => ({ role: m.role, content: m.content }));
+      if (valid.length > 0) {
+        setMessages(valid);
+      } else {
+        localStorage.removeItem(storageKey);
+      }
+    } catch {
+      localStorage.removeItem(storageKey);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    try {
+      const now = Date.now();
+      const compact: PersistedMsg[] = messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ role: m.role, content: m.content, ts: now }))
+        .slice(-CHAT_MEMORY_LIMIT);
+      localStorage.setItem(storageKey, JSON.stringify(compact));
+    } catch {
+      // Ignore storage quota/transient errors to avoid breaking chat flow.
+    }
+  }, [messages, storageKey]);
 
   const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
     if (!scrollRef.current) return;
