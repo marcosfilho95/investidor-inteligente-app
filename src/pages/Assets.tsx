@@ -383,20 +383,20 @@ const Assets = () => {
             <div className="pointer-events-none absolute -top-12 -right-10 h-28 w-28 rounded-full bg-primary/[0.08] blur-2xl" />
             <div className="pointer-events-none absolute -bottom-14 -left-10 h-28 w-28 rounded-full bg-primary/[0.06] blur-2xl" />
             <div className="relative mb-2 flex items-center justify-between gap-2 px-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/85">
                 Filtros rápidos
               </p>
-              <p className="text-[10px] text-muted-foreground/80">Refine por tendência e fundamentos</p>
+              <p className="text-[10px] text-foreground/70">Refine por tendência e fundamentos</p>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:items-center sm:grid-cols-[minmax(0,1fr)_200px_auto]">
               <div className="relative w-full min-w-0">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/75" />
                 <input
                   type="text"
                   placeholder="Buscar ativo por nome ou ticker"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-border/60 bg-background/55 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground/90 transition-all focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/45"
+                  className="h-11 w-full rounded-xl border border-border/80 bg-background/70 pl-10 pr-4 text-sm text-foreground placeholder:text-foreground/60 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/55"
                 />
               </div>
               <div className="w-full min-w-0">
@@ -413,7 +413,7 @@ const Assets = () => {
                         return !prev;
                       })
                     }
-                    className="h-11 w-full select-none rounded-xl border border-border/60 bg-background/55 px-4 text-sm text-muted-foreground transition-colors hover:text-foreground inline-flex items-center justify-between gap-2 cursor-pointer"
+                    className="h-11 w-full select-none rounded-xl border border-border/80 bg-background/70 px-4 text-sm text-foreground/85 transition-colors hover:text-foreground inline-flex items-center justify-between gap-2 cursor-pointer"
                   >
                     Setores
                     {selectedSectors.length > 0 && (
@@ -450,13 +450,13 @@ const Assets = () => {
                   }}
                   disabled={!showClearButton}
                   tabIndex={showClearButton ? 0 : -1}
-                  className="h-11 w-full rounded-xl border border-border/60 bg-background/55 px-3 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none"
+                  className="h-11 w-full rounded-xl border border-border/80 bg-background/70 px-3 text-xs text-foreground/75 transition-colors hover:text-foreground disabled:pointer-events-none"
                 >
                   Limpar tudo
                 </button>
               </motion.div>
             </div>
-            <div className="mt-3 flex flex-wrap gap-1.5 rounded-xl border border-border/35 bg-background/25 p-1.5">
+            <div className="mt-3 flex flex-wrap gap-1.5 rounded-xl border border-border/55 bg-background/45 p-1.5">
               {(["Todos", "Em alta", "Em baixa"] as const).map((trend) => (
                 <button
                   key={trend}
@@ -464,7 +464,7 @@ const Assets = () => {
                   className={`min-w-[108px] rounded-lg px-4 py-2 text-xs font-medium transition-all ${
                     trendFilter === trend
                       ? "border border-primary/35 bg-primary/15 text-primary shadow-[0_0_14px_-6px] shadow-primary/35"
-                      : "border border-transparent bg-background/30 text-muted-foreground hover:text-foreground hover:border-border/60"
+                      : "border border-transparent bg-background/45 text-foreground/75 hover:text-foreground hover:border-border/75"
                   }`}
                 >
                   {trend}
@@ -478,8 +478,8 @@ const Assets = () => {
                 { key: "roe", label: "ROE MÍN (%)", hint: "Ex: 8" },
                 { key: "marketCap", label: "Market Cap MÁX (B)", hint: "Ex: 10" },
               ].map((item) => (
-                <div key={item.key} className="rounded-xl border border-border/45 bg-background/35 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/90">{item.label}</p>
+                <div key={item.key} className="rounded-xl border border-border/60 bg-background/45 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground/80">{item.label}</p>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -491,7 +491,7 @@ const Assets = () => {
                       }))
                     }
                     placeholder={item.hint}
-                    className="mt-2 h-9 w-full rounded-lg border border-border/60 bg-background/65 px-2.5 text-xs text-foreground placeholder:text-muted-foreground transition-all focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary/45"
+                    className="mt-2 h-9 w-full rounded-lg border border-border/80 bg-background/75 px-2.5 text-xs text-foreground placeholder:text-foreground/60 transition-all focus:outline-none focus:ring-2 focus:ring-primary/35 focus:border-primary/55"
                   />
                 </div>
               ))}
@@ -691,4 +691,5 @@ const Assets = () => {
 };
 
 export default Assets;
+
 

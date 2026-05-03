@@ -27,13 +27,14 @@ export function IndicatorCard({ label, value, tooltip }: IndicatorCardProps) {
         <TooltipContent
           side="top"
           sideOffset={6}
-          className="max-w-[280px] rounded-lg border border-white/10 !bg-[#111318] backdrop-blur-0 p-3 space-y-1.5 text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.55)] data-[state=delayed-open]:duration-100 data-[state=closed]:duration-100 data-[state=delayed-open]:ease-[cubic-bezier(0.22,1,0.36,1)] data-[state=closed]:ease-[cubic-bezier(0.22,1,0.36,1)]"
+          className="max-w-[280px] rounded-lg border border-border bg-popover p-3 space-y-1.5 text-popover-foreground shadow-[0_8px_24px_rgba(0,0,0,0.28)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.55)] data-[state=delayed-open]:duration-100 data-[state=closed]:duration-100 data-[state=delayed-open]:ease-smooth-pop data-[state=closed]:ease-smooth-pop"
         >
           <p className="font-semibold text-xs">{tooltip.title}</p>
           <p className="text-xs text-muted-foreground leading-relaxed">{tooltip.description}</p>
-          <p className="text-[10px] text-gain font-mono">Calculo: {tooltip.formula}</p>
+          <p className="text-[10px] text-primary font-mono">Calculo: {tooltip.formula}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
 }
+

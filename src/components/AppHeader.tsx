@@ -1,10 +1,11 @@
 ﻿import { Link, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, LogOut, User, HelpCircle, Database, Menu, X } from "lucide-react";
+import { LayoutDashboard, Wallet, PieChart, BookOpen, Bell, LogOut, User, HelpCircle, Database, Menu, X, Sun, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { fetchDataStatus, type DataStatus } from "@/data/dataStatus";
+import { useTheme } from "next-themes";
 
 interface AppHeaderProps {
   activePage: "dashboard" | "carteira" | "ativos" | "aprender";
@@ -40,9 +41,13 @@ export function AppHeader({ activePage }: AppHeaderProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(
     () => sessionStorage.getItem("ii_tour_keep_mobile_menu_open") === "1"
   );
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(
+    () => localStorage.getItem("ii_has_unread_notifications") !== "0"
+  );
   const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { resolvedTheme, setTheme } = useTheme();
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const tourRef = useRef<HTMLDivElement>(null);
@@ -217,6 +222,18 @@ export function AppHeader({ activePage }: AppHeaderProps) {
           </nav>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            title={resolvedTheme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+            aria-label={resolvedTheme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+            className="h-8 px-2.5 rounded-lg flex items-center gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            {resolvedTheme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+            <span className="hidden md:inline text-[11px] font-medium">
+              {resolvedTheme === "dark" ? "Claro" : "Escuro"}
+            </span>
+          </button>
+
           <div className="md:hidden relative" ref={mobileMenuRef}>
             <button
               onClick={() => {
@@ -297,10 +314,19 @@ export function AppHeader({ activePage }: AppHeaderProps) {
 
           {/* Notifications */}
           <div className="relative" ref={notifRef} data-tour="notifications">
-            <button onClick={() => { setShowNotifications(!showNotifications); setShowUserMenu(false); }}
+            <button onClick={() => {
+              setShowNotifications(!showNotifications);
+              setShowUserMenu(false);
+              if (hasUnreadNotifications) {
+                setHasUnreadNotifications(false);
+                localStorage.setItem("ii_has_unread_notifications", "0");
+              }
+            }}
               className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors relative">
               <Bell className="h-4 w-4" />
-              <div className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary animate-pulse" />
+              {hasUnreadNotifications && (
+                <div className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary animate-pulse" />
+              )}
             </button>
             <AnimatePresence>
               {showNotifications && (

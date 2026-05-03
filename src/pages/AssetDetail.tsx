@@ -114,6 +114,7 @@ const AssetDetail = () => {
   const [chartsReady, setChartsReady] = useState(false);
   const [orderQtyInput, setOrderQtyInput] = useState("1");
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [investmentComparison, setInvestmentComparison] = useState<ComparisonChartPoint[]>([]);
   const [comparisonMeta, setComparisonMeta] = useState<{
     lastUpdatedAt: string | null;
@@ -518,18 +519,23 @@ const AssetDetail = () => {
   }, [symbol, canonicalSymbol, navigate]);
 
   const handleOrder = async () => {
-    if (!hasValidOrderQty) return;
+    if (!hasValidOrderQty || isSubmittingOrder) return;
+    setIsSubmittingOrder(true);
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
     const ss = String(now.getSeconds()).padStart(2, "0");
     const tradedAt = orderDate ? `${orderDate}T${hh}:${mm}:${ss}` : undefined;
-    if (orderType === "buy") {
-      const success = await addHolding(asset.symbol, parsedOrderQty, orderReferencePrice, tradedAt);
-      if (success) setShowBuyModal(false);
-    } else {
-      const success = await sellHolding(asset.symbol, parsedOrderQty, tradedAt, orderReferencePrice);
-      if (success) setShowBuyModal(false);
+    try {
+      if (orderType === "buy") {
+        const success = await addHolding(asset.symbol, parsedOrderQty, orderReferencePrice, tradedAt);
+        if (success) setShowBuyModal(false);
+      } else {
+        const success = await sellHolding(asset.symbol, parsedOrderQty, tradedAt, orderReferencePrice);
+        if (success) setShowBuyModal(false);
+      }
+    } finally {
+      setIsSubmittingOrder(false);
     }
   };
 
@@ -882,8 +888,8 @@ const AssetDetail = () => {
                 <ResponsiveContainer width="100%" height={280}>
                   <AreaChart key={`price-${asset.symbol}-${chartAnimKey}`} data={priceHistory}>
                     <defs><linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(142, 72%, 48%)" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="hsl(142, 72%, 48%)" stopOpacity={0} />
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.28} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                     </linearGradient></defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
                     <XAxis dataKey="month" stroke="hsl(215, 14%, 50%)" fontSize={9} tickLine={false} axisLine={false} tick={({ x, y, payload }: { x?: number; y?: number; payload?: TickPayload }) => payload?.value && Number.isFinite(x) && Number.isFinite(y) ? <text x={x} y={(y as number) + 12} textAnchor="middle" fill="hsl(215, 14%, 50%)" fontSize={9}>{payload.value}</text> : null} interval={Math.max(0, Math.floor(priceHistory.length / 10))} />
@@ -907,7 +913,7 @@ const AssetDetail = () => {
                     <Area
                       type="monotone"
                       dataKey="price"
-                      stroke="hsl(142, 72%, 48%)"
+                      stroke="hsl(var(--primary))"
                       strokeWidth={2}
                       fill="url(#priceGrad)"
                       isAnimationActive
@@ -933,8 +939,8 @@ const AssetDetail = () => {
                   <ComposedChart key={`compare-${asset.symbol}-${selectedPeriod}-${compareAnimKey}`} data={investmentComparison}>
                     <defs>
                       <linearGradient id="compareGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(142, 72%, 48%)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(142, 72%, 48%)" stopOpacity={0} />
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.28} />
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 16%)" />
@@ -981,7 +987,7 @@ const AssetDetail = () => {
                     <Area
                       type="monotone"
                       dataKey={asset.symbol}
-                      stroke="hsl(142, 72%, 48%)"
+                      stroke="hsl(var(--primary))"
                       strokeWidth={2}
                       fill="url(#compareGrad)"
                       isAnimationActive
@@ -1032,7 +1038,7 @@ const AssetDetail = () => {
                 </ResponsiveContainer>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
                   {[
-                    { name: displaySymbol, value: lastComparison[asset.symbol], color: "hsl(142, 72%, 48%)" },
+                    { name: displaySymbol, value: lastComparison[asset.symbol], color: "hsl(var(--primary))" },
                     { name: "IBOV", value: lastComparison.IBOV, color: "hsl(217, 91%, 60%)" },
                     { name: "CDI", value: lastComparison.CDI, color: "hsl(38, 92%, 50%)" },
                     { name: "IPCA", value: lastComparison.IPCA, color: "hsl(280, 65%, 60%)" },
@@ -1189,10 +1195,10 @@ const AssetDetail = () => {
               <button onClick={() => setShowBuyModal(false)} className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-accent transition-colors">Cancelar</button>
               <button
                 onClick={handleOrder}
-                disabled={!hasValidOrderQty}
+                disabled={!hasValidOrderQty || isSubmittingOrder}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${orderType === "buy" ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}`}
               >
-                Confirmar {orderType === "buy" ? "compra" : "venda"}
+                {isSubmittingOrder ? "Processando..." : `Confirmar ${orderType === "buy" ? "compra" : "venda"}`}
               </button>
             </div>
             </motion.div>
