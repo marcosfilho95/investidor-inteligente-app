@@ -5,7 +5,7 @@ import { HoldingsTable } from "@/components/HoldingsTable";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { SmartInsightModal } from "@/components/SmartInsightModal";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -44,10 +44,14 @@ const Index = () => {
   const [investorProfile, setInvestorProfile] = useState<InvestorProfileSummary | null>(null);
   const [showProfileOnboarding, setShowProfileOnboarding] = useState(false);
   const [smartAlert, setSmartAlert] = useState<SmartAlertCandidate | null>(null);
+  const [queuedSmartAlert, setQueuedSmartAlert] = useState<SmartAlertCandidate | null>(null);
   const [showSmartAlert, setShowSmartAlert] = useState(false);
   const [smartAlertEvaluated, setSmartAlertEvaluated] = useState(false);
   const [smartAlertHandled, setSmartAlertHandled] = useState(false);
+  const [isTourActive, setIsTourActive] = useState(false);
+  const suppressSmartAlertDismissRef = useRef(false);
   const { enrichedHoldings, loading, userTrades, portfolioMetrics, portfolioPerfSeries } = useUserHoldings();
+  const canPresentAlerts = !isTourActive && !showProfileOnboarding;
 
   const hasCompletedTour = (userId: string) =>
     localStorage.getItem(`onboarding_completed_${userId}`) === "true" ||
@@ -111,6 +115,17 @@ const Index = () => {
       window.removeEventListener("ii:onboarding-tour-complete", handleTourComplete as EventListener);
     };
   }, [currentUser, investorProfile]);
+
+  useEffect(() => {
+    const onTourVisibility = (event: Event) => {
+      const custom = event as CustomEvent<{ open?: boolean }>;
+      setIsTourActive(Boolean(custom.detail?.open));
+    };
+    window.addEventListener("ii:tour-visibility", onTourVisibility as EventListener);
+    return () => {
+      window.removeEventListener("ii:tour-visibility", onTourVisibility as EventListener);
+    };
+  }, []);
 
   useEffect(() => {
     const t = window.setTimeout(() => setMinDelayDone(true), 180);
@@ -232,7 +247,7 @@ const Index = () => {
   }, [enrichedHoldings, investorProfile]);
 
   useEffect(() => {
-    if (!currentUser?.id || loading || !minDelayDone || smartAlertEvaluated || showProfileOnboarding) return;
+    if (!currentUser?.id || loading || !minDelayDone || smartAlertEvaluated || showProfileOnboarding || isTourActive) return;
     let active = true;
 
     (async () => {
@@ -329,7 +344,13 @@ const Index = () => {
           trackSmartAlertBehavior(currentUser.id, selection.alert, "shown");
           setSmartAlert(enrichedAlert);
           setSmartAlertHandled(false);
-          setShowSmartAlert(true);
+          if (canPresentAlerts) {
+            setShowSmartAlert(true);
+            setQueuedSmartAlert(null);
+          } else {
+            setQueuedSmartAlert(enrichedAlert);
+            setShowSmartAlert(false);
+          }
           await registerSmartAlertShown(currentUser.id, selection.alert);
         }
 
@@ -358,8 +379,26 @@ const Index = () => {
     portfolioMetrics.recent2dChangePercent,
     portfolioPerfSeries,
     showProfileOnboarding,
+    isTourActive,
+    canPresentAlerts,
     smartAlertEvaluated,
   ]);
+
+  useEffect(() => {
+    if (canPresentAlerts) return;
+    if (!showSmartAlert || !smartAlert) return;
+    suppressSmartAlertDismissRef.current = true;
+    setQueuedSmartAlert((prev) => prev ?? smartAlert);
+    setShowSmartAlert(false);
+  }, [canPresentAlerts, showSmartAlert, smartAlert]);
+
+  useEffect(() => {
+    if (!canPresentAlerts || showSmartAlert) return;
+    if (!queuedSmartAlert) return;
+    setSmartAlert(queuedSmartAlert);
+    setShowSmartAlert(true);
+    setQueuedSmartAlert(null);
+  }, [canPresentAlerts, queuedSmartAlert, showSmartAlert]);
 
   const aiPortfolioContext = useMemo(() => {
     const sectorMap: Record<string, number> = {};
@@ -470,23 +509,23 @@ ${aiCompatibilityWarning ? `\n${aiCompatibilityWarning}` : ""}`, [greeting, user
                 </p>
               </div>
               {!loading && (
-                <div className={`relative w-fit min-w-[214px] ml-auto overflow-hidden rounded-[14px] border border-white/10 bg-[linear-gradient(168deg,rgba(34,41,51,0.42)_0%,rgba(21,29,38,0.34)_42%,rgba(15,21,28,0.3)_100%)] px-4 py-3 shadow-[0_8px_20px_-14px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[1.5px] ${profileBadgeTone}`}>
-                  <div className="pointer-events-none absolute inset-[1px] rounded-[13px] border border-white/[0.04] bg-gradient-to-b from-white/[0.03] via-transparent to-black/[0.08]" />
-                  <div className="pointer-events-none absolute left-4 right-4 top-[2px] h-px bg-white/12" />
-                  <div className="pointer-events-none absolute left-4 right-4 bottom-[2px] h-px bg-black/20" />
-                  <div className="pointer-events-none absolute -left-5 top-1/2 h-8 w-28 -translate-y-1/2 rotate-[-28deg] bg-gradient-to-r from-white/0 via-white/[0.1] to-white/0 blur-sm" />
+                <div className={`relative w-fit min-w-[214px] ml-auto overflow-hidden rounded-[14px] border border-slate-300/65 dark:border-white/10 bg-[linear-gradient(165deg,rgba(236,239,243,0.95)_0%,rgba(221,226,232,0.9)_45%,rgba(206,213,221,0.9)_100%)] dark:bg-[linear-gradient(168deg,rgba(34,41,51,0.42)_0%,rgba(21,29,38,0.34)_42%,rgba(15,21,28,0.3)_100%)] px-4 py-3 shadow-[0_10px_20px_-14px_rgba(15,23,42,0.45),inset_0_1px_0_rgba(255,255,255,0.55)] dark:shadow-[0_8px_20px_-14px_rgba(0,0,0,0.75)] backdrop-blur-[1.5px] ${profileBadgeTone}`}>
+                  <div className="pointer-events-none absolute inset-[1px] rounded-[13px] border border-white/35 dark:border-white/[0.04] bg-gradient-to-b from-white/35 dark:from-white/[0.03] via-transparent to-slate-700/10 dark:to-black/[0.08]" />
+                  <div className="pointer-events-none absolute left-4 right-4 top-[2px] h-px bg-white/55 dark:bg-transparent" />
+                  <div className="pointer-events-none absolute left-4 right-4 bottom-[2px] h-px bg-slate-700/20 dark:bg-black/20" />
+                  <div className="pointer-events-none absolute -left-5 top-1/2 h-8 w-28 -translate-y-1/2 rotate-[-28deg] bg-gradient-to-r from-white/0 via-white/35 dark:via-white/[0.1] to-white/0 blur-sm" />
                   <motion.div
-                    className="pointer-events-none absolute left-[28%] top-1/2 h-7 w-16 -translate-y-1/2 rotate-[-28deg] bg-gradient-to-r from-white/0 via-white/[0.08] to-white/0 blur-[2px]"
-                    animate={{ opacity: [0.24, 0.52, 0.24] }}
+                    className="pointer-events-none absolute left-[28%] top-1/2 h-7 w-16 -translate-y-1/2 rotate-[-28deg] bg-gradient-to-r from-white/0 via-white/45 dark:via-white/[0.08] to-white/0 blur-[2px]"
+                    animate={{ opacity: [0.2, 0.42, 0.2] }}
                     transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
                   />
-                  <div className="pointer-events-none absolute right-2 top-1 h-[34%] w-[32%] rounded-full bg-white/[0.04] blur-sm" />
+                  <div className="pointer-events-none absolute right-2 top-1 h-[34%] w-[32%] rounded-full bg-white/35 dark:bg-white/[0.04] blur-sm" />
                   <div className="relative min-w-0 w-full flex flex-col gap-2.5">
-                    <div className="block w-full text-[12px] uppercase tracking-[0.2em] text-primary font-bold leading-none">
+                    <div className="block w-full text-[12px] uppercase tracking-[0.2em] text-[hsl(146,40%,26%)] dark:text-primary font-bold leading-none">
                       Perfil do investidor
                     </div>
-                    <div className="h-px w-full bg-gradient-to-r from-white/20 via-white/10 to-white/18" />
-                    <p className="w-full text-[14px] font-semibold leading-none tracking-tight text-right text-slate-50 drop-shadow-[0_1px_0_rgba(2,6,23,0.8)]">
+                    <div className="h-px w-full bg-gradient-to-r from-slate-500/30 via-slate-400/20 to-slate-500/25 dark:from-white/20 dark:via-white/10 dark:to-white/18" />
+                    <p className="w-full text-[14px] font-semibold leading-none tracking-tight text-right text-slate-800 dark:text-slate-50 drop-shadow-[0_1px_0_rgba(255,255,255,0.5)] dark:drop-shadow-[0_1px_0_rgba(2,6,23,0.8)]">
                       {investorProfile?.type || "Não definido"}
                     </p>
                   </div>
@@ -642,6 +681,11 @@ ${aiCompatibilityWarning ? `\n${aiCompatibilityWarning}` : ""}`, [greeting, user
         open={showSmartAlert}
         alert={smartAlert}
         onOpenChange={(open) => {
+          if (!open && suppressSmartAlertDismissRef.current) {
+            suppressSmartAlertDismissRef.current = false;
+            setShowSmartAlert(false);
+            return;
+          }
           if (!open && showSmartAlert && smartAlert && currentUser?.id && !smartAlertHandled) {
             trackSmartAlertBehavior(currentUser.id, smartAlert, "dismissed");
           }

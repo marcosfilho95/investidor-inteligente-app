@@ -1,6 +1,6 @@
 ﻿import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Mail, Calendar, LogOut, ChevronRight, Wallet, TrendingUp, PieChart, Camera, GraduationCap, ShieldCheck, BellRing } from "lucide-react";
+import { User, Mail, Calendar, LogOut, ChevronRight, Wallet, TrendingUp, PieChart, Camera, GraduationCap, ShieldCheck, BellRing, Sun, Moon } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { PageTransition, AnimatedCard } from "@/components/PageTransition";
@@ -15,6 +15,7 @@ import {
 import { InvestorProfileOnboardingModal } from "@/components/InvestorProfileOnboardingModal";
 import { loadInvestorProfileFromDatabase, persistInvestorProfile } from "@/lib/investorProfilePersistence";
 import { getAiTaxonomy } from "@/data/investments";
+import { useTheme } from "next-themes";
 
 type RiskPolicyType = "conservadora" | "moderada" | "sofisticada";
 
@@ -93,6 +94,7 @@ const Profile = () => {
   const [showProfileOnboarding, setShowProfileOnboarding] = useState(false);
   const [loading, setLoading] = useState(true);
   const { enrichedHoldings, totalValue, portfolioMetrics } = useUserHoldings();
+  const { resolvedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -778,6 +780,27 @@ const Profile = () => {
                       </div>
                     )}
                   </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-4">
+                  <div className="h-9 w-9 rounded-xl bg-accent/80 flex items-center justify-center">
+                    {resolvedTheme === "dark" ? (
+                      <Sun className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Moon className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground">Tema da interface</p>
+                    <p className="text-sm font-medium">{resolvedTheme === "dark" ? "Escuro" : "Claro"}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                    className="px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    {resolvedTheme === "dark" ? "Mudar para Claro" : "Mudar para Escuro"}
+                  </button>
                 </div>
 
                 <div className="flex items-center gap-4 p-4">

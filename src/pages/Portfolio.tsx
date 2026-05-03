@@ -1,4 +1,4 @@
-﻿import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowDownRight, ArrowUpRight, BarChart3, ChevronDown, ChevronRight, CircleDollarSign, Coins, DollarSign, HelpCircle, PiggyBank, ShoppingCart, Wallet } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import {
@@ -111,6 +111,7 @@ const Portfolio = () => {
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [activeKpiInfo, setActiveKpiInfo] = useState<"patrimonio" | "lucro" | "proventos" | "rentabilidade" | null>(null);
   const [showRentabilidadeInfoMobile, setShowRentabilidadeInfoMobile] = useState(false);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [showMobileTapHint, setShowMobileTapHint] = useState(false);
   const holdingsScrollRef = useRef<HTMLDivElement | null>(null);
   const tradeScrollRef = useRef<HTMLDivElement | null>(null);
@@ -355,11 +356,27 @@ const Portfolio = () => {
 
   const aiCompatibilityWarning = useMemo(() => {
     const status = String(portfolioRisk.profileCompatibility?.status || "");
-    if (!status || status === "Dentro da política") return "";
-    if (status === "Abaixo da política") return "Atenção: sua carteira está mais conservadora do que o seu perfil atual.";
-    if (status === "Acima da política") return "Atenção: sua carteira está mais arriscada do que o seu perfil atual.";
+    if (!status || status === "Dentro da pol�tica") return "";
+    if (status === "Abaixo da pol�tica") return "Aten��o: sua carteira est� mais conservadora do que o seu perfil atual.";
+    if (status === "Acima da pol�tica") return "Aten��o: sua carteira est� mais arriscada do que o seu perfil atual.";
     return "";
   }, [portfolioRisk.profileCompatibility?.status]);
+
+  const aiProfileContextLine = useMemo(() => {
+    const profileType = String(investorProfile?.type || "").trim();
+    const compatibilityStatus = String(portfolioRisk.profileCompatibility?.status || "").trim();
+
+    if (!profileType && !compatibilityStatus) {
+      return "Perfil de investidor: ainda n�o identificado.";
+    }
+    if (!profileType) {
+      return `Compatibilidade da carteira: ${compatibilityStatus}.`;
+    }
+    if (!compatibilityStatus) {
+      return `Perfil de investidor: ${profileType}.`;
+    }
+    return `Perfil de investidor: ${profileType}. Compatibilidade da carteira: ${compatibilityStatus}.`;
+  }, [investorProfile?.type, portfolioRisk.profileCompatibility?.status]);
 
   const sortedHoldings = useMemo(
     () => [...enrichedHoldings].sort((a, b) => b.value - a.value),
@@ -506,7 +523,8 @@ const Portfolio = () => {
   }, [focusedSection]);
 
   const handleOrder = async () => {
-    if (!selectedTradeAsset || !canConfirmOrder) return;
+    if (!selectedTradeAsset || !canConfirmOrder || isSubmittingOrder) return;
+    setIsSubmittingOrder(true);
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
@@ -514,11 +532,15 @@ const Portfolio = () => {
     const ms = String(now.getMilliseconds()).padStart(3, "0");
     const tradedAt = orderDate ? `${orderDate}T${hh}:${mm}:${ss}.${ms}` : undefined;
 
-    const success = orderType === "buy"
-      ? await addHolding(selectedTradeAsset.symbol, parsedOrderQty, selectedTradeAsset.price, tradedAt)
-      : await sellHolding(selectedTradeAsset.symbol, parsedOrderQty, tradedAt, selectedTradeAsset.price);
+    try {
+      const success = orderType === "buy"
+        ? await addHolding(selectedTradeAsset.symbol, parsedOrderQty, selectedTradeAsset.price, tradedAt)
+        : await sellHolding(selectedTradeAsset.symbol, parsedOrderQty, tradedAt, selectedTradeAsset.price);
 
-    if (success) setShowOrderModal(false);
+      if (success) setShowOrderModal(false);
+    } finally {
+      setIsSubmittingOrder(false);
+    }
   };
 
   const HOLDINGS_PAGE_SIZE = 10;
@@ -736,7 +758,7 @@ const Portfolio = () => {
               ))
             ) : [
               <div
-                className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
+                className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-card border border-border/60 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-border transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
                 key="1"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -766,7 +788,7 @@ const Portfolio = () => {
                   <p className="text-[10px] text-muted-foreground mt-2">Investido</p>
                   <p className="text-xs font-medium font-mono text-foreground/75 mt-0.5">R$ {formatCurrency(metrics.totalInvested)}</p>
                 </div>
-                <div className={`absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] z-[80] ${
+                <div className={`absolute left-3 right-3 top-full mt-2 rounded-lg border border-border bg-popover p-2 text-[11px] text-popover-foreground shadow-[0_8px_24px_rgba(0,0,0,0.2)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-smooth-pop z-[80] ${
                   activeKpiInfo === "patrimonio"
                     ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
                     : "pointer-events-none opacity-0 translate-y-2 scale-[0.96] md:group-hover/card:opacity-100 md:group-hover/card:translate-y-0 md:group-hover/card:scale-100 md:group-focus-within/card:opacity-100 md:group-focus-within/card:translate-y-0 md:group-focus-within/card:scale-100"
@@ -778,7 +800,7 @@ const Portfolio = () => {
                 </div>
               </div>,
               <div
-                className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
+                className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-card border border-border/60 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-border transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
                 key="2"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -809,7 +831,7 @@ const Portfolio = () => {
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-2">Carteira atual</p>
                 </div>
-                <div className={`absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] z-[80] ${
+                <div className={`absolute left-3 right-3 top-full mt-2 rounded-lg border border-border bg-popover p-2 text-[11px] text-popover-foreground shadow-[0_8px_24px_rgba(0,0,0,0.2)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-smooth-pop z-[80] ${
                   activeKpiInfo === "lucro"
                     ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
                     : "pointer-events-none opacity-0 translate-y-2 scale-[0.96] md:group-hover/card:opacity-100 md:group-hover/card:translate-y-0 md:group-hover/card:scale-100 md:group-focus-within/card:opacity-100 md:group-focus-within/card:translate-y-0 md:group-focus-within/card:scale-100"
@@ -821,7 +843,7 @@ const Portfolio = () => {
                 </div>
               </div>,
               <div
-                className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
+                className="glass-card p-4 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-card border border-border/60 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-border transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
                 key="3"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -850,7 +872,7 @@ const Portfolio = () => {
                   <p className="text-[1.35rem] font-semibold font-mono leading-none">R$ {formatCurrency(metrics.proventos)}</p>
                   <p className="text-[10px] text-muted-foreground mt-2">Estimativa anual</p>
                 </div>
-                <div className={`absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] z-[80] ${
+                <div className={`absolute left-3 right-3 top-full mt-2 rounded-lg border border-border bg-popover p-2 text-[11px] text-popover-foreground shadow-[0_8px_24px_rgba(0,0,0,0.2)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-smooth-pop z-[80] ${
                   activeKpiInfo === "proventos"
                     ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
                     : "pointer-events-none opacity-0 translate-y-2 scale-[0.96] md:group-hover/card:opacity-100 md:group-hover/card:translate-y-0 md:group-hover/card:scale-100 md:group-focus-within/card:opacity-100 md:group-focus-within/card:translate-y-0 md:group-focus-within/card:scale-100"
@@ -862,7 +884,7 @@ const Portfolio = () => {
                 </div>
               </div>,
               <div
-                className="glass-card px-4 pt-4 pb-2.5 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-[#11151d]/90 border border-white/10 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-white/15 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
+                className="glass-card px-4 pt-4 pb-2.5 h-full min-h-[116px] flex flex-col justify-between relative z-10 group/card hover:z-50 bg-card border border-border/60 shadow-[0_6px_18px_rgba(0,0,0,0.22)] hover:border-border transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-[1px]"
                 key="4"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -905,7 +927,7 @@ const Portfolio = () => {
                     {formatCurrency(Math.abs(metrics.rentabilidadeEmReais))}
                   </p>
                 </div>
-                <div className={`absolute left-3 right-3 top-full mt-2 rounded-lg border border-white/10 bg-[#111318] p-2 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] z-[80] ${
+                <div className={`absolute left-3 right-3 top-full mt-2 rounded-lg border border-border bg-popover p-2 text-[11px] text-popover-foreground shadow-[0_8px_24px_rgba(0,0,0,0.2)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-smooth-pop z-[80] ${
                   activeKpiInfo === "rentabilidade"
                     ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
                     : "pointer-events-none opacity-0 translate-y-2 scale-[0.96] md:group-hover/card:opacity-100 md:group-hover/card:translate-y-0 md:group-hover/card:scale-100 md:group-focus-within/card:opacity-100 md:group-focus-within/card:translate-y-0 md:group-focus-within/card:scale-100"
@@ -934,7 +956,7 @@ const Portfolio = () => {
           ) : isEmpty ? (
             <AnimatedCard delay={0.3}>
               <div className="glass-card p-12 text-center">
-                <p className="text-4xl mb-4">📊</p>
+                <p className="text-4xl mb-4">??</p>
                 <h3 className="text-lg font-semibold mb-2">Carteira vazia</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   Navegue ate <strong>Ativos</strong> para comprar suas primeiras acoes e montar seu portfolio.
@@ -1055,7 +1077,7 @@ const Portfolio = () => {
                         userSymbols={enrichedHoldings.map(h => h.symbol)}
                         userHoldingsData={enrichedHoldings.map(h => ({ symbol: h.symbol, shares: h.shares, avgPrice: h.avgPrice }))}
                         portfolioContext={aiPortfolioContext}
-                        welcomeMessage={`Sua carteira possui ${enrichedHoldings.length} ativos distribuídos em ${Object.keys(sectorMap).length} setores. Posso te ajudar a ajustar alocação, risco e rebalanceamento de forma prática. O que você quer analisar primeiro?${aiCompatibilityWarning ? `\n\n${aiCompatibilityWarning}` : ""}`}
+                        welcomeMessage={`Sua carteira possui ${enrichedHoldings.length} ativos distribuídos em ${Object.keys(sectorMap).length} setores. ${aiProfileContextLine} Posso te ajudar a ajustar alocação, risco e rebalanceamento de forma prática. O que você quer analisar primeiro?${aiCompatibilityWarning ? `\n\n${aiCompatibilityWarning}` : ""}`}
                       />
                     </div>
                   </div>
@@ -1113,7 +1135,7 @@ const Portfolio = () => {
                                 aria-label="Abrir explicação de rentabilidade da tabela"
                               >
                                 <HelpCircle className={`h-3.5 w-3.5 text-muted-foreground transition-colors duration-150 hover:text-foreground ${showMobileTapHint ? "text-primary animate-pulse" : ""}`} />
-                                <span className={`absolute right-0 top-full mt-1.5 w-[min(18rem,calc(100vw-2rem))] sm:w-[360px] rounded-lg border border-white/10 bg-[#161b26] px-3 py-2.5 text-[11px] text-slate-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-[cubic-bezier(0.22,1,0.36,1)] z-20 text-left ${
+                                <span className={`absolute right-0 top-full mt-1.5 w-[min(18rem,calc(100vw-2rem))] sm:w-[360px] rounded-lg border border-border bg-popover px-3 py-2.5 text-[11px] text-popover-foreground shadow-[0_8px_24px_rgba(0,0,0,0.2)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-100 ease-smooth-pop z-20 text-left ${
                                   showRentabilidadeInfoMobile
                                     ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
                                     : "pointer-events-none opacity-0 translate-y-2 scale-[0.96] md:group-hover/info:opacity-100 md:group-hover/info:translate-y-0 md:group-hover/info:scale-100"
@@ -1168,7 +1190,7 @@ const Portfolio = () => {
                                 >
                                   {h.changePercent >= 0 ? "+" : ""}
                                   {h.changePercent.toFixed(2)}%
-                                  <span className="text-[12px] leading-none">{h.changePercent >= 0 ? "▲" : "▼"}</span>
+                                  <span className="text-[12px] leading-none">{h.changePercent >= 0 ? "?" : "?"}</span>
                                 </span>
                               </td>
                               <td className="text-right px-4 py-3 relative z-10 hover:z-[130]">
@@ -1181,7 +1203,7 @@ const Portfolio = () => {
                                   ) : (
                                     <ArrowDownRight className="h-3 w-3 text-loss" />
                                   )}
-                                  <div className="pointer-events-none absolute right-0 top-full mt-1.5 w-fit min-w-[220px] rounded-lg border border-white/15 !bg-[#090b10] px-2 py-1.5 text-left shadow-[0_8px_24px_rgba(0,0,0,0.55)] backdrop-blur-0 opacity-0 translate-y-2 scale-[0.96] transition-[opacity,transform] duration-120 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/rent:opacity-100 group-hover/rent:translate-y-0 group-hover/rent:scale-100 z-[140]">
+                                  <div className="pointer-events-none absolute right-0 top-full mt-1.5 w-fit min-w-[220px] rounded-lg border border-white/15 !bg-[#090b10] px-2 py-1.5 text-left shadow-[0_8px_24px_rgba(0,0,0,0.55)] backdrop-blur-0 opacity-0 translate-y-2 scale-[0.96] transition-[opacity,transform] duration-120 ease-smooth-pop group-hover/rent:opacity-100 group-hover/rent:translate-y-0 group-hover/rent:scale-100 z-[140]">
                                     <p className="text-[10px] font-semibold text-foreground">Rentabilidade da posição: {rentab.toFixed(2)}%</p>
 
                                     <div className="mt-1 rounded-md border border-white/10 bg-[#0d1016] px-1.5 py-0.5">
@@ -1485,14 +1507,14 @@ const Portfolio = () => {
               </button>
               <button
                 onClick={handleOrder}
-                disabled={!canConfirmOrder}
+                disabled={!canConfirmOrder || isSubmittingOrder}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                   orderType === "buy"
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
                     : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 }`}
               >
-                Confirmar {orderType === "buy" ? "compra" : "venda"}
+                {isSubmittingOrder ? "Processando..." : `Confirmar ${orderType === "buy" ? "compra" : "venda"}`}
               </button>
             </div>
             </motion.div>
@@ -1504,6 +1526,9 @@ const Portfolio = () => {
 };
 
 export default Portfolio;
+
+
+
 
 
 

@@ -5,7 +5,7 @@ import { Holding, getFilteredBenchmarks, getLatestMarketDateKey } from "@/data/i
 import { computePortfolioPerformance } from "@/lib/portfolioPerformance";
 
 const benchmarks = [
-  { key: "carteira", label: "Carteira", color: "hsl(142, 72%, 48%)" },
+  { key: "carteira", label: "Carteira", color: "hsl(var(--primary))" },
   { key: "ibovespa", label: "IBOVESPA", color: "hsl(217, 91%, 60%)" },
   { key: "cdi", label: "CDI", color: "hsl(38, 92%, 50%)" },
   { key: "ipca", label: "IPCA", color: "hsl(280, 65%, 60%)" },
@@ -246,7 +246,7 @@ export function PerformanceChart({ userHoldings, userTrades, totalValue, firstBu
           disabled
           className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all border border-border/80 bg-accent/80 cursor-default"
         >
-          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: "hsl(142, 72%, 48%)", opacity: 1 }} />
+          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: "hsl(var(--primary))", opacity: 1 }} />
           Carteira
         </button>
         <button
@@ -334,7 +334,7 @@ export function PerformanceChart({ userHoldings, userTrades, totalValue, firstBu
             <Area
               type="monotone"
               dataKey="carteira"
-              stroke="hsl(142, 72%, 48%)"
+              stroke="hsl(var(--primary))"
               strokeWidth={2.5}
               fill="url(#color-carteira)"
               isAnimationActive

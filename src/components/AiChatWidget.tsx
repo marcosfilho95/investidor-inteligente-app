@@ -423,6 +423,7 @@ export function AiChatWidget({
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: initialWelcome },
   ]);
+  const [memoryMessages, setMemoryMessages] = useState<Msg[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAssistantTyping, setIsAssistantTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -457,7 +458,7 @@ export function AiChatWidget({
         .slice(-CHAT_MEMORY_LIMIT)
         .map((m) => ({ role: m.role, content: m.content }));
       if (valid.length > 0) {
-        setMessages(valid);
+        setMemoryMessages(valid);
       } else {
         localStorage.removeItem(storageKey);
       }
@@ -469,7 +470,7 @@ export function AiChatWidget({
   useEffect(() => {
     try {
       const now = Date.now();
-      const compact: PersistedMsg[] = messages
+      const compact: PersistedMsg[] = memoryMessages
         .filter((m) => m.role === "user" || m.role === "assistant")
         .map((m) => ({ role: m.role, content: m.content, ts: now }))
         .slice(-CHAT_MEMORY_LIMIT);
@@ -477,7 +478,7 @@ export function AiChatWidget({
     } catch {
       // Ignore storage quota/transient errors to avoid breaking chat flow.
     }
-  }, [messages, storageKey]);
+  }, [memoryMessages, storageKey]);
 
   const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
     if (!scrollRef.current) return;
@@ -535,14 +536,17 @@ export function AiChatWidget({
     if (!text.trim() || inputLocked) return;
     const userMsg: Msg = { role: "user", content: text };
     const newMessages = [...messages, userMsg];
+    const historyForApi = [...memoryMessages, userMsg].slice(-CHAT_MEMORY_LIMIT);
     shouldAutoScrollRef.current = true;
     setMessages(newMessages);
+    setMemoryMessages(historyForApi);
     if (!overrideInput) setInput("");
     setIsLoading(true);
 
     const directReply = buildDirectPortfolioReply(text, portfolioContext);
     if (directReply) {
       setMessages([...newMessages, { role: "assistant", content: directReply }]);
+      setMemoryMessages((prev) => [...prev, { role: "assistant", content: directReply }].slice(-CHAT_MEMORY_LIMIT));
       setIsLoading(false);
       return;
     }
@@ -593,7 +597,7 @@ export function AiChatWidget({
 
       // Build body with RAG context
       const body: Record<string, unknown> = {
-        messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+        messages: historyForApi.map(m => ({ role: m.role, content: m.content })),
         page: page || "dashboard",
       };
 
@@ -657,6 +661,10 @@ export function AiChatWidget({
       console.error("AI chat error:", e);
       setIsAssistantTyping(true);
       updateAssistant("⚠️ Erro de conexão. Verifique sua internet e tente novamente.");
+    }
+
+    if (assistantContent.trim()) {
+      setMemoryMessages((prev) => [...prev, { role: "assistant", content: assistantContent }].slice(-CHAT_MEMORY_LIMIT));
     }
 
     setIsLoading(false);
@@ -798,8 +806,13 @@ export function AiChatWidget({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleSend}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              void handleSend();
+            }}
+            type="button"
             disabled={inputLocked || !input.trim()}
-            className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
+            className="h-11 w-11 min-w-11 rounded-xl bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-primary/20 touch-manipulation"
           >
             <Send className="h-4 w-4" />
           </motion.button>

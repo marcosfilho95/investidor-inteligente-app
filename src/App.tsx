@@ -10,6 +10,7 @@ import { getMacroDataSync, loadMacroData } from "@/data/macroLoader";
 import { setMacroMarketData, setRealMarketData } from "@/data/investments";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { AppHeader } from "@/components/AppHeader";
+import { ThemeProvider } from "@/components/theme-provider";
 import { supabase } from "@/integrations/supabase/client";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -232,6 +233,14 @@ function AppContent() {
     setShowTour(!userSeen);
   }, [currentUserId, isPublicRoute, showTour]);
 
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("ii:tour-visibility", {
+        detail: { open: showTour },
+      })
+    );
+  }, [showTour]);
+
   const handleTourComplete = () => {
     if (currentUserId) {
       localStorage.setItem(`onboarding_completed_${currentUserId}`, "true");
@@ -280,11 +289,13 @@ function AppContent() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="ii_theme">
+      <TooltipProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { useTheme } from "next-themes";
 
 interface GaugeProps {
   score: number;
@@ -9,14 +10,16 @@ interface GaugeProps {
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
 const getRecommendationByScore = (value: number): { label: string; color: string } => {
-  if (value >= 70) return { label: "Comprar", color: "hsl(146, 74%, 50%)" };
-  if (value >= 55) return { label: "Manter", color: "hsl(110, 55%, 52%)" };
+  if (value >= 70) return { label: "Comprar", color: "hsl(var(--primary))" };
+  if (value >= 55) return { label: "Manter", color: "hsl(var(--primary))" };
   if (value >= 40) return { label: "Neutro", color: "hsl(47, 88%, 56%)" };
   if (value >= 25) return { label: "Reduzir", color: "hsl(25, 85%, 55%)" };
   return { label: "Vender", color: "hsl(0, 78%, 58%)" };
 };
 
 export function RecommendationGauge({ score, label, color }: GaugeProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const [animatedScore, setAnimatedScore] = useState(0);
   const animatedScoreRef = useRef(0);
   const uid = useId().replace(/:/g, "");
@@ -130,8 +133,8 @@ export function RecommendationGauge({ score, label, color }: GaugeProps) {
             <stop offset="0%" stopColor="hsl(0, 84%, 53%)" />
             <stop offset="22%" stopColor="hsl(18, 88%, 53%)" />
             <stop offset="50%" stopColor="hsl(47, 93%, 55%)" />
-            <stop offset="78%" stopColor="hsl(122, 66%, 47%)" />
-            <stop offset="100%" stopColor="hsl(146, 74%, 45%)" />
+            <stop offset="78%" stopColor="hsl(var(--primary))" />
+            <stop offset="100%" stopColor="hsl(var(--primary))" />
           </linearGradient>
           <linearGradient
             id={`${uid}-gaugeBandDepth`}
@@ -174,8 +177,8 @@ export function RecommendationGauge({ score, label, color }: GaugeProps) {
             <stop offset="100%" stopColor="hsl(220, 16%, 22%)" />
           </radialGradient>
           <linearGradient id={`${uid}-pointerBody`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.98)" />
-            <stop offset="100%" stopColor="rgba(230,236,246,0.86)" />
+            <stop offset="0%" stopColor={isDark ? "rgba(255,255,255,0.98)" : "rgba(12,18,28,0.98)"} />
+            <stop offset="100%" stopColor={isDark ? "rgba(230,236,246,0.86)" : "rgba(30,38,52,0.9)"} />
           </linearGradient>
           <filter id={`${uid}-pointerGlow`} x="-80%" y="-80%" width="260%" height="260%">
             <feGaussianBlur stdDeviation="1.2" result="blur" />
@@ -207,7 +210,7 @@ export function RecommendationGauge({ score, label, color }: GaugeProps) {
             y1={baseCenter.y}
             x2={tip.x}
             y2={tip.y}
-            stroke="rgba(255,255,255,0.72)"
+            stroke={isDark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.45)"}
             strokeWidth={0.85}
           />
         </g>
@@ -218,8 +221,8 @@ export function RecommendationGauge({ score, label, color }: GaugeProps) {
         <text x={venderLabelPos.x} y={venderLabelPos.y} textAnchor="end" dominantBaseline="middle" fill="hsl(0, 78%, 58%)" fontSize="10" fontWeight="600">Vender</text>
         <text x={reduzirLabelPos.x} y={sideLabelsY} textAnchor="end" dominantBaseline="middle" fill="hsl(25, 85%, 55%)" fontSize="10" fontWeight="600">Reduzir</text>
         <text x={neutroLabelPos.x} y={neutroLabelPos.y} textAnchor="middle" dominantBaseline="middle" fill="hsl(47, 88%, 56%)" fontSize="10" fontWeight="600">Neutro</text>
-        <text x={manterLabelPos.x} y={sideLabelsY} textAnchor="start" dominantBaseline="middle" fill="hsl(110, 55%, 52%)" fontSize="10" fontWeight="600">Manter</text>
-        <text x={comprarLabelPos.x} y={comprarLabelPos.y} textAnchor="start" dominantBaseline="middle" fill="hsl(146, 74%, 50%)" fontSize="10" fontWeight="600">Comprar</text>
+        <text x={manterLabelPos.x} y={sideLabelsY} textAnchor="start" dominantBaseline="middle" fill="hsl(var(--primary))" fontSize="10" fontWeight="600">Manter</text>
+        <text x={comprarLabelPos.x} y={comprarLabelPos.y} textAnchor="start" dominantBaseline="middle" fill="hsl(var(--primary))" fontSize="10" fontWeight="600">Comprar</text>
       </svg>
 
       <div className="text-center -mt-1">

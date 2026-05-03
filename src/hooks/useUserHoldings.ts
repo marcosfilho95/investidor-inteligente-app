@@ -50,6 +50,7 @@ const LOCAL_TRADES_STORAGE_KEY = "ii_user_trades_local_v1";
 
 let memoryCacheByUser: Record<string, HoldingsCacheEntry> = {};
 let inFlightByUser: Record<string, Promise<UserHolding[]> | null> = {};
+let inFlightTradeByUser: Record<string, Set<string>> = {};
 let activeUserCache: HoldingsCacheEntry | null = null;
 const MONEY_EPSILON = 0.005;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -352,6 +353,13 @@ export function useUserHoldings() {
     const userId = await getCurrentUserId();
     if (!userId) return false;
 
+    const tradeKey = `buy|${symbol}|${shares}|${Number(price).toFixed(8)}|${tradedAt ?? ""}`;
+    const running = inFlightTradeByUser[userId] ?? new Set<string>();
+    if (running.has(tradeKey)) return false;
+    running.add(tradeKey);
+    inFlightTradeByUser[userId] = running;
+
+    try {
     const existing = userHoldings.find((h) => h.symbol === symbol);
     if (existing) {
       const totalShares = existing.shares + shares;
@@ -410,12 +418,25 @@ export function useUserHoldings() {
     renderTradeToast("buy", symbol, shares);
     await fetchHoldings(true);
     return true;
+    } finally {
+      running.delete(tradeKey);
+    }
   };
 
   const sellHolding = async (symbol: string, shares: number, tradedAt?: string, executionPrice?: number) => {
     const userId = await getCurrentUserId();
     if (!userId) return false;
 
+    const tradePriceForKey = Number.isFinite(executionPrice ?? Number.NaN)
+      ? Number(executionPrice)
+      : Number(allAssets.find((a) => a.symbol === symbol)?.price ?? 0);
+    const tradeKey = `sell|${symbol}|${shares}|${Number(tradePriceForKey).toFixed(8)}|${tradedAt ?? ""}`;
+    const running = inFlightTradeByUser[userId] ?? new Set<string>();
+    if (running.has(tradeKey)) return false;
+    running.add(tradeKey);
+    inFlightTradeByUser[userId] = running;
+
+    try {
     const existing = userHoldings.find((h) => h.symbol === symbol);
     if (!existing || existing.shares < shares) {
       toast({ title: "Erro", description: "Quantidade insuficiente", variant: "destructive" });
@@ -471,6 +492,9 @@ export function useUserHoldings() {
     renderTradeToast("sell", symbol, shares);
     await fetchHoldings(true);
     return true;
+    } finally {
+      running.delete(tradeKey);
+    }
   };
 
   const syntheticOpeningBuys = buildSyntheticOpeningBuys(userHoldings, userTrades);
