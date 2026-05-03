@@ -110,9 +110,9 @@ function sanitizeMathForDisplay(text: string): string {
     .replace(/\\mathbf\{([^}]*)\}/g, "$1")
     .replace(/\^\{([^}]*)\}/g, "^$1")
     .replace(/_\{([^}]*)\}/g, "_$1")
-    .replace(/\\sqrt\[([^\]]+)\]\{([^}]*)\}/g, "root($1, $2)")
+    .replace(/\\sqrt\[([^\]]+)\]\{([^}]*)\}/g, "√[$1]($2)")
     .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, "$1/$2")
-    .replace(/\\sqrt\{([^}]*)\}/g, "sqrt($1)")
+    .replace(/\\sqrt\{([^}]*)\}/g, "√($1)")
     .replace(/\\_/g, "_")
     .replace(/\\%/g, "%");
 
