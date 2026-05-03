@@ -123,7 +123,39 @@ function sanitizeMathForDisplay(text: string): string {
   }
 
   sanitized = sanitized.replace(/\\/g, "");
-  return sanitized;
+  return fixMojibakePtBr(sanitized);
+}
+
+function fixMojibakePtBr(value: string): string {
+  if (!value || typeof value !== "string") return value;
+  return value
+    .replace(/Ã¡/g, "á")
+    .replace(/Ã /g, "à")
+    .replace(/Ã¢/g, "â")
+    .replace(/Ã£/g, "ã")
+    .replace(/Ã¤/g, "ä")
+    .replace(/Ã©/g, "é")
+    .replace(/Ãª/g, "ê")
+    .replace(/Ã­/g, "í")
+    .replace(/Ã³/g, "ó")
+    .replace(/Ã´/g, "ô")
+    .replace(/Ãµ/g, "õ")
+    .replace(/Ãº/g, "ú")
+    .replace(/Ã§/g, "ç")
+    .replace(/Ã‰/g, "É")
+    .replace(/Ã“/g, "Ó")
+    .replace(/Ã‡/g, "Ç")
+    .replace(/Ã€/g, "À")
+    .replace(/ÃƒO/g, "ÃO")
+    .replace(/Âº/g, "º")
+    .replace(/Âª/g, "ª")
+    .replace(/â€“/g, "–")
+    .replace(/â€”/g, "—")
+    .replace(/â€œ/g, "“")
+    .replace(/â€/g, "”")
+    .replace(/â€˜/g, "‘")
+    .replace(/â€™/g, "’")
+    .replace(/Â/g, "");
 }
 
 const BROAD_ANALYTICAL_TERMS = [

@@ -416,7 +416,39 @@ function sanitizeMathFormatting(text) {
   // Remove barras invertidas remanescentes para evitar quebra visual no chat.
   sanitized = sanitized.replace(/\\/g, "");
 
-  return sanitized;
+  return fixMojibakePtBr(sanitized);
+}
+
+function fixMojibakePtBr(value) {
+  if (!value || typeof value !== "string") return value;
+  return value
+    .replace(/Ã¡/g, "á")
+    .replace(/Ã /g, "à")
+    .replace(/Ã¢/g, "â")
+    .replace(/Ã£/g, "ã")
+    .replace(/Ã¤/g, "ä")
+    .replace(/Ã©/g, "é")
+    .replace(/Ãª/g, "ê")
+    .replace(/Ã­/g, "í")
+    .replace(/Ã³/g, "ó")
+    .replace(/Ã´/g, "ô")
+    .replace(/Ãµ/g, "õ")
+    .replace(/Ãº/g, "ú")
+    .replace(/Ã§/g, "ç")
+    .replace(/Ã‰/g, "É")
+    .replace(/Ã“/g, "Ó")
+    .replace(/Ã‡/g, "Ç")
+    .replace(/Ã€/g, "À")
+    .replace(/ÃƒO/g, "ÃO")
+    .replace(/Âº/g, "º")
+    .replace(/Âª/g, "ª")
+    .replace(/â€“/g, "–")
+    .replace(/â€”/g, "—")
+    .replace(/â€œ/g, "“")
+    .replace(/â€/g, "”")
+    .replace(/â€˜/g, "‘")
+    .replace(/â€™/g, "’")
+    .replace(/Â/g, "");
 }
 
 function toNumberOrNull(value) {
@@ -713,7 +745,7 @@ function formatSignedMoneyPtBr(value) {
 }
 
 function createSseSingleMessage(content) {
-  const safe = String(content || "");
+  const safe = fixMojibakePtBr(sanitizeMathFormatting(String(content || "")));
   const chunk = {
     choices: [{ delta: { content: safe }, index: 0 }],
   };
@@ -722,6 +754,52 @@ function createSseSingleMessage(content) {
     status: 200,
     headers: Object.assign({}, corsHeaders, { "Content-Type": "text/event-stream" }),
   });
+}
+
+function normalizeIntentText(text) {
+  return String(text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function buildDirectHodlIntroAnswer(lastUserMessage, portfolioContext) {
+  const msg = normalizeIntentText(lastUserMessage);
+  if (!msg) return null;
+
+  const asksWhoIsHodl =
+    msg.includes("quem e o hodl") ||
+    msg.includes("quem eh o hodl") ||
+    msg.includes("quem e voce") ||
+    msg.includes("quem eh voce");
+  const asksHowHodlHelps =
+    msg.includes("como o hodl pode me ajudar") ||
+    msg.includes("como voce pode me ajudar") ||
+    msg.includes("como o hodl me ajuda") ||
+    msg.includes("como vc pode me ajudar");
+  const asksCombined = msg.includes("quem e o hodl e como ele me ajuda");
+
+  if (!asksWhoIsHodl && !asksHowHodlHelps && !asksCombined) return null;
+
+  const summary = portfolioContext && typeof portfolioContext === "object" ? (portfolioContext.summary || {}) : {};
+  const assetCount = Number(summary.assetCount);
+  const sectorCount = Number(summary.sectorCount);
+  const hasPortfolioNumbers = Number.isFinite(assetCount) && assetCount > 0;
+
+  const helpLine = hasPortfolioNumbers
+    ? `Na prática, eu te ajudo a ler sua carteira com clareza: hoje você tem ${assetCount} ativos${Number.isFinite(sectorCount) && sectorCount > 0 ? ` em ${sectorCount} setores` : ""}. Eu explico risco, concentração, equilíbrio entre renda e crescimento, e próximos ajustes com linguagem simples.`
+    : "Na prática, eu te ajudo a analisar ativos e carteira: risco, concentração, valuation, dividendos, comparações por setor e próximos passos, sempre com foco educativo e visão de longo prazo.";
+
+  return [
+    "Sou o HODL, seu parceiro de investimentos: simpático no papo e técnico quando precisa.",
+    "",
+    "Mini-história curiosa do meu nome: em 2013, no fórum Bitcointalk, um investidor digitou \"I AM HODLING\" (erro de \"holding\") depois de uns drinks. O erro virou meme e, depois, filosofia de longo prazo: menos ansiedade, mais estratégia e paciência.",
+    "",
+    helpLine,
+    "Também te apoio com comparações entre ativos, interpretação de indicadores (P/L, P/VP, ROE, dívida, dividendos) e educação financeira para você decidir com mais segurança.",
+    "Minhas referências no projeto: Benjamin Graham, Warren Buffett, Peter Lynch e Luiz Barsi.",
+  ].join("\n");
 }
 
 function buildDirectPortfolioAnswer(lastUserMessage, portfolioContext) {
@@ -1166,6 +1244,11 @@ serve(async function(req) {
     const latestUserMessage = Array.isArray(messages) && messages.length > 0
       ? String(messages[messages.length - 1]?.content || "")
       : "";
+
+    const directHodlIntroAnswer = buildDirectHodlIntroAnswer(latestUserMessage, portfolioContext);
+    if (directHodlIntroAnswer) {
+      return createSseSingleMessage(directHodlIntroAnswer);
+    }
 
     const directPortfolioAnswer = buildDirectPortfolioAnswer(latestUserMessage, portfolioContext);
     if (directPortfolioAnswer) {
