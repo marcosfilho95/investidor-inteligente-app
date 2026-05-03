@@ -16,7 +16,7 @@ const KNOWLEDGE_BASE = [
   "O Value Investing, criado por Benjamin Graham, consiste em identificar o VALOR INTRÍNSECO de uma empresa e comprar quando o preço de mercado está ABAIXO desse valor (margem de segurança). Warren Buffett e Peter Lynch expandiram essa filosofia.",
   "",
   "FÓRMULAS ESSENCIAIS:",
-  "1. Valor Intrínseco de Graham: VI = sqrt(22,5 x LPA x VPA). Se preço < VI = margem de segurança positiva. Upside de -10% a +10% = ZONA NEUTRA.",
+  "1. Valor Intrínseco de Graham: VI = √(22,5 x LPA x VPA). Se preço < VI = margem de segurança positiva. Upside de -10% a +10% = ZONA NEUTRA.",
   "Limitação do Graham: requer LPA positivo. Se LPA <= 0, o método clássico não pode ser aplicado.",
   "Fallback de valuation: quando Graham não estiver disponível, usar Preço Justo Estimado como referência alternativa de valor.",
   "2. Preço-Teto de Bazin: Pteto = Dividendo Anual / 0,06. Garante DY mínimo de 6% a.a.",
@@ -277,7 +277,7 @@ const SYSTEM_PROMPT = [
   "HIERARQUIA DE DADOS (OBRIGATÓRIA): quando existir 'CONTEXTO ESTRUTURADO DA CARTEIRA DO USUÁRIO', ele é a fonte canônica para patrimônio, lucro/prejuízo total, lucro diário, rentabilidade, pesos e setores.",
   "Nesses casos, não recalcule totais a partir de textos auxiliares do dataset. Use os números canônicos do resumo exatamente como referência principal.",
   "REGRAS: Baseie-se APENAS nos dados do contexto. Nunca invente preços ou indicadores. Responda em português do Brasil. Seja conciso (max 3-4 parágrafos). Use emojis com moderação. Explique indicadores. Sugira aba Aprender para dúvidas conceituais. Cite autores apenas quando realmente necessário.",
-  "FORMATAÇÃO OBRIGATÓRIA: nunca use LaTeX ou markdown matemático (ex.: \\sqrt, \\times, \\frac, $, $$, \\( \\)). Nunca use barra invertida em fórmulas. Sempre escreva fórmulas em texto simples. Ex.: VI = sqrt(22,5 x LPA x VPA).",
+  "FORMATAÇÃO OBRIGATÓRIA: nunca use LaTeX ou markdown matemático (ex.: \\sqrt, \\times, \\frac, $, $$, \\( \\)). Nunca use barra invertida em fórmulas. Sempre escreva fórmulas em texto simples. Ex.: VI = √(22,5 x LPA x VPA).",
   "REGRA DE INTERPRETAÇÃO DO PAYOUT: em análises, explique que PAYOUT mostra o percentual do lucro distribuído em dividendos. Referência geral: 30% a 70% tende a ser mais sustentável; muito acima disso pode indicar risco de distribuição insustentável.",
   "REGRA DE SINÔNIMOS (RENDA): tratar como equivalentes no contexto de renda os termos 'dividendos', 'proventos', 'renda passiva' e 'vaca leiteira'. Se o usuário usar qualquer um deles, manter a resposta no contexto de geração de renda por distribuição ao acionista.",
   "REGRA DE REPETIÇÃO (OBRIGATÓRIA): no máximo 1 menção direta a Graham por resposta, exceto se o usuário pedir explicitamente foco em Graham.",
@@ -343,7 +343,7 @@ const SYSTEM_PROMPT = [
   "- NUNCA assuma que o usuário possui ativos não listados.",
   "- Se o contexto diz que a carteira tem ativos, NUNCA diga que a carteira está vazia.",
   "",
-  "VALUATION: Graham sqrt(22,5 x LPA x VPA), Bazin (Dividendo/0,06), P/L, P/VP, ROE, ROIC, Div.Liq/EBITDA, DY, PAYOUT. Zona Neutra: upside -10% a +10%.",
+  "VALUATION: Graham √(22,5 x LPA x VPA), Bazin (Dividendo/0,06), P/L, P/VP, ROE, ROIC, Div.Liq/EBITDA, DY, PAYOUT. Zona Neutra: upside -10% a +10%.",
   "",
   "COMPORTAMENTO POR PÁGINA:",
   "- Dashboard: Acolhedor, motive estudo dos fundamentos",
@@ -387,10 +387,10 @@ function sanitizeMathFormatting(text) {
     // Ex.: x^{2} -> x^2 ; x_{t} -> x_t
     .replace(/\^\{([^}]*)\}/g, "^$1")
     .replace(/_\{([^}]*)\}/g, "_$1")
-    // Ex.: \sqrt[3]{x} -> root(3, x)
-    .replace(/\\sqrt\[([^\]]+)\]\{([^}]*)\}/g, "root($1, $2)")
+    // Ex.: \sqrt[3]{x} -> √[3](x)
+    .replace(/\\sqrt\[([^\]]+)\]\{([^}]*)\}/g, "√[$1]($2)")
     .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, "$1/$2")
-    .replace(/\\sqrt\{([^}]*)\}/g, "sqrt($1)")
+    .replace(/\\sqrt\{([^}]*)\}/g, "√($1)")
     // Fallback de escapes residuais.
     .replace(/\\_/g, "_")
     .replace(/\\%/g, "%");
@@ -416,7 +416,39 @@ function sanitizeMathFormatting(text) {
   // Remove barras invertidas remanescentes para evitar quebra visual no chat.
   sanitized = sanitized.replace(/\\/g, "");
 
-  return sanitized;
+  return fixMojibakePtBr(sanitized);
+}
+
+function fixMojibakePtBr(value) {
+  if (!value || typeof value !== "string") return value;
+  return value
+    .replace(/Ã¡/g, "á")
+    .replace(/Ã /g, "à")
+    .replace(/Ã¢/g, "â")
+    .replace(/Ã£/g, "ã")
+    .replace(/Ã¤/g, "ä")
+    .replace(/Ã©/g, "é")
+    .replace(/Ãª/g, "ê")
+    .replace(/Ã­/g, "í")
+    .replace(/Ã³/g, "ó")
+    .replace(/Ã´/g, "ô")
+    .replace(/Ãµ/g, "õ")
+    .replace(/Ãº/g, "ú")
+    .replace(/Ã§/g, "ç")
+    .replace(/Ã‰/g, "É")
+    .replace(/Ã“/g, "Ó")
+    .replace(/Ã‡/g, "Ç")
+    .replace(/Ã€/g, "À")
+    .replace(/ÃƒO/g, "ÃO")
+    .replace(/Âº/g, "º")
+    .replace(/Âª/g, "ª")
+    .replace(/â€“/g, "–")
+    .replace(/â€”/g, "—")
+    .replace(/â€œ/g, "“")
+    .replace(/â€/g, "”")
+    .replace(/â€˜/g, "‘")
+    .replace(/â€™/g, "’")
+    .replace(/Â/g, "");
 }
 
 function toNumberOrNull(value) {
@@ -713,7 +745,7 @@ function formatSignedMoneyPtBr(value) {
 }
 
 function createSseSingleMessage(content) {
-  const safe = String(content || "");
+  const safe = fixMojibakePtBr(sanitizeMathFormatting(String(content || "")));
   const chunk = {
     choices: [{ delta: { content: safe }, index: 0 }],
   };
@@ -722,6 +754,52 @@ function createSseSingleMessage(content) {
     status: 200,
     headers: Object.assign({}, corsHeaders, { "Content-Type": "text/event-stream" }),
   });
+}
+
+function normalizeIntentText(text) {
+  return String(text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function buildDirectHodlIntroAnswer(lastUserMessage, portfolioContext) {
+  const msg = normalizeIntentText(lastUserMessage);
+  if (!msg) return null;
+
+  const asksWhoIsHodl =
+    msg.includes("quem e o hodl") ||
+    msg.includes("quem eh o hodl") ||
+    msg.includes("quem e voce") ||
+    msg.includes("quem eh voce");
+  const asksHowHodlHelps =
+    msg.includes("como o hodl pode me ajudar") ||
+    msg.includes("como voce pode me ajudar") ||
+    msg.includes("como o hodl me ajuda") ||
+    msg.includes("como vc pode me ajudar");
+  const asksCombined = msg.includes("quem e o hodl e como ele me ajuda");
+
+  if (!asksWhoIsHodl && !asksHowHodlHelps && !asksCombined) return null;
+
+  const summary = portfolioContext && typeof portfolioContext === "object" ? (portfolioContext.summary || {}) : {};
+  const assetCount = Number(summary.assetCount);
+  const sectorCount = Number(summary.sectorCount);
+  const hasPortfolioNumbers = Number.isFinite(assetCount) && assetCount > 0;
+
+  const helpLine = hasPortfolioNumbers
+    ? `Na prática, eu te ajudo a ler sua carteira com clareza: hoje você tem ${assetCount} ativos${Number.isFinite(sectorCount) && sectorCount > 0 ? ` em ${sectorCount} setores` : ""}. Eu explico risco, concentração, equilíbrio entre renda e crescimento, e próximos ajustes com linguagem simples.`
+    : "Na prática, eu te ajudo a analisar ativos e carteira: risco, concentração, valuation, dividendos, comparações por setor e próximos passos, sempre com foco educativo e visão de longo prazo.";
+
+  return [
+    "Sou o HODL, seu parceiro de investimentos: simpático no papo e técnico quando precisa.",
+    "",
+    "Mini-história curiosa do meu nome: em 2013, no fórum Bitcointalk, um investidor digitou \"I AM HODLING\" (erro de \"holding\") depois de uns drinks. O erro virou meme e, depois, filosofia de longo prazo: menos ansiedade, mais estratégia e paciência.",
+    "",
+    helpLine,
+    "Também te apoio com comparações entre ativos, interpretação de indicadores (P/L, P/VP, ROE, dívida, dividendos) e educação financeira para você decidir com mais segurança.",
+    "Minhas referências no projeto: Benjamin Graham, Warren Buffett, Peter Lynch e Luiz Barsi.",
+  ].join("\n");
 }
 
 function buildDirectPortfolioAnswer(lastUserMessage, portfolioContext) {
@@ -1166,6 +1244,11 @@ serve(async function(req) {
     const latestUserMessage = Array.isArray(messages) && messages.length > 0
       ? String(messages[messages.length - 1]?.content || "")
       : "";
+
+    const directHodlIntroAnswer = buildDirectHodlIntroAnswer(latestUserMessage, portfolioContext);
+    if (directHodlIntroAnswer) {
+      return createSseSingleMessage(directHodlIntroAnswer);
+    }
 
     const directPortfolioAnswer = buildDirectPortfolioAnswer(latestUserMessage, portfolioContext);
     if (directPortfolioAnswer) {
