@@ -450,7 +450,16 @@ export function AiChatWidget({
   fullHeight = false,
 }: AiChatWidgetProps) {
   const initialWelcome = welcomeMessage || "Olá! Sou o Hodl 🤖, seu assistente inteligente. Como posso te ajudar hoje?";
-  const storageKey = CHAT_MEMORY_KEY;
+  const chatScope = useMemo(() => {
+    if (page === "ativo") {
+      const canonicalTicker = ticker ? getCanonicalSymbol(ticker) : "unknown";
+      return `ativo:${canonicalTicker}`;
+    }
+    if (page === "carteira") return "carteira";
+    if (page === "aprender") return "aprender";
+    return "dashboard";
+  }, [page, ticker]);
+  const storageKey = `${CHAT_MEMORY_KEY}:${chatScope}`;
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", content: initialWelcome },
@@ -462,6 +471,10 @@ export function AiChatWidget({
   const shouldAutoScrollRef = useRef(true);
   const hasMountedRef = useRef(false);
   const previousMessagesLengthRef = useRef(messages.length);
+  const requestSeqRef = useRef(0);
+  const activeRequestRef = useRef(0);
+  const activeScopeRef = useRef(chatScope);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const cardHeightClass = useMemo(() => {
     if (fullHeight) {
       if (page === "dashboard") {
@@ -471,6 +484,23 @@ export function AiChatWidget({
     }
     return "h-[30rem] min-h-[24rem] max-h-[72vh]";
   }, [fullHeight, page]);
+
+  useEffect(() => {
+    activeScopeRef.current = chatScope;
+  }, [chatScope]);
+
+  useEffect(() => {
+    activeRequestRef.current = 0;
+    requestSeqRef.current += 1;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setIsLoading(false);
+    setIsAssistantTyping(false);
+    setMemoryMessages([]);
+    setMessages([{ role: "assistant", content: initialWelcome }]);
+    shouldAutoScrollRef.current = false;
+    requestAnimationFrame(scrollToTop);
+  }, [chatScope, initialWelcome]);
 
   useEffect(() => {
     try {
@@ -511,6 +541,13 @@ export function AiChatWidget({
       // Ignore storage quota/transient errors to avoid breaking chat flow.
     }
   }, [memoryMessages, storageKey]);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+    };
+  }, []);
 
   const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
     if (!scrollRef.current) return;
@@ -587,8 +624,16 @@ export function AiChatWidget({
     let displayContent = "";
     const typingQueue: string[] = [];
     let isTyping = false;
+    const requestId = ++requestSeqRef.current;
+    const scopeAtSend = chatScope;
+    activeRequestRef.current = requestId;
+
+    const isRequestActive = () =>
+      activeRequestRef.current === requestId &&
+      activeScopeRef.current === scopeAtSend;
 
     const processTypingQueue = () => {
+      if (!isRequestActive()) return;
       if (typingQueue.length === 0) {
         isTyping = false;
         setIsAssistantTyping(false);
@@ -614,6 +659,7 @@ export function AiChatWidget({
     };
 
     const updateAssistant = (chunk: string) => {
+      if (!isRequestActive()) return;
       assistantContent += chunk;
       typingQueue.push(...chunk.split(''));
       if (!isTyping) processTypingQueue();
@@ -626,6 +672,10 @@ export function AiChatWidget({
         setIsLoading(false);
         return;
       }
+
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
       // Build body with RAG context
       const body: Record<string, unknown> = {
@@ -655,9 +705,13 @@ export function AiChatWidget({
           Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
 
+      if (!isRequestActive()) return;
+
       if (!resp.ok || !resp.body) {
+        if (!isRequestActive()) return;
         setIsAssistantTyping(true);
         const err = await resp.json().catch(() => ({ error: "Erro de conexão" }));
         updateAssistant(`⚠️ ${err.error || "Erro ao conectar com a IA. Tente novamente."}`);
@@ -670,6 +724,7 @@ export function AiChatWidget({
       let buffer = "";
 
       while (true) {
+        if (!isRequestActive()) return;
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
@@ -690,11 +745,14 @@ export function AiChatWidget({
         }
       }
     } catch (e) {
+      if (!isRequestActive()) return;
+      if (e instanceof DOMException && e.name === "AbortError") return;
       console.error("AI chat error:", e);
       setIsAssistantTyping(true);
       updateAssistant("⚠️ Erro de conexão. Verifique sua internet e tente novamente.");
     }
 
+    if (!isRequestActive()) return;
     if (assistantContent.trim()) {
       setMemoryMessages((prev) => [...prev, { role: "assistant", content: assistantContent }].slice(-CHAT_MEMORY_LIMIT));
     }
