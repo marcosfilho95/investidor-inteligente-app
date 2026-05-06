@@ -1,9 +1,10 @@
 ﻿import { useState, useRef, useEffect, useMemo } from "react";
-import { Bot, Send, Sparkles, Loader2 } from "lucide-react";
+import { Bot, Send, Sparkles, Loader2, ArrowUpRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
+import { Link } from "react-router-dom";
 import { buildDatasetContext, buildAssetContext, buildPeerUniverseContext } from "@/data/investments";
-import { getCanonicalSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
+import { getAssetRouteSymbol, getCanonicalSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
 import type { InvestorProfileSummary, PortfolioRiskSummary } from "@/lib/investorIntelligence";
 
 interface AiChatWidgetProps {
@@ -128,6 +129,48 @@ function sanitizeMathForDisplay(text: string): string {
   return fixMojibakePtBr(sanitized);
 }
 
+
+function addContextualLinks(text: string, page?: AiChatWidgetProps["page"], ticker?: string): string {
+  const raw = String(text || "");
+  if (!raw) return raw;
+  const currentPage = String(page || "").toLowerCase();
+  const currentTicker = ticker ? getCanonicalSymbol(ticker) : "";
+
+  const tokens = raw.split(/(```[\s\S]*?```|`[^`]*`)/g);
+  const linked = tokens.map((token) => {
+    if (!token || token.startsWith("```") || token.startsWith("`")) return token;
+
+    let out = token;
+
+    // Só gera links de Ativo se o usuário NÃO estiver na página de ativo.
+    if (currentPage !== "ativo") {
+      const tickerRegex = /\b([A-Z]{4}\d{1,2})\b/g;
+      out = out.replace(tickerRegex, (full, symbol: string) => {
+        const canonical = getCanonicalSymbol(symbol);
+        if (currentTicker && canonical === currentTicker) return full;
+        const route = getAssetRouteSymbol(canonical);
+        return `[${full}](/ativos/${route})`;
+      });
+      out = out.replace(/\b(aba\s+Ativos|p[aá]gina\s+de\s+Ativos|Ativos)\b/g, "[Ativos](/ativos)");
+    }
+
+    if (currentPage !== "aprender") {
+      out = out.replace(/\b(aba\s+Aprender|p[aá]gina\s+Aprender|Aprender)\b/g, "[Aprender](/aprender)");
+    }
+
+    if (currentPage !== "carteira") {
+      out = out.replace(/\b(aba\s+Carteira|p[aá]gina\s+da\s+Carteira|Carteira)\b/g, "[Carteira](/carteira)");
+    }
+
+    if (currentPage !== "dashboard") {
+      out = out.replace(/\b(aba\s+Dashboard|p[aá]gina\s+do\s+Dashboard|Dashboard)\b/g, "[Dashboard](/dashboard)");
+    }
+
+    return out;
+  });
+
+  return linked.join("");
+}
 function fixMojibakePtBr(value: string): string {
   if (!value || typeof value !== "string") return value;
   return value
@@ -981,7 +1024,33 @@ export function AiChatWidget({
                     : "max-w-[88%] bg-secondary/60 border border-border/30 text-foreground rounded-bl-md prose prose-sm prose-invert [&_p]:m-0 [&_p]:mb-1.5 [&_ul]:m-0 [&_ol]:m-0 [&_li]:m-0 [&_strong]:text-primary/90 [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs [&_h1]:mt-2 [&_h1]:mb-1 [&_h2]:mt-1.5 [&_h2]:mb-0.5 [&_h3]:mt-1 [&_h3]:mb-0.5 [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[11px]"
                 }`}
               >
-                {msg.role === "user" ? msg.content : <ReactMarkdown>{sanitizeMathForDisplay(msg.content)}</ReactMarkdown>}
+                {msg.role === "user" ? msg.content : (
+                  <ReactMarkdown
+                    components={{
+                      a: ({ href, children }) => {
+                        const to = String(href || "");
+                        const linkClass =
+                          "inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-primary/22 via-primary/16 to-primary/10 px-2 py-0.5 font-semibold text-primary no-underline shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),0_1px_8px_rgba(0,0,0,0.18)] transition-all duration-200 hover:from-primary/30 hover:via-primary/22 hover:to-primary/14 hover:-translate-y-[1px] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14),0_4px_14px_rgba(0,0,0,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45";
+                        if (to.startsWith("/")) {
+                          return (
+                            <Link to={to} className={linkClass}>
+                              <span>{children}</span>
+                              <ArrowUpRight className="h-3 w-3" />
+                            </Link>
+                          );
+                        }
+                        return (
+                          <a href={to} target="_blank" rel="noreferrer" className={linkClass}>
+                            <span>{children}</span>
+                            <ArrowUpRight className="h-3 w-3" />
+                          </a>
+                        );
+                      },
+                    }}
+                  >
+                    {addContextualLinks(sanitizeMathForDisplay(msg.content), page, ticker)}
+                  </ReactMarkdown>
+                )}
               </div>
             </motion.div>
           ))}
@@ -1065,4 +1134,5 @@ export function AiChatWidget({
     </div>
   );
 }
+
 
