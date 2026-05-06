@@ -276,9 +276,12 @@ const SYSTEM_PROMPT = [
   "Em vez disso, responda com: (1) leitura objetiva dos dados, (2) riscos e benefícios, (3) impacto na carteira, (4) cenários e pontos de atenção para decisão do usuário.",
   "HIERARQUIA DE DADOS (OBRIGATÓRIA): quando existir 'CONTEXTO ESTRUTURADO DA CARTEIRA DO USUÁRIO', ele é a fonte canônica para patrimônio, lucro/prejuízo total, lucro diário, rentabilidade, pesos e setores.",
   "Nesses casos, não recalcule totais a partir de textos auxiliares do dataset. Use os números canônicos do resumo exatamente como referência principal.",
+  "DADOS MACRO CANÔNICOS (OBRIGATÓRIO): quando existir bloco de Selic/Copom no contexto, use SOMENTE esse valor e essa data.",
+  "Nunca invente ou estime Selic. Se não houver Selic canônica no contexto, diga explicitamente que não há dado macro atualizado disponível no contexto atual.",
   "REGRAS: Baseie-se APENAS nos dados do contexto. Nunca invente preços ou indicadores. Responda em português do Brasil. Seja conciso (max 3-4 parágrafos). Use emojis com moderação. Explique indicadores. Sugira aba Aprender para dúvidas conceituais. Cite autores apenas quando realmente necessário.",
-  "CONTINUIDADE GUIADA (OBRIGATÓRIO): termine toda resposta com um mini bloco de próximos passos, em linguagem simples para iniciantes.",
-  "Formato obrigatório do fechamento: título curto 'Próximo passo sugerido:' + 2 ou 3 opções de continuação em lista numerada (1., 2., 3.).",
+  "CONTINUIDADE GUIADA (OBRIGATÓRIO): termine toda resposta com 1 CTA contextual para convidar o usuário ao próximo passo.",
+  "Varie a copy do CTA (não repetir sempre 'Quer que eu...'). Use ganchos naturais e persuasivos para manter o fluxo da conversa.",
+  "NA PÁGINA DE ATIVO: mantenha o CTA no mesmo ativo e priorize ganchos sobre indicadores, score fundamentalista, preço atual vs valor intrínseco/preço justo, e comparação com pares do mesmo subsetor.",
   "As opções devem ser contextuais ao que acabou de ser discutido (ex.: risco, rebalanceamento, valuation, perfil, dividendos) e não genéricas.",
   "Escreva as opções como convite de conversa, por exemplo: 'Quer que eu te mostre...?', 'Quer que eu compare...?', 'Quer que eu explique...?'",
   "Se o usuário for iniciante, priorize opções curtas, concretas e acionáveis.",
@@ -803,7 +806,7 @@ function withGuidedContinuation(answer, userMessage) {
     ];
   }
 
-  return `${base}\n\nPróximo passo sugerido:\n1. ${options[0]}\n2. ${options[1]}\n3. ${options[2]}`;
+  return `${base}\n\nSe fizer sentido, posso continuar por aqui:\n- ${options[0]}\n- ${options[1]}\n- ${options[2]}`;
 }
 
 function buildDirectHodlIntroAnswer(lastUserMessage, portfolioContext) {
@@ -1218,6 +1221,35 @@ function toCanonicalTicker(symbol) {
   return s;
 }
 
+async function fetchCanonicalSelicContext() {
+  try {
+    // Série SGS 432: taxa SELIC (% a.a.). Fonte oficial BCB.
+    const resp = await fetch("https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json");
+    if (!resp.ok) return "";
+    const rows = await resp.json().catch(() => []);
+    if (!Array.isArray(rows) || rows.length === 0) return "";
+    const last = rows[rows.length - 1] || {};
+    const rawDate = String(last.data || "").trim();
+    const rawValue = String(last.valor || "").trim();
+    if (!rawDate || !rawValue) return "";
+
+    const normalizedValue = Number(rawValue.replace(",", "."));
+    const selicValue = Number.isFinite(normalizedValue)
+      ? normalizedValue.toFixed(2).replace(".", ",")
+      : rawValue;
+
+    return [
+      "\n--- DADO MACRO CANÔNICO (SELIC/BCB) ---",
+      `Selic atual (a.a.): ${selicValue}%`,
+      `Data de referência (BCB/SGS 432): ${rawDate}`,
+      "Regra: use este valor como fonte única para Selic nesta resposta.",
+      "--- FIM DADO MACRO CANÔNICO ---",
+    ].join("\n");
+  } catch {
+    return "";
+  }
+}
+
 async function fetchPriceCacheContext(ticker) {
   try {
     const canonicalTicker = toCanonicalTicker(ticker);
@@ -1329,6 +1361,9 @@ serve(async function(req) {
       const portfolioCtx = await fetchPortfolioCacheContext(userSymbols);
       if (portfolioCtx) contextStr += portfolioCtx;
     }
+
+    const selicCtx = await fetchCanonicalSelicContext();
+    if (selicCtx) contextStr += selicCtx;
 
     const systemContent = SYSTEM_PROMPT + contextStr;
 
