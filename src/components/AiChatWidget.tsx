@@ -226,6 +226,81 @@ function shouldUseLocalPortfolioReply(message: string): boolean {
   return true;
 }
 
+function addGuidedContinuation(answer: string, userInput: string): string {
+  const normalized = normalizeTextPtBr(String(userInput || ""));
+  const base = String(answer || "").trim();
+  if (!base) return base;
+
+  let options: string[];
+  if (/(rentabilidade|lucro|prejuizo|resultado|patrimonio|investido|dividend|provento|dy)/.test(normalized)) {
+    options = [
+      "Quer que eu te mostre o que mais impactou esse número?",
+      "Quer comparar esse resultado com seu risco atual da carteira?",
+      "Quer que eu monte 2 próximos passos simples para melhorar esse indicador?",
+    ];
+  } else if (/(maior ativo|pesa mais|alocacao|concentr)/.test(normalized)) {
+    options = [
+      "Quer que eu te mostre como reduzir essa concentração aos poucos?",
+      "Quer que eu compare esse ativo com pares do mesmo setor?",
+      "Quer um exemplo de rebalanceamento para perfil moderado?",
+    ];
+  } else {
+    options = [
+      "Quer que eu explique isso de forma ainda mais simples?",
+      "Quer aplicar essa análise no restante da sua carteira?",
+      "Quer que eu te sugira o próximo tema para aprender agora?",
+    ];
+  }
+
+  return `${base}\n\nPróximo passo sugerido:\n1. ${options[0]}\n2. ${options[1]}\n3. ${options[2]}`;
+}
+
+function hasGuidedContinuation(answer: string): boolean {
+  return /proximo passo sugerido|próximo passo sugerido/i.test(String(answer || ""));
+}
+
+function addUniversalContinuation(answer: string, userInput: string, page?: AiChatWidgetProps["page"]): string {
+  const base = String(answer || "").trim();
+  if (!base || hasGuidedContinuation(base)) return base;
+
+  const normalized = normalizeTextPtBr(String(userInput || ""));
+  let options: string[];
+
+  if (/(risco|perfil|desalinh|compatib)/.test(normalized)) {
+    options = [
+      "Quer que eu te mostre os 2 principais fatores que mais aumentam seu risco hoje?",
+      "Quer que eu simule um ajuste gradual para alinhar com seu perfil?",
+      "Quer que eu explique em linguagem simples como interpretar esse risco?",
+    ];
+  } else if (/(diversific|aloc|setor|concentr|rebalance)/.test(normalized)) {
+    options = [
+      "Quer que eu te proponha 2 mudanças objetivas para diversificar sem exagero?",
+      "Quer que eu compare os melhores pares do mesmo setor para você decidir?",
+      "Quer um plano de rebalanceamento em passos simples para os próximos aportes?",
+    ];
+  } else if (/(pl|p\/vp|roe|dy|payout|valuation|preco justo|graham)/.test(normalized)) {
+    options = [
+      "Quer que eu traduza esses indicadores para uma leitura de iniciante?",
+      "Quer que eu aplique essa análise em um ativo da sua carteira agora?",
+      "Quer que eu monte um checklist rápido para sua próxima decisão?",
+    ];
+  } else if (page === "aprender") {
+    options = [
+      "Quer que eu continue com o próximo conceito em ordem de dificuldade?",
+      "Quer um exemplo prático com números simples para fixar?",
+      "Quer um mini quiz de 3 perguntas para revisar esse tema?",
+    ];
+  } else {
+    options = [
+      "Quer que eu resuma isso em 3 pontos bem práticos?",
+      "Quer que eu aplique essa explicação na sua carteira atual?",
+      "Quer que eu te sugira o melhor próximo tema para continuar?",
+    ];
+  }
+
+  return `${base}\n\nPróximo passo sugerido:\n1. ${options[0]}\n2. ${options[1]}\n3. ${options[2]}`;
+}
+
 function buildDirectPortfolioReply(
   inputText: string,
   portfolioContext?: AiChatWidgetProps["portfolioContext"]
@@ -303,7 +378,7 @@ function buildDirectPortfolioReply(
         : Number.NaN;
       return `${symbol}: ${formatSignedMoneyPtBr(pnl)} (${formatPctPtBr(pct)}).`;
     });
-    return `Aqui estão os números da sua posição:\n${lines.join("\n")}`;
+    return addGuidedContinuation(`Aqui estão os números da sua posição:\n${lines.join("\n")}`, rawText);
   }
   if (matchedPositions.length > 0 && asksPositionAmount) {
     const lines = matchedPositions.map((p) => {
@@ -314,7 +389,7 @@ function buildDirectPortfolioReply(
       const invested = Number.isFinite(avg) && Number.isFinite(shares) ? avg * shares : Number.NaN;
       return `${symbol}: saldo ${formatSignedMoneyPtBr(value).replace("+", "")} | investido ${formatSignedMoneyPtBr(invested).replace("+", "")}.`;
     });
-    return `Aqui está o valor da sua posição:\n${lines.join("\n")}`;
+    return addGuidedContinuation(`Aqui está o valor da sua posição:\n${lines.join("\n")}`, rawText);
   }
   if (asksBiggestAsset && positions.length > 0) {
     const top = [...positions]
@@ -324,7 +399,10 @@ function buildDirectPortfolioReply(
       const symbol = String(top.symbol || "").toUpperCase();
       const alloc = Number(top.allocationPct);
       const value = Number(top.positionValue);
-      return `Seu maior ativo na carteira é ${symbol}, com ${formatPctPtBr(alloc)} de alocação (saldo: ${formatSignedMoneyPtBr(value).replace("+", "")}).`;
+      return addGuidedContinuation(
+        `Seu maior ativo na carteira é ${symbol}, com ${formatPctPtBr(alloc)} de alocação (saldo: ${formatSignedMoneyPtBr(value).replace("+", "")}).`,
+        rawText
+      );
     }
   }
 
@@ -354,7 +432,7 @@ function buildDirectPortfolioReply(
     );
   }
 
-  if (responseLines.length > 0) return responseLines.join("\n");
+  if (responseLines.length > 0) return addGuidedContinuation(responseLines.join("\n"), rawText);
 
   return null;
 }
@@ -756,7 +834,17 @@ export function AiChatWidget({
 
     if (!isRequestActive()) return;
     if (assistantContent.trim()) {
-      setMemoryMessages((prev) => [...prev, { role: "assistant", content: assistantContent }].slice(-CHAT_MEMORY_LIMIT));
+      const finalizedContent = addUniversalContinuation(assistantContent, text, page);
+      setMessages((prev) => {
+        const updated = [...prev];
+        if (updated.length > newMessages.length && updated[updated.length - 1]?.role === "assistant") {
+          updated[updated.length - 1] = { role: "assistant", content: finalizedContent };
+        } else {
+          updated.push({ role: "assistant", content: finalizedContent });
+        }
+        return updated.slice(0, newMessages.length + 1);
+      });
+      setMemoryMessages((prev) => [...prev, { role: "assistant", content: finalizedContent }].slice(-CHAT_MEMORY_LIMIT));
     }
 
     setIsLoading(false);

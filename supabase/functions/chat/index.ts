@@ -277,6 +277,11 @@ const SYSTEM_PROMPT = [
   "HIERARQUIA DE DADOS (OBRIGATÓRIA): quando existir 'CONTEXTO ESTRUTURADO DA CARTEIRA DO USUÁRIO', ele é a fonte canônica para patrimônio, lucro/prejuízo total, lucro diário, rentabilidade, pesos e setores.",
   "Nesses casos, não recalcule totais a partir de textos auxiliares do dataset. Use os números canônicos do resumo exatamente como referência principal.",
   "REGRAS: Baseie-se APENAS nos dados do contexto. Nunca invente preços ou indicadores. Responda em português do Brasil. Seja conciso (max 3-4 parágrafos). Use emojis com moderação. Explique indicadores. Sugira aba Aprender para dúvidas conceituais. Cite autores apenas quando realmente necessário.",
+  "CONTINUIDADE GUIADA (OBRIGATÓRIO): termine toda resposta com um mini bloco de próximos passos, em linguagem simples para iniciantes.",
+  "Formato obrigatório do fechamento: título curto 'Próximo passo sugerido:' + 2 ou 3 opções de continuação em lista numerada (1., 2., 3.).",
+  "As opções devem ser contextuais ao que acabou de ser discutido (ex.: risco, rebalanceamento, valuation, perfil, dividendos) e não genéricas.",
+  "Escreva as opções como convite de conversa, por exemplo: 'Quer que eu te mostre...?', 'Quer que eu compare...?', 'Quer que eu explique...?'",
+  "Se o usuário for iniciante, priorize opções curtas, concretas e acionáveis.",
   "FORMATAÇÃO OBRIGATÓRIA: nunca use LaTeX ou markdown matemático (ex.: \\sqrt, \\times, \\frac, $, $$, \\( \\)). Nunca use barra invertida em fórmulas. Sempre escreva fórmulas em texto simples. Ex.: VI = √(22,5 x LPA x VPA).",
   "REGRA DE INTERPRETAÇÃO DO PAYOUT: em análises, explique que PAYOUT mostra o percentual do lucro distribuído em dividendos. Referência geral: 30% a 70% tende a ser mais sustentável; muito acima disso pode indicar risco de distribuição insustentável.",
   "REGRA DE SINÔNIMOS (RENDA): tratar como equivalentes no contexto de renda os termos 'dividendos', 'proventos', 'renda passiva' e 'vaca leiteira'. Se o usuário usar qualquer um deles, manter a resposta no contexto de geração de renda por distribuição ao acionista.",
@@ -766,6 +771,41 @@ function normalizeIntentText(text) {
     .trim();
 }
 
+function withGuidedContinuation(answer, userMessage) {
+  const msg = normalizeIntentText(userMessage);
+  const base = String(answer || "").trim();
+  if (!base) return base;
+
+  let options;
+  if (/risco|perfil|compatib|desalinh/.test(msg)) {
+    options = [
+      "Quer que eu mostre quais ativos mais puxam esse risco hoje?",
+      "Quer que eu simule um rebalanceamento gradual para seu perfil?",
+      "Quer um resumo simples da diferença entre conservador, moderado e arrojado?",
+    ];
+  } else if (/rebalance|aloc|concentr|setor|diversific/.test(msg)) {
+    options = [
+      "Quer que eu priorize 2 ajustes para rebalancear primeiro?",
+      "Quer que eu compare os melhores pares do mesmo setor?",
+      "Quer um plano simples de aportes para reduzir concentração?",
+    ];
+  } else if (/dividend|provento|dy|payout/.test(msg)) {
+    options = [
+      "Quer que eu explique como avaliar dividendos sustentáveis?",
+      "Quer que eu compare payout e DY entre ativos parecidos?",
+      "Quer montar um checklist de renda passiva para iniciantes?",
+    ];
+  } else {
+    options = [
+      "Quer que eu explique isso em versão iniciante (bem simples)?",
+      "Quer que eu aplique essa análise na sua carteira atual?",
+      "Quer que eu te mostre o próximo passo mais importante agora?",
+    ];
+  }
+
+  return `${base}\n\nPróximo passo sugerido:\n1. ${options[0]}\n2. ${options[1]}\n3. ${options[2]}`;
+}
+
 function buildDirectHodlIntroAnswer(lastUserMessage, portfolioContext) {
   const msg = normalizeIntentText(lastUserMessage);
   if (!msg) return null;
@@ -1249,12 +1289,12 @@ serve(async function(req) {
 
     const directHodlIntroAnswer = buildDirectHodlIntroAnswer(latestUserMessage, portfolioContext);
     if (directHodlIntroAnswer) {
-      return createSseSingleMessage(directHodlIntroAnswer);
+      return createSseSingleMessage(withGuidedContinuation(directHodlIntroAnswer, latestUserMessage));
     }
 
     const directPortfolioAnswer = buildDirectPortfolioAnswer(latestUserMessage, portfolioContext);
     if (directPortfolioAnswer) {
-      return createSseSingleMessage(directPortfolioAnswer);
+      return createSseSingleMessage(withGuidedContinuation(directPortfolioAnswer, latestUserMessage));
     }
 
     let contextStr = "";
