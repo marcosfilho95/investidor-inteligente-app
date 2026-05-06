@@ -224,12 +224,13 @@ export function AppHeader({ activePage }: AppHeaderProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            data-tour="theme-toggle"
             title={resolvedTheme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
             aria-label={resolvedTheme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
-            className="h-8 px-2.5 rounded-lg flex items-center gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="hidden md:flex h-8 px-2.5 rounded-lg items-center gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
             {resolvedTheme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-            <span className="hidden md:inline text-[11px] font-medium">
+            <span className="text-[11px] font-medium">
               {resolvedTheme === "dark" ? "Claro" : "Escuro"}
             </span>
           </button>
@@ -288,6 +289,16 @@ export function AppHeader({ activePage }: AppHeaderProps) {
               )}
             </AnimatePresence>
           </div>
+
+          <button
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            data-tour="theme-toggle"
+            title={resolvedTheme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+            aria-label={resolvedTheme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+            className="md:hidden h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            {resolvedTheme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+          </button>
 
           {/* Data status indicator */}
           {dataStatus && (

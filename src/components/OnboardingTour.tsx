@@ -58,6 +58,14 @@ const desktopSteps: TourStep[] = [
     route: "/aprender",
   },
   {
+    selector: '[data-tour="theme-toggle"]',
+    title: "🌗 Tema Claro/Escuro",
+    description:
+      "Use este botão para alternar entre os temas claro e escuro e deixar a interface do seu jeito.",
+    position: "bottom",
+    route: "/dashboard",
+  },
+  {
     selector: '[data-tour="notifications"]',
     title: "🔔 Notificações",
     description:
@@ -153,6 +161,14 @@ const mobileSteps: TourStep[] = [
     route: "/aprender",
     requiresMobileMenu: true,
     keepMobileMenuOpen: true,
+  },
+  {
+    selector: '[data-tour="theme-toggle"]',
+    title: "🌗 Tema Claro/Escuro",
+    description:
+      "Use este botão para alternar entre os temas claro e escuro e deixar a interface do seu jeito.",
+    position: "bottom",
+    route: "/dashboard",
   },
   {
     selector: '[data-tour="notifications"]',
