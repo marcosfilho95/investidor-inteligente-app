@@ -286,6 +286,8 @@ const SYSTEM_PROMPT = [
   "POSICIONAMENTO: 100% a favor de ANÁLISE FUNDAMENTALISTA e VALUE INVESTING. CONTRA day trade, swing trade, análise técnica, robôs de trading, opções binárias e especulação. Quando perguntado sobre trading, cite dados do estudo da FGV e, quando couber, a frase de Buffett sobre gráficos.",
   "",
   "REGRA CRÍTICA DE CONDUTA: nunca dê ordem direta de investimento. Proibido usar linguagem prescritiva como 'compre', 'venda', 'entre', 'saia', 'você deve comprar' ou equivalentes.",
+  "SUGESTÕES DE ALOCAÇÃO (OBRIGATÓRIO): você pode sugerir cenários com percentuais, quantidades ou ideias de compra/venda, desde que fique explícito que são sugestões educativas e NÃO recomendações.",
+  "Sempre deixe claro que a decisão final é do usuário, priorizando o julgamento crítico, objetivos e tolerância a risco.",
   "Em vez disso, responda com: (1) leitura objetiva dos dados, (2) riscos e benefícios, (3) impacto na carteira, (4) cenários e pontos de atenção para decisão do usuário.",
   "HIERARQUIA DE DADOS (OBRIGATÓRIA): quando existir 'CONTEXTO ESTRUTURADO DA CARTEIRA DO USUÁRIO', ele é a fonte canônica para patrimônio, lucro/prejuízo total, lucro diário, rentabilidade, pesos e setores.",
   "Nesses casos, não recalcule totais a partir de textos auxiliares do dataset. Use os números canônicos do resumo exatamente como referência principal.",
@@ -828,6 +830,25 @@ function withGuidedContinuation(answer, userMessage) {
   return `${base}\n\nSe fizer sentido, posso continuar por aqui:\n- ${options[0]}\n- ${options[1]}\n- ${options[2]}`;
 }
 
+function buildFinalQuestionHook(userMessage, page) {
+  const msg = normalizeIntentText(userMessage);
+  const pg = normalizeIntentText(page);
+
+  if (/ativo|acao|a[cç][aã]o|ticker|indicador|valuation|score|payout|dy|roe|pl|pvp/.test(msg) || /ativo/.test(pg)) {
+    return "Quer que eu priorize agora os 2 indicadores que mais pesam neste ativo?";
+  }
+  if (/carteira|portfolio|dashboard|aloc|concentr|rebalance|setor|risco|perfil/.test(msg) || /carteira|dashboard|home/.test(pg)) {
+    return "Quer que eu te mostre o próximo ajuste prático para melhorar o equilíbrio da carteira?";
+  }
+  if (/dividend|provento|renda passiva/.test(msg)) {
+    return "Quer que eu aplique esse checklist de dividendos em um ativo específico agora?";
+  }
+  if (/day trade|trading|curto prazo/.test(msg)) {
+    return "Quer que eu te mostre uma alternativa de longo prazo mais alinhada ao seu perfil?";
+  }
+  return "Quer que eu siga com o próximo passo mais útil para essa análise?";
+}
+
 function buildDirectHodlIntroAnswer(lastUserMessage, portfolioContext) {
   const msg = normalizeIntentText(lastUserMessage);
   if (!msg) return null;
@@ -1190,7 +1211,7 @@ function sanitizeSseLine(line) {
   }
 }
 
-function sanitizeSseResponse(response) {
+function sanitizeSseResponse(response, userMessage, page) {
   if (!response?.body) return response;
 
   const decoder = new TextDecoder();
@@ -1200,6 +1221,10 @@ function sanitizeSseResponse(response) {
     async start(controller) {
       const reader = response.body.getReader();
       let buffer = "";
+      let hookInjected = false;
+      let sawTradeLanguage = false;
+      let sawSuggestionDisclaimer = false;
+      const finalHook = buildFinalQuestionHook(userMessage, page);
 
       try {
         while (true) {
@@ -1211,12 +1236,74 @@ function sanitizeSseResponse(response) {
           buffer = lines.pop() ?? "";
 
           for (const line of lines) {
+            if (line.trim() === "data: [DONE]") {
+              if (sawTradeLanguage && !sawSuggestionDisclaimer) {
+                const disclaimerChunk = {
+                  choices: [{
+                    delta: {
+                      content:
+                        "\n\nImportante: isso é uma sugestão educativa, não uma recomendação. A decisão final é sua e deve considerar seu julgamento crítico, objetivos e tolerância a risco.",
+                    },
+                    index: 0,
+                  }],
+                };
+                controller.enqueue(encoder.encode("data: " + JSON.stringify(disclaimerChunk) + "\n"));
+              }
+              if (!hookInjected && finalHook) {
+                const hookChunk = {
+                  choices: [{ delta: { content: "\n\n" + finalHook }, index: 0 }],
+                };
+                controller.enqueue(encoder.encode("data: " + JSON.stringify(hookChunk) + "\n"));
+                hookInjected = true;
+              }
+              controller.enqueue(encoder.encode("data: [DONE]\n"));
+              continue;
+            }
+            const payload = line.startsWith("data: ") ? line.slice(6).trim() : "";
+            if (payload && payload !== "[DONE]") {
+              try {
+                const parsed = JSON.parse(payload);
+                const c = parsed?.choices?.[0];
+                const txt = String(c?.delta?.content ?? c?.message?.content ?? "");
+                const n = normalizeIntentText(txt);
+                if (/\b(comprar|compra|vender|venda|reduzir|aumentar posicao|aumentar posição|realocar|rebalancear)\b/.test(n) || /\b\d{1,3}\s*%\b/.test(txt) || /\b\d+\s+acoes\b/.test(n)) {
+                  sawTradeLanguage = true;
+                }
+                if (/nao e recomendacao|não é recomendação|decisao final|decisão final|julgamento critico|julgamento crítico/.test(n)) {
+                  sawSuggestionDisclaimer = true;
+                }
+              } catch {
+                // ignore parse errors
+              }
+            }
             controller.enqueue(encoder.encode(sanitizeSseLine(line) + "\n"));
           }
         }
 
         if (buffer.length > 0) {
-          controller.enqueue(encoder.encode(sanitizeSseLine(buffer)));
+          if (buffer.trim() === "data: [DONE]") {
+            if (sawTradeLanguage && !sawSuggestionDisclaimer) {
+              const disclaimerChunk = {
+                choices: [{
+                  delta: {
+                    content:
+                      "\n\nImportante: isso é uma sugestão educativa, não uma recomendação. A decisão final é sua e deve considerar seu julgamento crítico, objetivos e tolerância a risco.",
+                  },
+                  index: 0,
+                }],
+              };
+              controller.enqueue(encoder.encode("data: " + JSON.stringify(disclaimerChunk) + "\n"));
+            }
+            if (!hookInjected && finalHook) {
+              const hookChunk = {
+                choices: [{ delta: { content: "\n\n" + finalHook }, index: 0 }],
+              };
+              controller.enqueue(encoder.encode("data: " + JSON.stringify(hookChunk) + "\n"));
+            }
+            controller.enqueue(encoder.encode("data: [DONE]"));
+          } else {
+            controller.enqueue(encoder.encode(sanitizeSseLine(buffer)));
+          }
         }
         controller.close();
       } catch (err) {
@@ -1431,7 +1518,7 @@ serve(async function(req) {
       });
     }
 
-    const sanitizedResponse = sanitizeSseResponse(response);
+    const sanitizedResponse = sanitizeSseResponse(response, latestUserMessage, page);
     return new Response(sanitizedResponse.body, {
       headers: Object.assign({}, corsHeaders, { "Content-Type": "text/event-stream" }),
     });
