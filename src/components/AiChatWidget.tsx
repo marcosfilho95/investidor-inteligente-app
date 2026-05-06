@@ -2,7 +2,7 @@
 import { Bot, Send, Sparkles, Loader2, ArrowUpRight, ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { buildDatasetContext, buildAssetContext, buildPeerUniverseContext } from "@/data/investments";
 import { getAssetRouteSymbol, getCanonicalSymbol, getDisplaySymbol } from "@/lib/symbolDisplay";
 import type { InvestorProfileSummary, PortfolioRiskSummary } from "@/lib/investorIntelligence";
@@ -635,6 +635,7 @@ export function AiChatWidget({
   className = "",
   fullHeight = false,
 }: AiChatWidgetProps) {
+  const navigate = useNavigate();
   const initialWelcome = welcomeMessage || "Olá! Sou o Hodl 🤖, seu assistente inteligente. Como posso te ajudar hoje?";
   const chatScope = useMemo(() => {
     if (page === "ativo") {
@@ -1000,6 +1001,16 @@ export function AiChatWidget({
     setIsLoading(false);
   };
 
+  const stopStreamingForNavigation = () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    activeRequestRef.current = 0;
+    setIsAssistantTyping(false);
+    setIsLoading(false);
+    shouldAutoScrollRef.current = false;
+    setAutoFollow(false);
+  };
+
   if (compact) {
     return (
       <div className="glass-card p-4 group hover:border-primary/20 transition-all duration-300">
@@ -1117,14 +1128,32 @@ export function AiChatWidget({
                           "inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-primary/22 via-primary/16 to-primary/10 px-2 py-0.5 font-semibold text-primary no-underline shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),0_1px_8px_rgba(0,0,0,0.18)] transition-all duration-200 hover:from-primary/30 hover:via-primary/22 hover:to-primary/14 hover:-translate-y-[1px] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14),0_4px_14px_rgba(0,0,0,0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45";
                         if (to.startsWith("/")) {
                           return (
-                            <Link to={to} className={linkClass}>
+                            <Link
+                              to={to}
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                stopStreamingForNavigation();
+                                navigate(to);
+                              }}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={(e) => e.preventDefault()}
+                              className={linkClass}
+                            >
                               <span>{children}</span>
                               <ArrowUpRight className="h-3 w-3" />
                             </Link>
                           );
                         }
                         return (
-                          <a href={to} target="_blank" rel="noreferrer" className={linkClass}>
+                          <a
+                            href={to}
+                            target="_blank"
+                            rel="noreferrer"
+                            onPointerDown={() => stopStreamingForNavigation()}
+                            onMouseDown={() => stopStreamingForNavigation()}
+                            onClick={() => stopStreamingForNavigation()}
+                            className={linkClass}
+                          >
                             <span>{children}</span>
                             <ArrowUpRight className="h-3 w-3" />
                           </a>
