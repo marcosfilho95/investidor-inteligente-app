@@ -655,7 +655,7 @@ export function AiChatWidget({
   const [isLoading, setIsLoading] = useState(false);
   const [isAssistantTyping, setIsAssistantTyping] = useState(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
-  const [manualScrollLock, setManualScrollLock] = useState(false);
+  const [autoFollow, setAutoFollow] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
   const hasMountedRef = useRef(false);
@@ -685,6 +685,8 @@ export function AiChatWidget({
     abortControllerRef.current = null;
     setIsLoading(false);
     setIsAssistantTyping(false);
+    setAutoFollow(true);
+    setIsNearBottom(true);
     setMemoryMessages([]);
     setDismissedQuickPromptLabels([]);
     setMessages([{ role: "assistant", content: initialWelcome }]);
@@ -744,7 +746,7 @@ export function AiChatWidget({
     scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior });
     shouldAutoScrollRef.current = true;
     setIsNearBottom(true);
-    setManualScrollLock(false);
+    setAutoFollow(true);
   };
   const scrollToTop = () => {
     if (!scrollRef.current) return;
@@ -758,11 +760,11 @@ export function AiChatWidget({
     }
     const hasNewMessage = messages.length > previousMessagesLengthRef.current;
     previousMessagesLengthRef.current = messages.length;
-    if (manualScrollLock) return;
+    if (!autoFollow) return;
     if (!isNearBottom) return;
     if (!shouldAutoScrollRef.current) return;
     scrollToBottom(hasNewMessage ? "smooth" : "auto");
-  }, [messages, manualScrollLock, isNearBottom]);
+  }, [messages, autoFollow, isNearBottom]);
 
   // Keep initial greeting in sync with async-loaded page context
   // (e.g. holdings loaded after first render on dashboard).
@@ -809,6 +811,7 @@ export function AiChatWidget({
 
   useEffect(() => {
     if (!showQuickPrompts) return;
+    if (!autoFollow) return;
     if (!shouldAutoScrollRef.current) return;
     // Garante que as sugestões recém-exibidas fiquem totalmente visíveis.
     requestAnimationFrame(() => {
@@ -816,7 +819,7 @@ export function AiChatWidget({
         scrollToBottom("smooth");
       });
     });
-  }, [showQuickPrompts]);
+  }, [showQuickPrompts, autoFollow]);
 
   const dismissQuickPrompt = (label: string) => {
     setDismissedQuickPromptLabels((prev) => {
@@ -1069,18 +1072,17 @@ export function AiChatWidget({
           const nearBottom = distanceToBottom < 80;
           shouldAutoScrollRef.current = nearBottom;
           setIsNearBottom(nearBottom);
-          if (!nearBottom && (isAssistantTyping || isLoading)) {
-            // Modo leitura: usuário saiu do fim enquanto o agente escreve.
-            setManualScrollLock(true);
+          if (!nearBottom) {
+            // Estilo Codex: saiu do fim => para de seguir automaticamente.
+            setAutoFollow(false);
           }
-          if (nearBottom && manualScrollLock) setManualScrollLock(false);
         }}
         onWheel={(e) => {
           // Se o usuário rolar para cima durante a digitação, não forçar auto-scroll.
-          if (e.deltaY < 0 && (isAssistantTyping || isLoading)) {
+          if (e.deltaY < 0) {
             shouldAutoScrollRef.current = false;
             setIsNearBottom(false);
-            setManualScrollLock(true);
+            setAutoFollow(false);
           }
         }}
         className="p-4 space-y-3 flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col scrollbar-thin scrollbar-thumb-transparent scrollbar-track-transparent hover:scrollbar-thumb-transparent chat-scroll"
@@ -1185,16 +1187,17 @@ export function AiChatWidget({
             </div>
           </motion.div>
         )}
-        {!isNearBottom && (isAssistantTyping || isLoading) && (
+        {!isNearBottom && (
           <div className="sticky bottom-2 z-10 flex justify-center pointer-events-none">
             <button
               type="button"
               onClick={() => scrollToBottom("smooth")}
               aria-label="Descer para o fim da conversa"
               title="Descer"
-              className="pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary/40 bg-card/95 text-primary shadow-lg backdrop-blur-md hover:bg-primary/10 transition-colors"
+              className="pointer-events-auto relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-primary/40 bg-primary/10 text-primary shadow-[0_8px_18px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-md transition-all duration-300 hover:scale-[1.04] hover:border-primary/65 hover:bg-primary/15 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 dark:border-primary/55 dark:bg-[radial-gradient(circle_at_30%_25%,rgba(34,197,94,0.20),rgba(9,15,24,0.94)_70%)] dark:text-primary dark:shadow-[0_10px_24px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.16)] dark:hover:border-primary/80 dark:hover:bg-[radial-gradient(circle_at_30%_25%,rgba(34,197,94,0.26),rgba(9,15,24,0.96)_72%)] dark:hover:shadow-[0_14px_28px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.24)]"
             >
-              <ChevronDown className="h-4 w-4" />
+              <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/18 to-transparent" />
+              <ChevronDown className="relative h-4.5 w-4.5" />
             </button>
           </div>
         )}
