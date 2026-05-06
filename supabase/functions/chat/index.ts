@@ -834,12 +834,21 @@ function withGuidedContinuation(answer, userMessage) {
 function buildFinalQuestionHook(userMessage, page) {
   const msg = normalizeIntentText(userMessage);
   const pg = normalizeIntentText(page);
+  const isShortCtaReply =
+    /^(sim|s|claro|pode|quero|vamos|ok|beleza|manda|nao|não|agora nao|agora não|depois|ja|já|entendi|show)\b/.test(msg) ||
+    /2\s*indicadores\s*que\s*mais\s*pesam/.test(msg);
 
-  if (/ativo|acao|a[cç][aã]o|ticker|indicador|valuation|score|payout|dy|roe|pl|pvp/.test(msg) || /ativo/.test(pg)) {
+  // Evita repetir pergunta de continuação quando o usuário já respondeu o CTA anterior.
+  if (isShortCtaReply) return "";
+
+  if (/ativo|acao|a[cç][aã]o|ticker|indicador|valuation|score|payout|dy|roe|pl|pvp/.test(msg)) {
     return "Quer que eu priorize agora os 2 indicadores que mais pesam neste ativo?";
   }
   if (/carteira|portfolio|dashboard|aloc|concentr|rebalance|setor|risco|perfil/.test(msg) || /carteira|dashboard|home/.test(pg)) {
     return "Quer que eu te mostre o próximo ajuste prático para melhorar o equilíbrio da carteira?";
+  }
+  if (/ativo/.test(pg)) {
+    return "Quer que eu compare este ativo com os pares do mesmo subsetor para ver se ele está entre os mais fortes?";
   }
   if (/dividend|provento|renda passiva/.test(msg)) {
     return "Quer que eu aplique esse checklist de dividendos em um ativo específico agora?";
