@@ -1,5 +1,5 @@
 ﻿import { useState, useRef, useEffect, useMemo } from "react";
-import { Bot, Send, Sparkles, Loader2, ArrowUpRight } from "lucide-react";
+import { Bot, Send, Sparkles, Loader2, ArrowUpRight, ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { Link } from "react-router-dom";
@@ -651,8 +651,11 @@ export function AiChatWidget({
     { role: "assistant", content: initialWelcome },
   ]);
   const [memoryMessages, setMemoryMessages] = useState<Msg[]>([]);
+  const [dismissedQuickPromptLabels, setDismissedQuickPromptLabels] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAssistantTyping, setIsAssistantTyping] = useState(false);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  const [manualScrollLock, setManualScrollLock] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
   const hasMountedRef = useRef(false);
@@ -683,6 +686,7 @@ export function AiChatWidget({
     setIsLoading(false);
     setIsAssistantTyping(false);
     setMemoryMessages([]);
+    setDismissedQuickPromptLabels([]);
     setMessages([{ role: "assistant", content: initialWelcome }]);
     shouldAutoScrollRef.current = false;
     requestAnimationFrame(scrollToTop);
@@ -738,6 +742,9 @@ export function AiChatWidget({
   const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior });
+    shouldAutoScrollRef.current = true;
+    setIsNearBottom(true);
+    setManualScrollLock(false);
   };
   const scrollToTop = () => {
     if (!scrollRef.current) return;
@@ -751,9 +758,11 @@ export function AiChatWidget({
     }
     const hasNewMessage = messages.length > previousMessagesLengthRef.current;
     previousMessagesLengthRef.current = messages.length;
+    if (manualScrollLock) return;
+    if (!isNearBottom) return;
     if (!shouldAutoScrollRef.current) return;
     scrollToBottom(hasNewMessage ? "smooth" : "auto");
-  }, [messages]);
+  }, [messages, manualScrollLock, isNearBottom]);
 
   // Keep initial greeting in sync with async-loaded page context
   // (e.g. holdings loaded after first render on dashboard).
@@ -770,8 +779,7 @@ export function AiChatWidget({
   }, [initialWelcome, isLoading]);
 
   const inputLocked = isLoading || isAssistantTyping;
-  const showQuickPrompts = messages.length <= 1 && !isLoading;
-  const quickPrompts = useMemo(() => {
+  const quickPromptsBase = useMemo(() => {
     if (page === "dashboard") {
       return [
         QUICK_PROMPTS_DEFAULT[0],
@@ -785,10 +793,42 @@ export function AiChatWidget({
     if (page === "ativo") return QUICK_PROMPTS_ASSET;
     return QUICK_PROMPTS_DEFAULT;
   }, [page]);
+  const quickPrompts = useMemo(() => {
+    const isDismissed = (label: string) => dismissedQuickPromptLabels.includes(label);
+    return quickPromptsBase
+      .map((prompt) => {
+        if (Array.isArray(prompt)) return prompt.filter((item) => !isDismissed(item.label));
+        return isDismissed(prompt.label) ? null : prompt;
+      })
+      .filter((prompt) => {
+        if (!prompt) return false;
+        return !Array.isArray(prompt) || prompt.length > 0;
+      });
+  }, [quickPromptsBase, dismissedQuickPromptLabels]);
+  const showQuickPrompts = !isLoading && !isAssistantTyping && quickPrompts.length > 0;
+
+  useEffect(() => {
+    if (!showQuickPrompts) return;
+    if (!shouldAutoScrollRef.current) return;
+    // Garante que as sugestões recém-exibidas fiquem totalmente visíveis.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToBottom("smooth");
+      });
+    });
+  }, [showQuickPrompts]);
+
+  const dismissQuickPrompt = (label: string) => {
+    setDismissedQuickPromptLabels((prev) => {
+      if (prev.includes(label)) return prev;
+      return [...prev, label];
+    });
+  };
 
   const handleSend = async (overrideInput?: string) => {
     const text = overrideInput ?? input;
     if (!text.trim() || inputLocked) return;
+    if (overrideInput) dismissQuickPrompt(text);
     const userMsg: Msg = { role: "user", content: text };
     const newMessages = [...messages, userMsg];
     const historyForApi = [...memoryMessages, userMsg].slice(-CHAT_MEMORY_LIMIT);
@@ -977,6 +1017,33 @@ export function AiChatWidget({
 
   return (
     <div className={`relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-b from-card/90 to-card/70 backdrop-blur-xl w-full ${className} ${cardHeightClass} flex flex-col shadow-xl shadow-black/10`}>
+      <style>{`
+        .chat-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(120, 131, 155, 0.55) rgba(255, 255, 255, 0.02);
+        }
+        .chat-scroll::-webkit-scrollbar {
+          width: 10px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+          background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+          border-left: 1px solid rgba(255,255,255,0.05);
+          border-radius: 999px;
+          margin: 8px 0;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, rgba(160, 172, 196, 0.72), rgba(133, 147, 174, 0.6));
+          border-radius: 999px;
+          border: 2px solid rgba(11, 15, 26, 0.85);
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12), 0 2px 8px rgba(0,0,0,0.28);
+        }
+        .chat-scroll:hover::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, rgba(180, 194, 222, 0.82), rgba(151, 167, 200, 0.72));
+        }
+        .chat-scroll::-webkit-scrollbar-thumb:active {
+          background: linear-gradient(180deg, rgba(194, 209, 239, 0.9), rgba(164, 182, 219, 0.82));
+        }
+      `}</style>
       <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full bg-primary/[0.06] blur-3xl pointer-events-none" />
       <div className="absolute -bottom-16 -left-16 w-32 h-32 rounded-full bg-primary/[0.04] blur-3xl pointer-events-none" />
       <div className="relative p-4 border-b border-border/30 flex items-center gap-3 bg-gradient-to-r from-card/80 to-transparent">
@@ -999,9 +1066,24 @@ export function AiChatWidget({
         onScroll={(e) => {
           const el = e.currentTarget;
           const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-          shouldAutoScrollRef.current = distanceToBottom < 80;
+          const nearBottom = distanceToBottom < 80;
+          shouldAutoScrollRef.current = nearBottom;
+          setIsNearBottom(nearBottom);
+          if (!nearBottom && (isAssistantTyping || isLoading)) {
+            // Modo leitura: usuário saiu do fim enquanto o agente escreve.
+            setManualScrollLock(true);
+          }
+          if (nearBottom && manualScrollLock) setManualScrollLock(false);
         }}
-        className="p-4 space-y-3 flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+        onWheel={(e) => {
+          // Se o usuário rolar para cima durante a digitação, não forçar auto-scroll.
+          if (e.deltaY < 0 && (isAssistantTyping || isLoading)) {
+            shouldAutoScrollRef.current = false;
+            setIsNearBottom(false);
+            setManualScrollLock(true);
+          }
+        }}
+        className="p-4 space-y-3 flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col scrollbar-thin scrollbar-thumb-transparent scrollbar-track-transparent hover:scrollbar-thumb-transparent chat-scroll"
       >
         <AnimatePresence initial={false}>
           {messages.map((msg, i) => (
@@ -1102,6 +1184,19 @@ export function AiChatWidget({
               ))}
             </div>
           </motion.div>
+        )}
+        {!isNearBottom && (isAssistantTyping || isLoading) && (
+          <div className="sticky bottom-2 z-10 flex justify-center pointer-events-none">
+            <button
+              type="button"
+              onClick={() => scrollToBottom("smooth")}
+              aria-label="Descer para o fim da conversa"
+              title="Descer"
+              className="pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary/40 bg-card/95 text-primary shadow-lg backdrop-blur-md hover:bg-primary/10 transition-colors"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          </div>
         )}
       </div>
       <div className="relative p-3 border-t border-border/30 bg-card/50 backdrop-blur-sm mt-auto">
