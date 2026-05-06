@@ -67,6 +67,8 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
+          skipWaiting: true,
+          clientsClaim: true,
           navigateFallback: "/index.html",
           navigateFallbackDenylist: [/^\/~oauth/, /^\/api\//],
           globPatterns: ["**/*.{js,css,html,ico,png,svg,gif,jpeg,jpg,avif,webp,woff,woff2}"],
@@ -107,6 +109,12 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
+      __APP_VERSION__: JSON.stringify(
+        env.VITE_APP_VERSION ||
+          env.VERCEL_GIT_COMMIT_SHA ||
+          env.GITHUB_SHA ||
+          new Date().toISOString()
+      ),
       "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(supabaseProjectId),
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(supabaseUrl),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(supabasePublishableKey),
