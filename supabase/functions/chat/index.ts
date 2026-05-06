@@ -415,6 +415,8 @@ function sanitizeMathFormatting(text) {
 
   // Remove barras invertidas remanescentes para evitar quebra visual no chat.
   sanitized = sanitized.replace(/\\/g, "");
+  // Corrige moeda quando "$" for removido na sanitização de markdown/LaTeX.
+  sanitized = sanitized.replace(/\bR\s+(?=\d)/g, "R$ ");
 
   return fixMojibakePtBr(sanitized);
 }

@@ -123,6 +123,8 @@ function sanitizeMathForDisplay(text: string): string {
   }
 
   sanitized = sanitized.replace(/\\/g, "");
+  // Corrige moeda quando o "$" foi removido durante sanitização de markdown/LaTeX.
+  sanitized = sanitized.replace(/\bR\s+(?=\d)/g, "R$ ");
   return fixMojibakePtBr(sanitized);
 }
 
