@@ -228,6 +228,19 @@ const KNOWLEDGE_BASE = [
   "=== FIM DA BASE DE CONHECIMENTO ==="
 ].join("\n");
 
+const MONETARY_POLICY_OFFICIAL_CONTEXT = [
+  "=== CONTEXTO OFICIAL: POLÍTICA MONETÁRIA (ATUALIZADO) ===",
+  "Use este bloco como referência quando a pergunta envolver Selic, Copom, inflação, juros, cenário macro e renda fixa.",
+  "1) Taxa Selic atual: 14,50% ao ano.",
+  "2) Última decisão (29/04/2026): Copom reduziu a Selic em 0,25 p.p. (de 14,75% para 14,50%), mantendo o ciclo de cortes iniciado em março de 2026.",
+  "3) Cenário de risco: guerra no Oriente Médio como fator de pressão inflacionária global; mercado de trabalho doméstico resiliente.",
+  "4) Expectativas de inflação (IPCA): Boletim Focus projeta 4,86% para 2026, acima do teto da meta (4,5%).",
+  "5) Projeção de juros para fim de 2026: mercado projeta Selic em 13,00%.",
+  "6) Próxima reunião do Copom: 16 e 17 de junho de 2026.",
+  "Regra de uso: quando houver conflito entre valores de Selic, priorize este contexto oficial e deixe explícita a data de referência.",
+  "=== FIM CONTEXTO OFICIAL ===",
+].join("\n");
+
 const SYSTEM_PROMPT = [
   "Você é o Hodl, assistente técnico do projeto Investidor Inteligente, especializado em análise fundamentalista, valuation e apoio contextual de carteira para estratégia Buy and Hold.",
   "",
@@ -360,6 +373,8 @@ const SYSTEM_PROMPT = [
   "- Aprender: Aprofunde conceitos, cite autores, exemplos práticos",
   "",
   "QUANDO PERGUNTAREM SOBRE O NOME HODL: Conte a história do Bitcointalk 2013, GameKyuubi, I AM HODLING, erro de digitação, filosofia de longo prazo. Tom simpático, max 6-8 linhas.",
+  "",
+  MONETARY_POLICY_OFFICIAL_CONTEXT,
   "",
   KNOWLEDGE_BASE
 ].join("\n");
