@@ -226,84 +226,145 @@ function shouldUseLocalPortfolioReply(message: string): boolean {
   return true;
 }
 
-function addGuidedContinuation(answer: string, userInput: string): string {
+function stripExistingHook(answer: string): string {
+  return String(answer || "")
+    .replace(/\n{0,2}Pr[oó]ximo passo sugerido:[\s\S]*$/i, "")
+    .replace(/\n{0,2}Se quiser, eu sigo por aqui:[\s\S]*$/i, "")
+    .replace(/\n{0,2}Se fizer sentido, eu posso continuar por aqui:[\s\S]*$/i, "")
+    .replace(/\n{0,2}Quer que eu[\s\S]*\?$/i, "")
+    .trim();
+}
+
+function buildHookByPage(page: AiChatWidgetProps["page"], userInput: string, ticker?: string): string[] {
   const normalized = normalizeTextPtBr(String(userInput || ""));
-  const base = String(answer || "").trim();
+  const assetLabel = ticker ? getDisplaySymbol(ticker) : "este ativo";
+
+  if (page === "ativo") {
+    if (/(score|fundamentalista)/.test(normalized)) {
+      return [
+        `abrir o score fundamentalista de ${assetLabel} por blocos (rentabilidade, dívida, crescimento e dividendos)`,
+        `mostrar o que precisaria melhorar para ${assetLabel} subir de nota`,
+      ];
+    }
+    if (/(preco|preço|intrinseco|intrínseco|justo|valuation|graham)/.test(normalized)) {
+      return [
+        `comparar o preço atual de ${assetLabel} com o valor intrínseco (ou preço justo estimado)`,
+        `mostrar os cenários de margem de segurança para ${assetLabel}`,
+      ];
+    }
+    if (/(pl|p\/vp|roe|roic|dy|payout|divida|d[ií]vida|ev\/ebitda|ev\/ebit)/.test(normalized)) {
+      return [
+        `traduzir os principais indicadores de ${assetLabel} em linguagem simples`,
+        `destacar quais indicadores de ${assetLabel} hoje estão fortes e quais pedem atenção`,
+      ];
+    }
+    return [
+      `comparar ${assetLabel} com os pares mais próximos do mesmo subsetor`,
+      `detalhar os riscos específicos de ${assetLabel} para Buy and Hold`,
+      `traduzir os indicadores de ${assetLabel} em um checklist prático de decisão`,
+    ];
+  }
+  if (page === "carteira") {
+    if (/(risco|perfil|desalinh)/.test(normalized)) {
+      return [
+        "mostrar quais posições mais puxam esse risco hoje",
+        "simular um rebalanceamento gradual para seu perfil",
+      ];
+    }
+    return [
+      "priorizar os 2 ajustes mais importantes da sua carteira agora",
+      "montar um plano simples de rebalanceamento para os próximos aportes",
+    ];
+  }
+  if (page === "aprender") {
+    return [
+      "explicar isso com um exemplo numérico bem simples",
+      "seguir para o próximo conceito da trilha",
+    ];
+  }
+  return [
+    "aplicar isso na sua carteira atual",
+    "mostrar o próximo passo mais útil agora",
+  ];
+}
+
+function inferHookIntent(text: string): string {
+  const normalized = normalizeTextPtBr(text);
+  if (/(compar|pares|subsetor|setor)/.test(normalized)) return "compare";
+  if (/(risco|volatil|desalinh|perfil)/.test(normalized)) return "risk";
+  if (/(score|fundamentalista)/.test(normalized)) return "score";
+  if (/(preco|preco|valor intrinseco|valor justo|valuation|graham)/.test(normalized)) return "valuation";
+  if (/(indicador|pl|p\/vp|roe|roic|dy|payout|divida|ev\/ebitda|ev\/ebit)/.test(normalized)) return "indicators";
+  if (/(rebalance|aloc|concentr|aporte)/.test(normalized)) return "rebalance";
+  if (/(trilha|conceito|exemplo|quiz|aprender)/.test(normalized)) return "learn";
+  return "generic";
+}
+
+function selectNonRepeatingHook(
+  options: string[],
+  userInput: string,
+  recentAssistantMessages: Msg[]
+): string {
+  if (options.length === 0) return "seguir com o próximo passo mais útil agora";
+  const recentText = recentAssistantMessages
+    .slice(-3)
+    .map((m) => normalizeTextPtBr(m.content))
+    .join("\n");
+  const userIntent = inferHookIntent(userInput);
+
+  const candidates = options.filter((opt) => {
+    const intent = inferHookIntent(opt);
+    if (intent === userIntent) return false;
+    const normalizedOpt = normalizeTextPtBr(opt);
+    return !recentText.includes(normalizedOpt);
+  });
+
+  if (candidates.length > 0) return candidates[0];
+
+  const softCandidates = options.filter((opt) => {
+    const normalizedOpt = normalizeTextPtBr(opt);
+    return !recentText.includes(normalizedOpt);
+  });
+  if (softCandidates.length > 0) return softCandidates[0];
+
+  return options[0];
+}
+
+function pickCtaIntro(message: string): string {
+  const intros = [
+    "Se você quiser avançar agora, posso",
+    "Para transformar isso em ação prática, posso",
+    "Se fizer sentido para seu momento, posso",
+    "Próximo movimento inteligente: posso",
+    "Para ganhar clareza rápida, posso",
+  ];
+  const normalized = normalizeTextPtBr(String(message || ""));
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) hash = (hash * 31 + normalized.charCodeAt(i)) >>> 0;
+  return intros[hash % intros.length];
+}
+
+function addUniversalContinuation(
+  answer: string,
+  userInput: string,
+  page?: AiChatWidgetProps["page"],
+  ticker?: string,
+  recentAssistantMessages: Msg[] = []
+): string {
+  const base = stripExistingHook(String(answer || ""));
   if (!base) return base;
-
-  let options: string[];
-  if (/(rentabilidade|lucro|prejuizo|resultado|patrimonio|investido|dividend|provento|dy)/.test(normalized)) {
-    options = [
-      "Quer que eu te mostre o que mais impactou esse número?",
-      "Quer comparar esse resultado com seu risco atual da carteira?",
-      "Quer que eu monte 2 próximos passos simples para melhorar esse indicador?",
-    ];
-  } else if (/(maior ativo|pesa mais|alocacao|concentr)/.test(normalized)) {
-    options = [
-      "Quer que eu te mostre como reduzir essa concentração aos poucos?",
-      "Quer que eu compare esse ativo com pares do mesmo setor?",
-      "Quer um exemplo de rebalanceamento para perfil moderado?",
-    ];
-  } else {
-    options = [
-      "Quer que eu explique isso de forma ainda mais simples?",
-      "Quer aplicar essa análise no restante da sua carteira?",
-      "Quer que eu te sugira o próximo tema para aprender agora?",
-    ];
-  }
-
-  return `${base}\n\nPróximo passo sugerido:\n1. ${options[0]}\n2. ${options[1]}\n3. ${options[2]}`;
-}
-
-function hasGuidedContinuation(answer: string): boolean {
-  return /proximo passo sugerido|próximo passo sugerido/i.test(String(answer || ""));
-}
-
-function addUniversalContinuation(answer: string, userInput: string, page?: AiChatWidgetProps["page"]): string {
-  const base = String(answer || "").trim();
-  if (!base || hasGuidedContinuation(base)) return base;
-
-  const normalized = normalizeTextPtBr(String(userInput || ""));
-  let options: string[];
-
-  if (/(risco|perfil|desalinh|compatib)/.test(normalized)) {
-    options = [
-      "Quer que eu te mostre os 2 principais fatores que mais aumentam seu risco hoje?",
-      "Quer que eu simule um ajuste gradual para alinhar com seu perfil?",
-      "Quer que eu explique em linguagem simples como interpretar esse risco?",
-    ];
-  } else if (/(diversific|aloc|setor|concentr|rebalance)/.test(normalized)) {
-    options = [
-      "Quer que eu te proponha 2 mudanças objetivas para diversificar sem exagero?",
-      "Quer que eu compare os melhores pares do mesmo setor para você decidir?",
-      "Quer um plano de rebalanceamento em passos simples para os próximos aportes?",
-    ];
-  } else if (/(pl|p\/vp|roe|dy|payout|valuation|preco justo|graham)/.test(normalized)) {
-    options = [
-      "Quer que eu traduza esses indicadores para uma leitura de iniciante?",
-      "Quer que eu aplique essa análise em um ativo da sua carteira agora?",
-      "Quer que eu monte um checklist rápido para sua próxima decisão?",
-    ];
-  } else if (page === "aprender") {
-    options = [
-      "Quer que eu continue com o próximo conceito em ordem de dificuldade?",
-      "Quer um exemplo prático com números simples para fixar?",
-      "Quer um mini quiz de 3 perguntas para revisar esse tema?",
-    ];
-  } else {
-    options = [
-      "Quer que eu resuma isso em 3 pontos bem práticos?",
-      "Quer que eu aplique essa explicação na sua carteira atual?",
-      "Quer que eu te sugira o melhor próximo tema para continuar?",
-    ];
-  }
-
-  return `${base}\n\nPróximo passo sugerido:\n1. ${options[0]}\n2. ${options[1]}\n3. ${options[2]}`;
+  const options = buildHookByPage(page, userInput, ticker);
+  const intro = pickCtaIntro(userInput);
+  const selected = selectNonRepeatingHook(options, userInput, recentAssistantMessages);
+  const cta = selected ? `${intro} ${selected}.` : "Se quiser, sigo com o próximo passo mais útil agora.";
+  return `${base}\n\n${cta}`;
 }
 
 function buildDirectPortfolioReply(
   inputText: string,
-  portfolioContext?: AiChatWidgetProps["portfolioContext"]
+  portfolioContext?: AiChatWidgetProps["portfolioContext"],
+  page?: AiChatWidgetProps["page"],
+  ticker?: string
 ): string | null {
   if (!portfolioContext?.summary) return null;
   const rawText = String(inputText || "").trim();
@@ -378,7 +439,7 @@ function buildDirectPortfolioReply(
         : Number.NaN;
       return `${symbol}: ${formatSignedMoneyPtBr(pnl)} (${formatPctPtBr(pct)}).`;
     });
-    return addGuidedContinuation(`Aqui estão os números da sua posição:\n${lines.join("\n")}`, rawText);
+    return addUniversalContinuation(`Aqui estão os números da sua posição:\n${lines.join("\n")}`, rawText, page, ticker);
   }
   if (matchedPositions.length > 0 && asksPositionAmount) {
     const lines = matchedPositions.map((p) => {
@@ -389,7 +450,7 @@ function buildDirectPortfolioReply(
       const invested = Number.isFinite(avg) && Number.isFinite(shares) ? avg * shares : Number.NaN;
       return `${symbol}: saldo ${formatSignedMoneyPtBr(value).replace("+", "")} | investido ${formatSignedMoneyPtBr(invested).replace("+", "")}.`;
     });
-    return addGuidedContinuation(`Aqui está o valor da sua posição:\n${lines.join("\n")}`, rawText);
+    return addUniversalContinuation(`Aqui está o valor da sua posição:\n${lines.join("\n")}`, rawText, page, ticker);
   }
   if (asksBiggestAsset && positions.length > 0) {
     const top = [...positions]
@@ -399,9 +460,11 @@ function buildDirectPortfolioReply(
       const symbol = String(top.symbol || "").toUpperCase();
       const alloc = Number(top.allocationPct);
       const value = Number(top.positionValue);
-      return addGuidedContinuation(
+      return addUniversalContinuation(
         `Seu maior ativo na carteira é ${symbol}, com ${formatPctPtBr(alloc)} de alocação (saldo: ${formatSignedMoneyPtBr(value).replace("+", "")}).`,
-        rawText
+        rawText,
+        page,
+        ticker
       );
     }
   }
@@ -432,7 +495,7 @@ function buildDirectPortfolioReply(
     );
   }
 
-  if (responseLines.length > 0) return addGuidedContinuation(responseLines.join("\n"), rawText);
+  if (responseLines.length > 0) return addUniversalContinuation(responseLines.join("\n"), rawText, page, ticker);
 
   return null;
 }
@@ -692,10 +755,11 @@ export function AiChatWidget({
     if (!overrideInput) setInput("");
     setIsLoading(true);
 
-    const directReply = buildDirectPortfolioReply(text, portfolioContext);
+    const directReply = buildDirectPortfolioReply(text, portfolioContext, page, ticker);
     if (directReply) {
-      setMessages([...newMessages, { role: "assistant", content: directReply }]);
-      setMemoryMessages((prev) => [...prev, { role: "assistant", content: directReply }].slice(-CHAT_MEMORY_LIMIT));
+      const finalizedDirect = addUniversalContinuation(directReply, text, page, ticker, historyForApi);
+      setMessages([...newMessages, { role: "assistant", content: finalizedDirect }]);
+      setMemoryMessages((prev) => [...prev, { role: "assistant", content: finalizedDirect }].slice(-CHAT_MEMORY_LIMIT));
       setIsLoading(false);
       return;
     }
@@ -834,7 +898,7 @@ export function AiChatWidget({
 
     if (!isRequestActive()) return;
     if (assistantContent.trim()) {
-      const finalizedContent = addUniversalContinuation(assistantContent, text, page);
+      const finalizedContent = addUniversalContinuation(assistantContent, text, page, ticker, historyForApi);
       setMessages((prev) => {
         const updated = [...prev];
         if (updated.length > newMessages.length && updated[updated.length - 1]?.role === "assistant") {
