@@ -449,7 +449,7 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] pointer-events-none">
-      <div className="absolute inset-0 bg-black/45 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(15,23,42,0.20)_0%,rgba(15,23,42,0.32)_45%,rgba(15,23,42,0.42)_100%)] dark:bg-black/45 pointer-events-none" />
 
       {rect && !isCenter && (
         <motion.div
@@ -484,7 +484,7 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
           className={`z-[202] ${isMobile ? "w-auto" : "w-[min(92vw,360px)] max-w-[92vw]"} pointer-events-auto`}
           style={getTooltipStyle()}
         >
-          <div className="glass-card p-4 md:p-5 shadow-2xl border-primary/20 max-h-[68vh] overflow-y-auto">
+          <div className="glass-card !bg-white !backdrop-blur-0 text-foreground p-4 md:p-5 shadow-2xl border-border/70 max-h-[68vh] overflow-y-auto dark:!bg-card/85 dark:!backdrop-blur-xl dark:border-primary/20">
             {isCenter && (
               <div className="flex justify-center mb-3">
                 <motion.div
@@ -515,7 +515,7 @@ export function OnboardingTour({ onComplete }: OnboardingTourProps) {
             </div>
 
             <h3 className="text-base font-bold mb-1.5">{step.title}</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed mb-4">{step.description}</p>
+            <p className="text-sm text-foreground/85 dark:text-muted-foreground leading-relaxed mb-4">{step.description}</p>
 
             <div className="flex items-center justify-between gap-2">
               <div className="flex gap-1">
