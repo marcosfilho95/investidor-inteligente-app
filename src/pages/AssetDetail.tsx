@@ -1979,6 +1979,7 @@ const AssetDetail = () => {
                               border: "1px solid hsl(var(--border))",
                               background: "hsl(var(--popover))",
                             }}
+                            itemStyle={{ color: "hsl(var(--foreground))" }}
                             cursor={{ fill: "hsl(var(--muted) / 0.25)" }}
                           />
                           <Bar dataKey="value" radius={[10, 10, 0, 0]} barSize={54}>
