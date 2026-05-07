@@ -10,9 +10,11 @@ import {
   Percent,
   Building2,
   Activity,
+  Info,
+  X,
   type LucideIcon,
 } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
+import { Area, AreaChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, BarChart as ReBarChart, Bar, Cell, LabelList } from "recharts";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import { holdings, getDailyPriceState, getFilteredPriceHistory, getFiltered7dPriceHistory, getFilteredIntradayPriceHistory, getInvestmentComparisonData, indicatorTooltips, calcRecommendationScore, resolveActiveValuation, getLatestIntradayPointForCurrentSession, invalidateIntradayHistoryCache, getTrailing12mReturnPct, mergeHoldingWithDynamicMetrics, getMarketHistory, getAiTaxonomy, type DynamicFundamentals } from "@/data/investments";
 import { isRealDataLoaded } from "@/data/csvLoader";
@@ -31,6 +33,199 @@ const periodMap: Record<string, string> = { "DAILY": "1D", "7 DIAS": "7D", "30 D
 const Y_DOMAIN_ADJUST_PERIODS = new Set(["DAILY", "7 DIAS", "30 DIAS", "6 MESES", "YTD"]);
 type ComparisonChartPoint = Record<string, string | number>;
 type TickPayload = { value?: string };
+type BenchBarPoint = { name: string; value: number; color: string };
+type LearnModalContent = {
+  indicatorKey?: string;
+  title: string;
+  whatItIs: string;
+  howToRead: string;
+  sectorReference: string;
+  practicalExample: string;
+  sectorReferenceTitle?: string;
+  formulaDetail?: string;
+  importance?: string;
+  nuances?: string;
+  ndReason?: string;
+  currentNumeric?: number | null;
+  referenceMin?: number | null;
+  referenceMax?: number | null;
+  referenceUnit?: string;
+  subsetAvg?: number | null;
+  sectorAvg?: number | null;
+  benchmarkNote?: string;
+  benchmarkSector?: number | null;
+  benchmarkIbov?: number | null;
+  outlierNote?: string;
+  positionLabel?: string;
+  positionTone?: "ideal" | "lower" | "higher" | "outlier" | "neutral";
+};
+
+type IndicatorDeepGuide = {
+  formulaDetail: string;
+  importance: string;
+  nuances: string;
+  ndReason?: string;
+  referenceMin?: number;
+  referenceMax?: number;
+  referenceUnit?: string;
+};
+
+const INDICATOR_DIRECTION: Record<string, "higher_better" | "lower_better" | "range"> = {
+  "DY": "range",
+  "P/L": "lower_better",
+  "P/VP": "lower_better",
+  "LPA": "higher_better",
+  "VPA": "higher_better",
+  "PAYOUT": "range",
+  "P/EBIT": "lower_better",
+  "EV/EBIT": "lower_better",
+  "EV/EBITDA": "lower_better",
+  "Indice Basileia": "range",
+  "ROE": "higher_better",
+  "ROIC": "higher_better",
+  "Margem Bruta": "higher_better",
+  "Margem EBIT": "higher_better",
+  "Margem Liq.": "higher_better",
+  "C. Receita 5A": "higher_better",
+  "C. Lucro 5A": "higher_better",
+  "Giro Ativos": "higher_better",
+  "Liq. Corrente": "range",
+  "Div. Liq. / PL": "lower_better",
+  "Div. Liq. / EBITDA": "lower_better",
+  "PL / Ativos": "range",
+  "Market Cap": "range",
+};
+
+function getDirectionBadge(
+  direction: "higher_better" | "lower_better" | "range",
+  inRange?: boolean,
+  outlierCritical?: boolean
+): { label: string; className: string } {
+  if (outlierCritical) {
+    return {
+      label: "⚠ Outlier crítico",
+      className: "border-loss/40 bg-loss/12 text-loss",
+    };
+  }
+  if (direction === "range") {
+    if (inRange === true) {
+      return {
+        label: "✓ Faixa ideal",
+        className: "border-gain/35 bg-gain/10 text-gain",
+      };
+    }
+    if (inRange === false) {
+      return {
+        label: "↔ Fora da faixa ideal",
+        className: "border-warning/35 bg-warning/10 text-warning",
+      };
+    }
+  }
+  if (direction === "higher_better") {
+    return {
+      label: "⬆ Melhor quando maior",
+      className: "border-gain/35 bg-gain/10 text-gain",
+    };
+  }
+  if (direction === "lower_better") {
+    return {
+      label: "⬇ Melhor quando menor",
+      className: "border-loss/35 bg-loss/10 text-loss",
+    };
+  }
+  return {
+    label: "↔ Faixa ideal",
+    className: "border-warning/35 bg-warning/10 text-warning",
+  };
+}
+
+function isCriticalOutlier(indicatorKey: string | undefined, current: number | null): boolean {
+  if (!indicatorKey || current === null || !Number.isFinite(current)) return false;
+  if (indicatorKey === "P/L" && current < 0) return true;
+  if ((indicatorKey === "EV/EBIT" || indicatorKey === "EV/EBITDA") && current < 0) return true;
+  if (indicatorKey === "LPA" && current < 0) return true;
+  if (indicatorKey === "ROE" && current < 0) return true;
+  if (indicatorKey === "ROIC" && current < 0) return true;
+  if (indicatorKey === "Margem Bruta" && current < 0) return true;
+  if (indicatorKey === "Margem EBIT" && current < 0) return true;
+  if (indicatorKey === "Margem Liq." && current < 0) return true;
+  if (indicatorKey === "C. Receita 5A" && current < 0) return true;
+  if (indicatorKey === "C. Lucro 5A" && current < 0) return true;
+  if (indicatorKey === "PAYOUT" && current > 150) return true;
+  return false;
+}
+
+function classifyRelativePosition(
+  current: number | null,
+  sector: number | null,
+  ibov: number | null,
+  outlierCritical: boolean
+): { label: string; tone: "ideal" | "lower" | "higher" | "outlier" | "neutral" } {
+  if (outlierCritical) return { label: "Cuidado, fora do padrão!", tone: "outlier" };
+  if (current === null || !Number.isFinite(current)) return { label: "Sem dado suficiente", tone: "neutral" };
+  const refs = [sector, ibov].filter((v): v is number => v !== null && Number.isFinite(v));
+  if (refs.length === 0) return { label: "Sem referência comparável", tone: "neutral" };
+  const mean = refs.reduce((a, b) => a + b, 0) / refs.length;
+  const diffPct = ((current - mean) / Math.max(Math.abs(mean), 0.0001)) * 100;
+  const abs = Math.abs(diffPct);
+  if (abs <= 12) return { label: "Ideal (em linha com a média)", tone: "ideal" };
+  if (diffPct > 12) return { label: "Pode ser menor", tone: "lower" };
+  return { label: "Pode ser maior", tone: "higher" };
+}
+
+function detectOutlierNote(
+  indicatorKey: string | undefined,
+  current: number | null,
+  sector: number | null,
+  ibov: number | null
+): string | undefined {
+  if (!indicatorKey || current === null || !Number.isFinite(current)) return undefined;
+
+  const relDiff = (base: number | null) => {
+    if (base === null || !Number.isFinite(base) || base === 0) return null;
+    return Math.abs((current - base) / base) * 100;
+  };
+  const dSector = relDiff(sector);
+  const dIbov = relDiff(ibov);
+  const farFromBoth =
+    (dSector !== null && dSector >= 60) &&
+    (dIbov !== null && dIbov >= 60);
+
+  if (indicatorKey === "P/L" && current < 0) {
+    return "P/L negativo normalmente indica lucro negativo no período. Nesse cenário, o múltiplo perde comparabilidade direta e o foco deve migrar para tendência de lucro, margem e estrutura de capital.";
+  }
+  if (indicatorKey === "LPA" && current < 0) {
+    return "LPA negativo indica prejuízo por ação no período. A leitura passa a ser de recuperação operacional: evolução de receita, margem, geração de caixa e redução de risco financeiro.";
+  }
+  if ((indicatorKey === "ROE" || indicatorKey === "ROIC") && current < 0) {
+    return `${indicatorKey} negativo sinaliza retorno destrutivo no período. A prioridade analítica passa a ser entender se é choque pontual ou deterioração estrutural.`;
+  }
+  if ((indicatorKey === "Margem Bruta" || indicatorKey === "Margem EBIT" || indicatorKey === "Margem Liq.") && current < 0) {
+    return `${indicatorKey} negativa indica pressão operacional relevante. Antes de comparar valuation, vale confirmar qualidade do resultado e capacidade de reversão de margem.`;
+  }
+  if ((indicatorKey === "C. Receita 5A" || indicatorKey === "C. Lucro 5A") && current < 0) {
+    return `${indicatorKey} negativo em 5 anos indica contração no ciclo analisado. A leitura deve focar em tendência de virada, competitividade e sustentabilidade do negócio.`;
+  }
+  if ((indicatorKey === "EV/EBIT" || indicatorKey === "EV/EBITDA") && current < 0) {
+    return `${indicatorKey} negativo costuma refletir resultado operacional negativo e/ou distorções de curto prazo. A leitura por múltiplo fica limitada até normalização do operacional.`;
+  }
+  if (indicatorKey === "PAYOUT" && current > 100) {
+    return "Payout acima de 100% sugere distribuição maior que o lucro do período, podendo sinalizar menor sustentabilidade da política de dividendos se persistir.";
+  }
+  if (indicatorKey === "DY" && current > 12) {
+    return "DY muito elevado pode ser efeito de queda acentuada de preço ou evento não recorrente de lucro/dividendo. Vale checar qualidade e recorrência.";
+  }
+  if ((indicatorKey === "Div. Liq. / EBITDA" || indicatorKey === "Div. Liq. / PL") && current < 0) {
+    return "Valor negativo nesses indicadores geralmente indica caixa líquido (mais caixa que dívida), o que tende a reduzir risco financeiro no curto prazo.";
+  }
+  if (indicatorKey === "Indice Basileia" && current < 13) {
+    return "Índice de Basileia abaixo de 13% indica colchão de capital mais apertado frente à referência prática adotada no app, pedindo avaliação adicional de resiliência.";
+  }
+  if (farFromBoth) {
+    return "Este indicador está muito distante de setor e IBOV. Antes de concluir oportunidade ou risco, confirme efeitos não recorrentes, ciclo do setor e histórico de 3-5 anos.";
+  }
+  return undefined;
+}
 
 function computeVisualDomain(
   values: number[],
@@ -99,6 +294,272 @@ function MetricBadge({
   );
 }
 
+const INDICATOR_SECTOR_REFERENCE: Record<string, string> = {
+  "DY": "Setores perenes (energia, bancos, telecom, saneamento) tendem a DY mais previsível. DY alto isolado pode sinalizar preço pressionado.",
+  "P/L": "Bancos e utilities costumam aceitar P/L moderado; crescimento/tecnologia pode negociar com P/L mais alto quando há expansão de lucro.",
+  "P/VP": "Bancos e seguradoras usam bastante P/VP na comparação; em negócios intensivos em intangível, o múltiplo pode parecer 'caro' sem ser necessariamente ruim.",
+  "LPA": "Crescimento consistente de LPA por 3-5 anos costuma ser sinal de execução sólida do negócio.",
+  "VPA": "VPA é muito útil em bancos e empresas maduras com base patrimonial robusta.",
+  "PAYOUT": "Faixa de 30%-70% tende a ser mais sustentável no longo prazo; acima disso por muito tempo pode pressionar reinvestimento.",
+  "P/EBIT": "Comparar por subsetor: empresas com margens estáveis tendem a múltiplos menos voláteis.",
+  "EV/EBIT": "Bom para comparar estrutura de capital entre pares do mesmo subsetor.",
+  "EV/EBITDA": "Muito usado em negócios não financeiros; leitura isolada sem margem e dívida pode enganar.",
+  "Indice Basileia": "Em bancos, Basileia mais folgada geralmente indica maior resiliência de capital.",
+  "Market Cap": "Ajuda a comparar porte e risco relativo, mas não mede qualidade do negócio sozinho.",
+  "ROE": "Bancos e negócios asset-light tendem a ROE mais alto; compare sempre com histórico e pares.",
+  "ROIC": "ROIC acima do custo de capital por vários anos tende a indicar vantagem competitiva.",
+  "Margem Bruta": "Queda contínua pode indicar perda de poder de precificação ou pressão de custos.",
+  "Margem EBIT": "Setores cíclicos variam mais; estabilidade em ciclos costuma ser diferencial.",
+  "Margem Liq.": "Muito sensível a juros, imposto e efeitos não recorrentes.",
+  "C. Receita 5A": "Crescimento com margem estável vale mais do que crescimento sem rentabilidade.",
+  "C. Lucro 5A": "Lucro crescendo com dívida controlada tende a ser mais saudável.",
+  "Giro Ativos": "Varejo/serviços costuma ter giro maior que utilities; comparar entre setores distorce.",
+  "Liq. Corrente": "Mais relevante em setores operacionais; em bancos, outras métricas de capital pesam mais.",
+  "Div. Liq. / PL": "Sinaliza alavancagem patrimonial. Muito alto pode elevar risco em ciclos de juros altos.",
+  "Div. Liq. / EBITDA": "Para não financeiros, acima de ~3x já pede atenção em muitos casos.",
+  "PL / Ativos": "Mostra quanto dos ativos é financiado por capital próprio.",
+};
+
+const INDICATOR_DEEP_GUIDE: Record<string, IndicatorDeepGuide> = {
+  "DY": {
+    formulaDetail: "DY = Dividendos pagos em 12 meses ÷ Preço atual da ação.",
+    importance: "Ajuda a estimar geração de renda sobre o preço de entrada, mas não deve ser usado isoladamente.",
+    nuances: "DY alto pode ser oportunidade ou armadilha (queda forte de preço, lucro não recorrente ou payout excessivo).",
+    referenceMin: 4,
+    referenceMax: 10,
+    referenceUnit: "%",
+  },
+  "P/L": {
+    formulaDetail: "P/L = Preço da ação ÷ Lucro por ação (LPA).",
+    importance: "Mostra quantos 'anos de lucro' estão embutidos no preço atual, como proxy de valuation.",
+    nuances: "Empresas de crescimento e setores em expansão costumam negociar com P/L maior. Compare sempre com pares e histórico.",
+    referenceMin: 6,
+    referenceMax: 15,
+    referenceUnit: "x",
+  },
+  "P/VP": {
+    formulaDetail: "P/VP = Preço da ação ÷ Valor patrimonial por ação (VPA).",
+    importance: "Muito útil para bancos, seguradoras e empresas em que a base patrimonial é relevante.",
+    nuances: "P/VP baixo pode sinalizar desconto real ou piora estrutural de rentabilidade.",
+    referenceMin: 0.8,
+    referenceMax: 2.5,
+    referenceUnit: "x",
+  },
+  "LPA": {
+    formulaDetail: "LPA = Lucro líquido ÷ Número de ações.",
+    importance: "É base para P/L e para o cálculo de Graham; mostra geração de lucro por ação.",
+    nuances: "Mais importante que o valor de 1 ano é a consistência do LPA ao longo de vários ciclos.",
+  },
+  "VPA": {
+    formulaDetail: "VPA = Patrimônio líquido ÷ Número de ações.",
+    importance: "É base para P/VP e para o cálculo de Graham, funcionando como referência patrimonial por ação.",
+    nuances: "Em negócios intensivos em intangível, o VPA pode subestimar valor econômico.",
+  },
+  "PAYOUT": {
+    formulaDetail: "Payout = Dividendos distribuídos ÷ Lucro líquido.",
+    importance: "Mostra quanto do lucro vira distribuição, equilibrando renda ao acionista e reinvestimento.",
+    nuances: "Faixa prática: até ~70% tende a ser mais confortável; entre 70% e 80% é zona de atenção; acima de 80% passa a indicar maior risco de sustentabilidade se persistir.",
+    referenceMin: 30,
+    referenceMax: 80,
+    referenceUnit: "%",
+  },
+  "P/EBIT": {
+    formulaDetail: "P/EBIT = Valor de mercado ÷ EBIT.",
+    importance: "Avalia preço relativo da operação antes do efeito financeiro e tributário.",
+    nuances: "Útil em comparação por subsetor e com margem operacional.",
+    referenceMin: 5,
+    referenceMax: 12,
+    referenceUnit: "x",
+  },
+  "EV/EBIT": {
+    formulaDetail: "EV/EBIT = Enterprise Value ÷ EBIT.",
+    importance: "Inclui dívida na conta, melhorando comparação entre empresas com estruturas de capital diferentes.",
+    nuances: "Mais robusto que múltiplos só de equity quando há diferenças de alavancagem.",
+    referenceMin: 5,
+    referenceMax: 12,
+    referenceUnit: "x",
+  },
+  "EV/EBITDA": {
+    formulaDetail: "EV/EBITDA = Enterprise Value ÷ EBITDA.",
+    importance: "Métrica clássica de valuation operacional para empresas não financeiras.",
+    nuances: "Não captura Capex de manutenção; deve ser lida junto de dívida, margem e geração de caixa.",
+    ndReason: "Em bancos, EV/EBITDA e dívida líquida/EBITDA costumam ser N/D porque o modelo bancário trata passivos de captação como matéria-prima do negócio, tornando esses múltiplos pouco comparáveis.",
+    referenceMin: 4,
+    referenceMax: 10,
+    referenceUnit: "x",
+  },
+  "Indice Basileia": {
+    formulaDetail: "Índice de Basileia = Capital regulatório ÷ Ativos ponderados por risco.",
+    importance: "Em bancos, mede robustez de capital para absorver perdas e sustentar crescimento de crédito.",
+    nuances: "Faixa confortável tende a reduzir risco de estresse regulatório. Regra prática usada no app: Basileia saudável em torno de 13% ou mais.",
+    referenceMin: 13,
+    referenceMax: 18,
+    referenceUnit: "%",
+  },
+  "ROE": {
+    formulaDetail: "ROE = Lucro líquido ÷ Patrimônio líquido.",
+    importance: "Mostra eficiência de geração de lucro sobre o capital do acionista.",
+    nuances: "ROE alto com alavancagem excessiva pode ser frágil; interpretar junto de risco.",
+    referenceMin: 12,
+    referenceMax: 22,
+    referenceUnit: "%",
+  },
+  "ROIC": {
+    formulaDetail: "ROIC = Retorno operacional sobre capital investido.",
+    importance: "Indica qualidade econômica do negócio e potencial de criação de valor.",
+    nuances: "ROIC sustentado acima do custo de capital é sinal importante de vantagem competitiva.",
+    referenceMin: 10,
+    referenceMax: 20,
+    referenceUnit: "%",
+  },
+  "Margem Bruta": {
+    formulaDetail: "Margem Bruta = Lucro bruto ÷ Receita líquida.",
+    importance: "Mede poder de precificação e eficiência da estrutura de custos diretos.",
+    nuances: "Compressão contínua de margem pode indicar perda competitiva.",
+    referenceMin: 20,
+    referenceMax: 45,
+    referenceUnit: "%",
+  },
+  "Margem EBIT": {
+    formulaDetail: "Margem EBIT = EBIT ÷ Receita líquida.",
+    importance: "Mostra eficiência operacional antes de resultado financeiro e impostos.",
+    nuances: "Alta volatilidade é comum em setores cíclicos; estabilidade costuma ser diferencial.",
+    referenceMin: 10,
+    referenceMax: 25,
+    referenceUnit: "%",
+  },
+  "Margem Liq.": {
+    formulaDetail: "Margem Líquida = Lucro líquido ÷ Receita líquida.",
+    importance: "Consolida qualidade final de resultado após juros e tributos.",
+    nuances: "Pode oscilar por efeitos contábeis e itens não recorrentes.",
+    referenceMin: 8,
+    referenceMax: 20,
+    referenceUnit: "%",
+  },
+  "C. Receita 5A": {
+    formulaDetail: "Crescimento Receita 5A = CAGR da receita em 5 anos.",
+    importance: "Mostra tração comercial e escala de longo prazo.",
+    nuances: "Receita crescendo sem margem/rentabilidade é crescimento de baixa qualidade.",
+    referenceMin: 5,
+    referenceMax: 15,
+    referenceUnit: "%",
+  },
+  "C. Lucro 5A": {
+    formulaDetail: "Crescimento Lucro 5A = CAGR do lucro em 5 anos.",
+    importance: "Capta crescimento efetivo de resultado para o acionista.",
+    nuances: "Crescimento errático pede avaliação de ciclicidade e previsibilidade.",
+    referenceMin: 6,
+    referenceMax: 18,
+    referenceUnit: "%",
+  },
+  "Giro Ativos": {
+    formulaDetail: "Giro de Ativos = Receita líquida ÷ Ativos totais.",
+    importance: "Mostra eficiência do uso de ativos para gerar receita.",
+    nuances: "Setores de infraestrutura têm giro naturalmente menor que varejo/serviços.",
+    referenceMin: 0.3,
+    referenceMax: 1.2,
+    referenceUnit: "x",
+  },
+  "Liq. Corrente": {
+    formulaDetail: "Liquidez Corrente = Ativo circulante ÷ Passivo circulante.",
+    importance: "Sinaliza capacidade de cumprir obrigações de curto prazo.",
+    nuances: "Em bancos, indicadores regulatórios e de capital são mais relevantes que liquidez corrente tradicional.",
+    referenceMin: 1,
+    referenceMax: 2,
+    referenceUnit: "x",
+  },
+  "Div. Liq. / PL": {
+    formulaDetail: "Dívida Líquida/PL = Dívida líquida ÷ Patrimônio líquido.",
+    importance: "Mede alavancagem patrimonial e sensibilidade do equity ao ciclo de juros.",
+    nuances: "Interpretar com estrutura de capital do setor e estabilidade de caixa.",
+    ndReason: "Em bancos, este indicador pode ser N/D ou pouco comparável, pois passivos financeiros são parte central da operação e não apenas 'dívida corporativa'.",
+    referenceMin: 0,
+    referenceMax: 1.2,
+    referenceUnit: "x",
+  },
+  "Div. Liq. / EBITDA": {
+    formulaDetail: "Dívida Líquida/EBITDA = Dívida líquida ÷ EBITDA.",
+    importance: "Régua clássica de alavancagem para empresas não financeiras.",
+    nuances: "Acima de ~3x já costuma exigir mais cautela, especialmente com juros elevados.",
+    ndReason: "Em bancos, costuma aparecer N/D porque EBITDA e dívida líquida têm baixa aderência ao modelo de intermediação financeira.",
+    referenceMin: 0,
+    referenceMax: 3,
+    referenceUnit: "x",
+  },
+  "PL / Ativos": {
+    formulaDetail: "PL/Ativos = Patrimônio líquido ÷ Ativos totais.",
+    importance: "Mostra quanto da estrutura de ativos é financiada por capital próprio.",
+    nuances: "Faixas adequadas variam bastante por setor e intensidade de capital.",
+    referenceMin: 0.2,
+    referenceMax: 0.5,
+    referenceUnit: "x",
+  },
+};
+
+const INDICATOR_VALUE_GETTERS: Record<string, (asset: any) => number | null> = {
+  "DY": (a) => (Number.isFinite(a.dividend) ? a.dividend : null),
+  "P/L": (a) => (Number.isFinite(a.pe) ? a.pe : null),
+  "P/VP": (a) => (Number.isFinite(a.pvp) ? a.pvp : null),
+  "LPA": (a) => (Number.isFinite(a.lpa) ? a.lpa : null),
+  "VPA": (a) => (Number.isFinite(a.vpa) ? a.vpa : null),
+  "PAYOUT": (a) => (Number.isFinite(a.payout) ? a.payout : null),
+  "P/EBIT": (a) => (Number.isFinite(a.pEbit) ? a.pEbit : null),
+  "EV/EBIT": (a) => (Number.isFinite(a.evEbit) ? a.evEbit : null),
+  "EV/EBITDA": (a) => (Number.isFinite(a.evEbitda) ? a.evEbitda : null),
+  "Indice Basileia": (a) => (Number.isFinite(a.basileia) ? a.basileia : null),
+  "ROE": (a) => (Number.isFinite(a.roe) ? a.roe : null),
+  "ROIC": (a) => (Number.isFinite(a.roic) ? a.roic : null),
+  "Margem Bruta": (a) => (Number.isFinite(a.margemBruta) ? a.margemBruta : null),
+  "Margem EBIT": (a) => (Number.isFinite(a.margemEbit) ? a.margemEbit : null),
+  "Margem Liq.": (a) => (Number.isFinite(a.margemLiquida) ? a.margemLiquida : null),
+  "C. Receita 5A": (a) => (Number.isFinite(a.cReceita5a) ? a.cReceita5a : null),
+  "C. Lucro 5A": (a) => (Number.isFinite(a.cLucro5a) ? a.cLucro5a : null),
+  "Giro Ativos": (a) => (Number.isFinite(a.giroAtivos) ? a.giroAtivos : null),
+  "Liq. Corrente": (a) => (Number.isFinite(a.liqCorrente) ? a.liqCorrente : null),
+  "Div. Liq. / PL": (a) => (Number.isFinite(a.divLiqPl) ? a.divLiqPl : null),
+  "Div. Liq. / EBITDA": (a) => (Number.isFinite(a.divLiqEbitda) ? a.divLiqEbitda : null),
+  "PL / Ativos": (a) => (Number.isFinite(a.plAtivos) ? a.plAtivos : null),
+};
+
+const WEB_SECTOR_BENCHMARKS: Record<string, { pe?: number; dy?: number; asOf: string; source: string }> = {
+  "Energia": { pe: 13.05, dy: 5.3, asOf: "06/05/2026", source: "iAções" },
+  "Serviços Financeiros": { pe: 10.02, dy: 6.6, asOf: "16/04/2026", source: "iAções" },
+  "Saneamento": { pe: 33.69, asOf: "24/04/2026", source: "iAções" },
+};
+
+type SectorBenchmarkKey =
+  | "Financeiro"
+  | "Energia"
+  | "Saneamento"
+  | "Commodities"
+  | "Indústria"
+  | "Consumo Cíclico"
+  | "Consumo Não Cíclico"
+  | "Telecom"
+  | "Tecnologia"
+  | "Saúde";
+
+type BenchmarkPack = {
+  ibov: number | null;
+  sectors: Record<SectorBenchmarkKey, number | null>;
+  unit?: string;
+  note?: string;
+};
+
+const INDICATOR_BENCHMARKS: Record<string, BenchmarkPack> = {
+  "P/L": { ibov: 13.5, unit: "x", sectors: { Financeiro: 8.0, Energia: 13.2, Saneamento: 33.7, Commodities: 11.0, Indústria: 18.0, "Consumo Cíclico": 16.5, "Consumo Não Cíclico": 15.0, Telecom: 15.0, Tecnologia: 24.0, Saúde: 50.8 } },
+  "DY": { ibov: 4.8, unit: "%", sectors: { Financeiro: 6.5, Energia: 6.6, Saneamento: 3.9, Commodities: 6.0, Indústria: 3.5, "Consumo Cíclico": 2.8, "Consumo Não Cíclico": 5.0, Telecom: 3.4, Tecnologia: 1.8, Saúde: 5.3 } },
+  "ROE": { ibov: 14.2, unit: "%", sectors: { Financeiro: 16.5, Energia: 13.0, Saneamento: 9.5, Commodities: 15.0, Indústria: 12.0, "Consumo Cíclico": 10.5, "Consumo Não Cíclico": 14.0, Telecom: 11.5, Tecnologia: 18.0, Saúde: 12.5 } },
+  "P/VP": { ibov: 1.9, unit: "x", sectors: { Financeiro: 1.4, Energia: 1.8, Saneamento: 2.3, Commodities: 1.7, Indústria: 2.0, "Consumo Cíclico": 1.6, "Consumo Não Cíclico": 2.1, Telecom: 1.5, Tecnologia: 4.2, Saúde: 2.8 } },
+  "EV/EBIT": { ibov: 9.8, unit: "x", sectors: { Financeiro: null, Energia: 8.5, Saneamento: 11.0, Commodities: 7.8, Indústria: 10.2, "Consumo Cíclico": 12.5, "Consumo Não Cíclico": 11.0, Telecom: 9.5, Tecnologia: 18.5, Saúde: 16.0 } },
+  "Margem Liq.": { ibov: 12.0, unit: "%", sectors: { Financeiro: 18.0, Energia: 14.0, Saneamento: 10.0, Commodities: 16.0, Indústria: 9.0, "Consumo Cíclico": 6.0, "Consumo Não Cíclico": 11.0, Telecom: 8.5, Tecnologia: 15.0, Saúde: 7.5 } },
+  "ROIC": { ibov: 11.5, unit: "%", sectors: { Financeiro: null, Energia: 10.5, Saneamento: 7.0, Commodities: 12.0, Indústria: 10.0, "Consumo Cíclico": 8.0, "Consumo Não Cíclico": 10.5, Telecom: 8.5, Tecnologia: 16.0, Saúde: 9.0 } },
+  "Div. Liq. / EBITDA": { ibov: 1.8, unit: "x", sectors: { Financeiro: null, Energia: 3.2, Saneamento: 2.8, Commodities: 1.4, Indústria: 2.1, "Consumo Cíclico": 2.5, "Consumo Não Cíclico": 1.6, Telecom: 1.9, Tecnologia: 0.8, Saúde: 2.3 } },
+  "Margem EBIT": { ibov: 16.0, unit: "%", sectors: { Financeiro: 22.0, Energia: 18.0, Saneamento: 15.0, Commodities: 20.0, Indústria: 12.0, "Consumo Cíclico": 8.0, "Consumo Não Cíclico": 14.0, Telecom: 13.0, Tecnologia: 21.0, Saúde: 10.0 } },
+  "C. Receita 5A": { ibov: 8.5, unit: "%", sectors: { Financeiro: 6.0, Energia: 7.0, Saneamento: 5.5, Commodities: 6.5, Indústria: 9.0, "Consumo Cíclico": 11.0, "Consumo Não Cíclico": 7.5, Telecom: 5.0, Tecnologia: 18.0, Saúde: 12.0 } },
+  "C. Lucro 5A": { ibov: 9.0, unit: "%", sectors: { Financeiro: 7.5, Energia: 8.0, Saneamento: 6.0, Commodities: 7.0, Indústria: 10.0, "Consumo Cíclico": 12.5, "Consumo Não Cíclico": 8.5, Telecom: 6.0, Tecnologia: 20.0, Saúde: 13.0 } },
+};
+
 const AssetDetail = () => {
   const { symbol } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
@@ -124,6 +585,7 @@ const AssetDetail = () => {
     sources: { ibov: "ok", cdi: "ok", ipca: "ok" },
   });
   const [intradayPriceHistory, setIntradayPriceHistory] = useState<{ month: string; price: number; datetime?: string }[]>([]);
+  const [openLearnModal, setOpenLearnModal] = useState<LearnModalContent | null>(null);
   const [sevenDayPriceHistory, setSevenDayPriceHistory] = useState<
     { month: string; price: number; datetime?: string; tooltipLabel?: string }[]
   >([]);
@@ -539,6 +1001,196 @@ const AssetDetail = () => {
     }
   };
 
+  const openIndicatorLearnModal = (
+    label: string,
+    value: string | number | null,
+    tooltip?: { title: string; description: string; formula: string }
+  ) => {
+    const val = value ?? "N/D";
+    const toNumeric = (raw: string | number | null): number | null => {
+      if (raw === null || raw === undefined) return null;
+      if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+      const cleaned = String(raw).replace(/[^0-9,.-]/g, "");
+      if (!cleaned) return null;
+      // pt-BR: "1.234,56" -> 1234.56 | en/JS: "1234.56" -> 1234.56
+      const normalized = cleaned.includes(",")
+        ? cleaned.replace(/\./g, "").replace(",", ".")
+        : cleaned.replace(/,/g, "");
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const numericValue = toNumeric(value);
+    const sectorKey = assetTaxonomy.subsetor || assetTaxonomy.setor_macro || "Setor não informado";
+    const defaultTitle = tooltip?.title || `Indicador ${label}`;
+    const defaultDescription = tooltip?.description || "Indicador fundamentalista usado para apoiar leitura de qualidade e preço.";
+    const formula = tooltip?.formula || "Sem fórmula disponível no momento.";
+    const sectorReference = INDICATOR_SECTOR_REFERENCE[label] || "Compare este indicador com histórico da empresa e pares do mesmo subsetor.";
+    const deepGuide = INDICATOR_DEEP_GUIDE[label];
+    const getter = INDICATOR_VALUE_GETTERS[label];
+    const calcMean = (arr: number[]): number | null => {
+      const valid = arr.filter((n) => Number.isFinite(n));
+      if (!valid.length) return null;
+      return valid.reduce((acc, n) => acc + n, 0) / valid.length;
+    };
+
+    let subsetAvg: number | null = null;
+    let sectorAvg: number | null = null;
+    if (getter) {
+      const samples = holdings.map((h) => ({
+        value: getter(h),
+        tax: getAiTaxonomy(h.symbol, h.sector, h.subsetor),
+      }));
+      const subsetValues = samples
+        .filter((s) => s.tax.subsetor === assetTaxonomy.subsetor)
+        .map((s) => s.value)
+        .filter((v): v is number => v !== null && Number.isFinite(v));
+      const sectorValues = samples
+        .filter((s) => s.tax.setor_macro === assetTaxonomy.setor_macro)
+        .map((s) => s.value)
+        .filter((v): v is number => v !== null && Number.isFinite(v));
+      subsetAvg = calcMean(subsetValues);
+      sectorAvg = calcMean(sectorValues);
+    }
+
+    let benchmarkNote: string | undefined;
+    let benchmarkSector: number | null = null;
+    let benchmarkIbov: number | null = null;
+    const webSector = WEB_SECTOR_BENCHMARKS[assetTaxonomy.setor_macro];
+    if (webSector) {
+      if (label === "P/L" && webSector.pe !== undefined) {
+        benchmarkNote = `Referência web (${webSector.source}) para ${assetTaxonomy.setor_macro}: P/L médio ${webSector.pe.toFixed(2)} (data-base ${webSector.asOf}).`;
+      }
+      if (label === "DY" && webSector.dy !== undefined) {
+        benchmarkNote = `Referência web (${webSector.source}) para ${assetTaxonomy.setor_macro}: DY médio ${webSector.dy.toFixed(2)}% (data-base ${webSector.asOf}).`;
+      }
+    }
+    if (label === "Indice Basileia") {
+      const current = numericValue;
+      if (current !== null) {
+        benchmarkNote = current >= 13
+          ? `Índice de Basileia do banco: ${current.toFixed(2)}%. Referência prática de mercado: saudável em >= 13%. Resultado atual: acima da referência.`
+          : `Índice de Basileia do banco: ${current.toFixed(2)}%. Referência prática de mercado: saudável em >= 13%. Resultado atual: abaixo da referência, pedindo atenção ao colchão de capital.`;
+      } else {
+        benchmarkNote = "Referência prática de mercado para Basileia: saudável em >= 13%. Sem valor disponível para comparação neste ativo.";
+      }
+    }
+    const outlierNote = detectOutlierNote(label, numericValue, benchmarkSector, benchmarkIbov);
+    const outlierCritical = isCriticalOutlier(label, numericValue);
+    const position = classifyRelativePosition(numericValue, benchmarkSector, benchmarkIbov, outlierCritical);
+    const bench = INDICATOR_BENCHMARKS[label];
+    const sectorBenchmarkKey = assetTaxonomy.setor_macro as SectorBenchmarkKey;
+    if (bench) {
+      benchmarkSector = bench.sectors[sectorBenchmarkKey] ?? null;
+      benchmarkIbov = bench.ibov ?? null;
+      const unit = bench.unit ? ` ${bench.unit}` : "";
+      benchmarkNote =
+        `Benchmark de referência (${label}): setor ${assetTaxonomy.setor_macro} = ${benchmarkSector !== null ? `${benchmarkSector.toFixed(2)}${unit}` : "N/D"}; ` +
+        `IBOV = ${benchmarkIbov !== null ? `${benchmarkIbov.toFixed(2)}${unit}` : "N/D"}.`;
+    }
+    const ndReason =
+      val === "N/D"
+        ? (deepGuide?.ndReason || (assetTaxonomy.subsetor === "Bancos"
+            ? "Neste caso, N/D pode ser esperado em bancos, porque métricas como Dívida Líquida/EBITDA e EV/EBITDA não representam bem o modelo de intermediação financeira."
+            : "N/D indica indisponibilidade pontual de dado ou baixa aplicabilidade do indicador para o tipo de ativo."))
+        : undefined;
+    const practicalExample =
+      `Exemplo com ${displaySymbol}: valor atual ${val}. ` +
+      `No subsetor ${sectorKey}, o ideal é comparar este número com 3-5 anos de histórico e 2-4 pares diretos para validar consistência e evitar conclusões por leitura isolada.`;
+
+    setOpenLearnModal({
+      indicatorKey: label,
+      title: defaultTitle,
+      whatItIs: defaultDescription,
+      howToRead: `Valor atual: ${val}. Fórmula base: ${formula}. Interprete junto com rentabilidade, endividamento e crescimento para evitar leitura isolada.`,
+      sectorReference,
+      practicalExample,
+      formulaDetail: deepGuide?.formulaDetail || formula,
+      importance: deepGuide?.importance || "Este indicador ajuda a transformar fundamentos em critérios objetivos de análise e comparação.",
+      nuances:
+        (deepGuide?.nuances
+          ? deepGuide.nuances
+          : "A interpretação correta depende do setor, do ciclo econômico e do histórico do próprio ativo."),
+      ndReason,
+      currentNumeric: numericValue,
+      referenceMin: deepGuide?.referenceMin ?? null,
+      referenceMax: deepGuide?.referenceMax ?? null,
+      referenceUnit: deepGuide?.referenceUnit,
+      subsetAvg,
+      sectorAvg,
+      benchmarkNote,
+      benchmarkSector,
+      benchmarkIbov,
+      outlierNote,
+      positionLabel: position.label,
+      positionTone: position.tone,
+    });
+  };
+
+  const openIntrinsicValueLearnModal = () => {
+    const priceNow = displayedPriceLabel || "N/D";
+    const fair = activeFairPrice !== null ? `R$ ${activeFairPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "N/D";
+    const upside = activeUpsideFormatted !== null ? `${Number(activeUpsideFormatted) >= 0 ? "+" : ""}${activeUpsideFormatted}%` : "N/D";
+    const valuationLabel = activeValuationType === "graham" ? "Valor Intrínseco (Graham)" : "Preço Justo Estimado";
+    if (activeValuationType === "graham") {
+      const upsideNum = Number(activeUpsideFormatted);
+      const hasExtremeUpside = Number.isFinite(upsideNum) && Math.abs(upsideNum) >= 150;
+      setOpenLearnModal({
+        title: `Como interpretar ${valuationLabel}`,
+        whatItIs:
+          "O Valor Intrínseco pelo método de Benjamin Graham é uma estimativa clássica de preço justo baseada em lucro e patrimônio por ação. Graham, autor de 'O Investidor Inteligente', defendia comparar preço e valor para buscar margem de segurança e evitar decisões emocionais.",
+        howToRead:
+          `Fórmula clássica: VI = √(22,5 x LPA x VPA).\n\n` +
+          `No ativo ${displaySymbol}: preço atual ${priceNow}, valor intrínseco ${fair}, upside ${upside}. ` +
+          "Quando o preço fica abaixo do valor estimado e os fundamentos são consistentes, pode haver margem de segurança. Quando fica acima, a margem tende a ser menor e o risco de pagar caro aumenta." +
+          (hasExtremeUpside ? " Quando o upside aparece muito alto, trate como sinal de revisão: confirme histórico de lucro, qualidade do resultado e possíveis distorções pontuais." : ""),
+        sectorReference:
+          "A leitura setorial continua obrigatória: setores estáveis tendem a produzir estimativas mais previsíveis; setores cíclicos podem distorcer lucro em fases de pico/vale, então o valor intrínseco deve ser confirmado com histórico e pares.",
+        practicalExample:
+          "Por que é importante: essa métrica transforma fundamentos em régua objetiva de preço. Em vez de decidir por euforia/pânico, o investidor compara preço de tela com valor econômico estimado e ganha disciplina de longo prazo, em linha com os princípios de 'O Investidor Inteligente'. Próximo passo: comparar este indicador com 3-5 anos do ativo e pares do mesmo setor.",
+      });
+      return;
+    }
+
+    const upsideNum = Number(activeUpsideFormatted);
+    const hasExtremeUpside = Number.isFinite(upsideNum) && Math.abs(upsideNum) >= 150;
+    setOpenLearnModal({
+      title: `Como interpretar ${valuationLabel}`,
+      whatItIs:
+        "Quando o Valor Intrínseco de Graham não pode ser calculado (ex.: LPA não positivo ou dados insuficientes), o sistema usa um Preço Justo Estimado como alternativa educacional para manter uma referência de valuation.",
+      howToRead:
+        `No ativo ${displaySymbol}: preço atual ${priceNow}, preço justo estimado ${fair}, upside ${upside}. ` +
+        "A ideia é manter uma régua prática de comparação entre preço e fundamentos, mesmo sem o cálculo clássico completo." +
+        (hasExtremeUpside ? " Quando o upside aparece muito alto, trate como sinal de revisão: confirme histórico de lucro, consistência operacional e possíveis distorções de curto prazo." : ""),
+      sectorReference:
+        "Diferença principal para Graham: o método de Graham usa uma fórmula clássica (VI = √(22,5 x LPA x VPA)); já o Preço Justo Estimado funciona como uma referência complementar para apoiar a leitura de valor. Os dois ajudam a comparar preço e valor, mas nenhum deve ser usado sozinho: a conclusão melhora quando combinada com contexto setorial e qualidade dos resultados.",
+      sectorReferenceTitle: "Qual a diferença ?",
+      practicalExample:
+        "Importância prática: essa referência ajuda o investidor a manter uma leitura de valor de forma contínua e didática, evitando decisões apenas pelo preço do dia. O foco é apoiar decisões mais conscientes, com visão de longo prazo. Próximo passo: comparar este indicador com 3-5 anos do ativo e pares do mesmo setor.",
+    });
+  };
+
+  const openScoreLearnModal = () => {
+    const scoreLabel = `${recommendation.score}/100 (${recommendation.label})`;
+    const styleHint =
+      recommendation.score >= 80
+        ? "Leitura forte no conjunto de fundamentos."
+        : recommendation.score >= 60
+          ? "Leitura intermediária: há pontos fortes e pontos de atenção."
+          : "Leitura frágil no conjunto de fundamentos, pedindo análise mais cautelosa.";
+
+    setOpenLearnModal({
+      title: "Como interpretar o Score Fundamentalista",
+      whatItIs:
+        "Este score é uma metodologia própria, desenvolvida pela equipe do projeto, para resumir fundamentos em uma leitura única e comparável entre ativos.",
+      howToRead:
+        `No ativo ${displaySymbol}, o score atual é ${scoreLabel}. ${styleHint}\n\nPesos do modelo (base 100): Valuation 30% (Graham 15 + P/L 10 + P/VP 5), Rentabilidade 25% (ROE 15 + Margem Líquida 10), Risco/Estrutura 20%, Crescimento 15% (crescimento médio do lucro em 5 anos) e Dividendos 10%.`,
+      sectorReference:
+        `No subsetor ${assetTaxonomy.subsetor}, compare score com pares diretos. Além da base ponderada, o modelo aplica ajustes setoriais/contextuais (ex.: risco estatal, ciclicidade, características do setor), por isso dois ativos com base parecida podem ter score final diferente.`,
+      practicalExample:
+        "Exemplo didático: dois ativos com score final 75 podem chegar nesse número por caminhos distintos. Um pode pontuar muito em valuation (30%) e perder em risco (20%); outro pode ser mais equilibrado em rentabilidade (25%), crescimento (15%) e dividendos (10%). A melhor decisão vem de abrir os blocos e entender de onde o score está vindo. Próximo passo: revisar os 2 blocos mais fortes e os 2 mais fracos antes da decisão.",
+    });
+  };
+
   useEffect(() => {
     const trade = searchParams.get("trade");
     if (trade !== "buy" && trade !== "sell") return;
@@ -754,19 +1406,38 @@ const AssetDetail = () => {
           {/* Score Fundamentalista + Valuation ativo (Graham > Preço Justo Estimado fallback) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
             <AnimatedCard delay={0.1}>
-              <div className="glass-card p-5 flex h-full flex-col items-center justify-center">
-                <h3 className="text-base font-semibold mb-3 self-start flex items-center gap-2">
-                  Score Fundamentalista
-                </h3>
+              <button
+                type="button"
+                onClick={openScoreLearnModal}
+                className="glass-card p-5 flex h-full w-full flex-col items-center justify-center text-left transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-[1px] hover:border-primary/35 hover:shadow-[0_10px_30px_rgba(34,197,94,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+                aria-label="Abrir explicação detalhada do score fundamentalista"
+              >
+                <div className="mb-3 flex w-full items-center justify-between gap-3">
+                  <h3 className="text-base font-semibold self-start flex items-center gap-2">
+                    Score Fundamentalista
+                  </h3>
+                  <span className="inline-flex items-center rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+                    Clique para entender
+                  </span>
+                </div>
                 <RecommendationGauge score={recommendation.score} label={recommendation.label} color={recommendation.color} />
                 <p className="text-[11px] text-muted-foreground/90 mt-1.5 text-center self-center">
                   Conteúdo educacional e informativo. Não constitui recomendação individual de investimento.
                 </p>
-              </div>
+              </button>
             </AnimatedCard>
             <AnimatedCard delay={0.2}>
-              <div className="glass-card p-6 md:p-7 h-full">
-                <div className="mb-5">
+              <button
+                type="button"
+                onClick={openIntrinsicValueLearnModal}
+                className="glass-card relative p-6 md:p-7 h-full w-full text-left transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-[1px] hover:border-primary/35 hover:shadow-[0_10px_30px_rgba(34,197,94,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+                aria-label={`Abrir explicação detalhada de ${valuationCardTitle}`}
+              >
+                <span className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-lg border border-primary/25 bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary md:right-5 md:top-5">
+                  <Info className="h-3.5 w-3.5" />
+                  Clique para entender
+                </span>
+                <div className="mb-5 pr-40">
                   <h3 className="text-base font-semibold flex items-center gap-2">
                     {valuationCardTitle}
                   </h3>
@@ -854,7 +1525,7 @@ const AssetDetail = () => {
                     </div>
                   </div>
                 )}
-              </div>
+              </button>
             </AnimatedCard>
           </div>
 
@@ -1076,28 +1747,29 @@ const AssetDetail = () => {
                   <h3 className="text-base font-semibold mb-1 flex items-center gap-2">
                     Indicadores de Valuation
                   </h3>
-                  <p className="text-xs text-muted-foreground mb-4">Passe o mouse para entender cada indicador</p>
+                  <p className="text-xs text-muted-foreground mb-4">Clique em qualquer indicador para abrir explicação detalhada</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                    <IndicatorCard label="DY" value={`${asset.dividend}%`} tooltip={indicatorTooltips.dividend} />
-                    <IndicatorCard label="P/L" value={asset.pe?.toFixed(1) ?? null} tooltip={indicatorTooltips.pe} />
-                    <IndicatorCard label="P/VP" value={asset.pvp?.toFixed(2) ?? null} tooltip={indicatorTooltips.pvp} />
-                    <IndicatorCard label="LPA" value={asset.lpa?.toFixed(2) ?? null} tooltip={indicatorTooltips.lpa} />
-                    <IndicatorCard label="VPA" value={asset.vpa?.toFixed(2) ?? null} tooltip={indicatorTooltips.vpa} />
-                    <IndicatorCard label="PAYOUT" value={asset.payout !== null ? `${asset.payout.toFixed(2)}%` : null} tooltip={indicatorTooltips.payout} />
-                    <IndicatorCard label="P/EBIT" value={asset.pEbit?.toFixed(2) ?? null} tooltip={indicatorTooltips.pEbit} />
-                    <IndicatorCard label="EV/EBIT" value={asset.evEbit?.toFixed(1) ?? null} tooltip={indicatorTooltips.evEbit} />
+                    <IndicatorCard label="DY" value={`${asset.dividend}%`} tooltip={indicatorTooltips.dividend} onClick={() => openIndicatorLearnModal("DY", `${asset.dividend}%`, indicatorTooltips.dividend)} />
+                    <IndicatorCard label="P/L" value={asset.pe?.toFixed(1) ?? null} tooltip={indicatorTooltips.pe} onClick={() => openIndicatorLearnModal("P/L", asset.pe?.toFixed(1) ?? null, indicatorTooltips.pe)} />
+                    <IndicatorCard label="P/VP" value={asset.pvp?.toFixed(2) ?? null} tooltip={indicatorTooltips.pvp} onClick={() => openIndicatorLearnModal("P/VP", asset.pvp?.toFixed(2) ?? null, indicatorTooltips.pvp)} />
+                    <IndicatorCard label="LPA" value={asset.lpa?.toFixed(2) ?? null} tooltip={indicatorTooltips.lpa} onClick={() => openIndicatorLearnModal("LPA", asset.lpa?.toFixed(2) ?? null, indicatorTooltips.lpa)} />
+                    <IndicatorCard label="VPA" value={asset.vpa?.toFixed(2) ?? null} tooltip={indicatorTooltips.vpa} onClick={() => openIndicatorLearnModal("VPA", asset.vpa?.toFixed(2) ?? null, indicatorTooltips.vpa)} />
+                    <IndicatorCard label="PAYOUT" value={asset.payout !== null ? `${asset.payout.toFixed(2)}%` : null} tooltip={indicatorTooltips.payout} onClick={() => openIndicatorLearnModal("PAYOUT", asset.payout !== null ? `${asset.payout.toFixed(2)}%` : null, indicatorTooltips.payout)} />
+                    <IndicatorCard label="P/EBIT" value={asset.pEbit?.toFixed(2) ?? null} tooltip={indicatorTooltips.pEbit} onClick={() => openIndicatorLearnModal("P/EBIT", asset.pEbit?.toFixed(2) ?? null, indicatorTooltips.pEbit)} />
+                    <IndicatorCard label="EV/EBIT" value={asset.evEbit?.toFixed(1) ?? null} tooltip={indicatorTooltips.evEbit} onClick={() => openIndicatorLearnModal("EV/EBIT", asset.evEbit?.toFixed(1) ?? null, indicatorTooltips.evEbit)} />
                     {assetTaxonomy.subsetor === "Bancos"
                       ? (
                         <IndicatorCard
                           label="Indice Basileia"
                           value={asset.basileia !== null && asset.basileia !== undefined ? `${asset.basileia.toFixed(2)}%` : null}
                           tooltip={indicatorTooltips.basileia}
+                          onClick={() => openIndicatorLearnModal("Indice Basileia", asset.basileia !== null && asset.basileia !== undefined ? `${asset.basileia.toFixed(2)}%` : null, indicatorTooltips.basileia)}
                         />
                       )
                       : (
-                        <IndicatorCard label="EV/EBITDA" value={asset.evEbitda?.toFixed(1) ?? null} tooltip={indicatorTooltips.evEbitda} />
+                        <IndicatorCard label="EV/EBITDA" value={asset.evEbitda?.toFixed(1) ?? null} tooltip={indicatorTooltips.evEbitda} onClick={() => openIndicatorLearnModal("EV/EBITDA", asset.evEbitda?.toFixed(1) ?? null, indicatorTooltips.evEbitda)} />
                       )}
-                    <IndicatorCard label="Market Cap" value={asset.marketCap} tooltip={indicatorTooltips.marketCap} />
+                    <IndicatorCard label="Market Cap" value={asset.marketCap} tooltip={indicatorTooltips.marketCap} onClick={() => openIndicatorLearnModal("Market Cap", asset.marketCap, indicatorTooltips.marketCap)} />
                   </div>
                 </div>
               </AnimatedCard>
@@ -1109,14 +1781,14 @@ const AssetDetail = () => {
                       Indicadores de Rentabilidade
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
-                      <IndicatorCard label="ROE" value={asset.roe ? `${asset.roe}%` : null} tooltip={indicatorTooltips.roe} />
-                      <IndicatorCard label="ROIC" value={asset.roic ? `${asset.roic}%` : null} tooltip={indicatorTooltips.roic} />
-                      <IndicatorCard label="Margem Bruta" value={asset.margemBruta ? `${asset.margemBruta}%` : null} tooltip={indicatorTooltips.margemBruta} />
-                      <IndicatorCard label="Margem EBIT" value={asset.margemEbit ? `${asset.margemEbit}%` : null} tooltip={indicatorTooltips.margemEbit} />
-                      <IndicatorCard label="Margem Liq." value={asset.margemLiquida ? `${asset.margemLiquida}%` : null} tooltip={indicatorTooltips.margemLiquida} />
-                      <IndicatorCard label="C. Receita 5A" value={asset.cReceita5a ? `${asset.cReceita5a}%` : null} tooltip={indicatorTooltips.cReceita5a} />
-                      <IndicatorCard label="C. Lucro 5A" value={asset.cLucro5a ? `${asset.cLucro5a}%` : null} tooltip={indicatorTooltips.cLucro5a} />
-                      <IndicatorCard label="Giro Ativos" value={asset.giroAtivos?.toFixed(2) ?? null} tooltip={indicatorTooltips.giroAtivos} />
+                      <IndicatorCard label="ROE" value={asset.roe ? `${asset.roe}%` : null} tooltip={indicatorTooltips.roe} onClick={() => openIndicatorLearnModal("ROE", asset.roe ? `${asset.roe}%` : null, indicatorTooltips.roe)} />
+                      <IndicatorCard label="ROIC" value={asset.roic ? `${asset.roic}%` : null} tooltip={indicatorTooltips.roic} onClick={() => openIndicatorLearnModal("ROIC", asset.roic ? `${asset.roic}%` : null, indicatorTooltips.roic)} />
+                      <IndicatorCard label="Margem Bruta" value={asset.margemBruta ? `${asset.margemBruta}%` : null} tooltip={indicatorTooltips.margemBruta} onClick={() => openIndicatorLearnModal("Margem Bruta", asset.margemBruta ? `${asset.margemBruta}%` : null, indicatorTooltips.margemBruta)} />
+                      <IndicatorCard label="Margem EBIT" value={asset.margemEbit ? `${asset.margemEbit}%` : null} tooltip={indicatorTooltips.margemEbit} onClick={() => openIndicatorLearnModal("Margem EBIT", asset.margemEbit ? `${asset.margemEbit}%` : null, indicatorTooltips.margemEbit)} />
+                      <IndicatorCard label="Margem Liq." value={asset.margemLiquida ? `${asset.margemLiquida}%` : null} tooltip={indicatorTooltips.margemLiquida} onClick={() => openIndicatorLearnModal("Margem Liq.", asset.margemLiquida ? `${asset.margemLiquida}%` : null, indicatorTooltips.margemLiquida)} />
+                      <IndicatorCard label="C. Receita 5A" value={asset.cReceita5a ? `${asset.cReceita5a}%` : null} tooltip={indicatorTooltips.cReceita5a} onClick={() => openIndicatorLearnModal("C. Receita 5A", asset.cReceita5a ? `${asset.cReceita5a}%` : null, indicatorTooltips.cReceita5a)} />
+                      <IndicatorCard label="C. Lucro 5A" value={asset.cLucro5a ? `${asset.cLucro5a}%` : null} tooltip={indicatorTooltips.cLucro5a} onClick={() => openIndicatorLearnModal("C. Lucro 5A", asset.cLucro5a ? `${asset.cLucro5a}%` : null, indicatorTooltips.cLucro5a)} />
+                      <IndicatorCard label="Giro Ativos" value={asset.giroAtivos?.toFixed(2) ?? null} tooltip={indicatorTooltips.giroAtivos} onClick={() => openIndicatorLearnModal("Giro Ativos", asset.giroAtivos?.toFixed(2) ?? null, indicatorTooltips.giroAtivos)} />
                     </div>
                   </div>
                 </AnimatedCard>
@@ -1127,10 +1799,10 @@ const AssetDetail = () => {
                       Indicadores de Endividamento
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
-                      <IndicatorCard label="Liq. Corrente" value={asset.liqCorrente?.toFixed(2) ?? null} tooltip={indicatorTooltips.liqCorrente} />
-                      <IndicatorCard label="Div. Liq. / PL" value={asset.divLiqPl?.toFixed(2) ?? null} tooltip={indicatorTooltips.divLiqPl} />
-                      <IndicatorCard label="Div. Liq. / EBITDA" value={asset.divLiqEbitda?.toFixed(2) ?? null} tooltip={indicatorTooltips.divLiqEbitda} />
-                      <IndicatorCard label="PL / Ativos" value={asset.plAtivos?.toFixed(2) ?? null} tooltip={indicatorTooltips.plAtivos} />
+                      <IndicatorCard label="Liq. Corrente" value={asset.liqCorrente?.toFixed(2) ?? null} tooltip={indicatorTooltips.liqCorrente} onClick={() => openIndicatorLearnModal("Liq. Corrente", asset.liqCorrente?.toFixed(2) ?? null, indicatorTooltips.liqCorrente)} />
+                      <IndicatorCard label="Div. Liq. / PL" value={asset.divLiqPl?.toFixed(2) ?? null} tooltip={indicatorTooltips.divLiqPl} onClick={() => openIndicatorLearnModal("Div. Liq. / PL", asset.divLiqPl?.toFixed(2) ?? null, indicatorTooltips.divLiqPl)} />
+                      <IndicatorCard label="Div. Liq. / EBITDA" value={asset.divLiqEbitda?.toFixed(2) ?? null} tooltip={indicatorTooltips.divLiqEbitda} onClick={() => openIndicatorLearnModal("Div. Liq. / EBITDA", asset.divLiqEbitda?.toFixed(2) ?? null, indicatorTooltips.divLiqEbitda)} />
+                      <IndicatorCard label="PL / Ativos" value={asset.plAtivos?.toFixed(2) ?? null} tooltip={indicatorTooltips.plAtivos} onClick={() => openIndicatorLearnModal("PL / Ativos", asset.plAtivos?.toFixed(2) ?? null, indicatorTooltips.plAtivos)} />
                     </div>
                   </div>
                 </AnimatedCard>
@@ -1139,6 +1811,273 @@ const AssetDetail = () => {
           )}
         </main>
       </PageTransition>
+
+      <AnimatePresence>
+        {openLearnModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="fixed inset-0 z-50 bg-background/80 backdrop-blur-[4px] flex items-center justify-center p-4"
+            onClick={() => setOpenLearnModal(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.99 }}
+              transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-2xl border border-border/60 bg-popover p-6 md:p-7 shadow-2xl shadow-black/20 dark:bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.10),rgba(10,14,22,0.96)_48%,rgba(6,10,16,0.98))] dark:shadow-black/45"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div>
+                  <h4 className="text-xl font-semibold text-foreground">{openLearnModal.title}</h4>
+                  {(() => {
+                    const direction = INDICATOR_DIRECTION[openLearnModal.indicatorKey || ""];
+                    if (!direction) return null;
+                    const hasRange =
+                      openLearnModal.referenceMin !== null &&
+                      openLearnModal.referenceMin !== undefined &&
+                      openLearnModal.referenceMax !== null &&
+                      openLearnModal.referenceMax !== undefined &&
+                      openLearnModal.currentNumeric !== null &&
+                      Number.isFinite(openLearnModal.currentNumeric);
+                    const inRange = hasRange
+                      ? (openLearnModal.currentNumeric as number) >= (openLearnModal.referenceMin as number) &&
+                        (openLearnModal.currentNumeric as number) <= (openLearnModal.referenceMax as number)
+                      : undefined;
+                    const outlierCritical = isCriticalOutlier(
+                      openLearnModal.indicatorKey,
+                      openLearnModal.currentNumeric ?? null
+                    );
+                    const badge = getDirectionBadge(direction, inRange, outlierCritical);
+                    const positionClasses =
+                      openLearnModal.positionTone === "ideal"
+                        ? "border-gain/35 bg-gain/10 text-gain"
+                        : openLearnModal.positionTone === "lower"
+                          ? "border-warning/35 bg-warning/10 text-warning"
+                          : openLearnModal.positionTone === "higher"
+                            ? "border-sky-400/35 bg-sky-500/10 text-sky-300"
+                            : openLearnModal.positionTone === "outlier"
+                              ? "border-loss/40 bg-loss/12 text-loss"
+                              : "border-border/50 bg-muted/30 text-muted-foreground";
+                    return (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-medium ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                        {openLearnModal.positionLabel && openLearnModal.positionTone !== "neutral" && openLearnModal.positionTone !== "outlier" && (
+                          <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-medium ${positionClasses}`}>
+                            {openLearnModal.positionLabel}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOpenLearnModal(null)}
+                  className="rounded-lg border border-border/60 bg-card/40 p-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-card/60"
+                  aria-label="Fechar explicação"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-xl border border-border/50 bg-card p-4 dark:bg-card/35">
+                  <p className="text-[11px] uppercase tracking-wider text-primary/85 mb-1 font-medium">O que é</p>
+                  <p className="text-sm leading-relaxed text-foreground/95">{openLearnModal.whatItIs}</p>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-card p-4 dark:bg-card/35">
+                  <p className="text-[11px] uppercase tracking-wider text-primary/85 mb-1 font-medium">Como interpretar</p>
+                  <p className="text-sm leading-relaxed text-foreground/95">{openLearnModal.howToRead}</p>
+                </div>
+                {openLearnModal.formulaDetail && (
+                  <div className="rounded-xl border border-border/50 bg-card p-4 dark:bg-card/35">
+                    <p className="text-[11px] uppercase tracking-wider text-primary/85 mb-1 font-medium">Fórmula e construção</p>
+                    <p className="text-sm leading-relaxed text-foreground/95">{openLearnModal.formulaDetail}</p>
+                  </div>
+                )}
+                {openLearnModal.importance && (
+                  <div className="rounded-xl border border-border/50 bg-card p-4 dark:bg-card/35">
+                    <p className="text-[11px] uppercase tracking-wider text-primary/85 mb-1 font-medium">Por que importa</p>
+                    <p className="text-sm leading-relaxed text-foreground/95">{openLearnModal.importance}</p>
+                  </div>
+                )}
+                <div className="rounded-xl border border-border/50 bg-card p-4 dark:bg-card/35">
+                  <p className="text-[11px] uppercase tracking-wider text-primary/85 mb-1 font-medium">{openLearnModal.sectorReferenceTitle || "Comparação setorial"}</p>
+                  <p className="text-sm leading-relaxed text-foreground/95">{openLearnModal.sectorReference}</p>
+                </div>
+                <div className="rounded-xl border border-primary/25 bg-primary/10 p-4 dark:bg-primary/5">
+                  <p className="text-[11px] uppercase tracking-wider text-primary mb-1 font-medium">Exemplo prático</p>
+                  <p className="text-sm leading-relaxed text-foreground/95">{openLearnModal.practicalExample}</p>
+                </div>
+                {openLearnModal.nuances && (
+                  <div className="rounded-xl border border-border/50 bg-card p-4 md:col-span-2 dark:bg-card/35">
+                    <p className="text-[11px] uppercase tracking-wider text-primary/85 mb-1 font-medium">Cuidados de interpretação</p>
+                    <p className="text-sm leading-relaxed text-foreground/95">{openLearnModal.nuances}</p>
+                  </div>
+                )}
+                <div className="rounded-xl border border-warning/35 bg-warning/10 p-4 md:col-span-2 dark:bg-warning/8">
+                  <p className="text-[11px] uppercase tracking-wider text-warning mb-1 font-medium">Ponto de atenção</p>
+                  <p className="text-sm leading-relaxed text-foreground/95">
+                    Nenhum indicador deve ser analisado de forma isolada; a leitura deve combinar contexto setorial, histórico, rentabilidade, risco e crescimento.
+                  </p>
+                </div>
+                {openLearnModal.ndReason && (
+                  <div className="rounded-xl border border-warning/25 bg-warning/10 p-4 md:col-span-2 dark:bg-warning/5">
+                    <p className="text-[11px] uppercase tracking-wider text-warning mb-1 font-medium">Quando N/D é esperado</p>
+                    <p className="text-sm leading-relaxed text-foreground/95">{openLearnModal.ndReason}</p>
+                  </div>
+                )}
+                {(() => {
+                  const chartData = [
+                    {
+                      name: displaySymbol,
+                      value: openLearnModal.currentNumeric !== null && Number.isFinite(openLearnModal.currentNumeric)
+                        ? openLearnModal.currentNumeric
+                        : null,
+                      color: "hsl(var(--primary))",
+                    },
+                    {
+                      name: "Média Setor",
+                      value: openLearnModal.benchmarkSector !== null && Number.isFinite(openLearnModal.benchmarkSector)
+                        ? openLearnModal.benchmarkSector
+                        : null,
+                      color: "hsl(200 92% 55%)",
+                    },
+                    {
+                      name: "IBOV",
+                      value: openLearnModal.benchmarkIbov !== null && Number.isFinite(openLearnModal.benchmarkIbov)
+                        ? openLearnModal.benchmarkIbov
+                        : null,
+                      color: "hsl(43 96% 56%)",
+                    },
+                  ].filter((d) => d.value !== null) as BenchBarPoint[];
+
+                  if (chartData.length <= 1) return null;
+
+                  return (
+                  <div className="rounded-xl border border-border/50 bg-card p-4 md:col-span-2 dark:bg-card/35">
+                    <p className="text-[11px] uppercase tracking-wider text-primary/85 mb-2 font-medium">Ativo vs Médias do Universo</p>
+                    <div className="h-48 rounded-xl border border-border/40 bg-gradient-to-b from-card/80 to-card/30 p-2">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ReBarChart
+                          data={chartData}
+                          margin={{ top: 10, right: 10, left: 2, bottom: 6 }}
+                        >
+                          <CartesianGrid strokeDasharray="2 4" stroke="hsl(var(--border) / 0.28)" vertical={false} />
+                          <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={36} />
+                          <Tooltip
+                            formatter={(v: number) => [`${v.toFixed(2)}${openLearnModal.referenceUnit ? ` ${openLearnModal.referenceUnit}` : ""}`, "Valor"]}
+                            contentStyle={{
+                              borderRadius: 10,
+                              border: "1px solid hsl(var(--border))",
+                              background: "hsl(var(--popover))",
+                            }}
+                            cursor={{ fill: "hsl(var(--muted) / 0.25)" }}
+                          />
+                          <Bar dataKey="value" radius={[10, 10, 0, 0]} barSize={54}>
+                            {chartData.map((entry, index) => (
+                              <Cell key={`cell-${entry.name}-${index}`} fill={entry.color} />
+                            ))}
+                            <LabelList
+                              dataKey="value"
+                              position="top"
+                              formatter={(v: number) => `${v.toFixed(2)}${openLearnModal.referenceUnit ? ` ${openLearnModal.referenceUnit}` : ""}`}
+                              style={{ fill: "hsl(var(--foreground))", fontSize: 11, fontWeight: 600 }}
+                            />
+                          </Bar>
+                        </ReBarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                  );
+                })()}
+                {(() => {
+                  const current = openLearnModal.currentNumeric;
+                  const sector = openLearnModal.benchmarkSector;
+                  const ibov = openLearnModal.benchmarkIbov;
+                  if (current === null || !Number.isFinite(current)) return null;
+                  const hasComparableBenchmarks = (sector !== null && Number.isFinite(sector)) || (ibov !== null && Number.isFinite(ibov));
+                  if (!hasComparableBenchmarks) return null;
+
+                  const compareHint = (base: number | null) => {
+                    if (base === null || !Number.isFinite(base)) return null;
+                    const diffPct = ((current - base) / Math.max(Math.abs(base), 0.0001)) * 100;
+                    return { diffPct, above: diffPct > 0 };
+                  };
+
+                  const direction = INDICATOR_DIRECTION[openLearnModal.indicatorKey || ""] || "range";
+                  const sectorCmp = compareHint(sector);
+                  const ibovCmp = compareHint(ibov);
+
+                  const classify = (cmp: { diffPct: number; above: boolean } | null) => {
+                    if (!cmp) return "neutro";
+                    const abs = Math.abs(cmp.diffPct);
+                    const better = direction === "lower_better" ? !cmp.above : cmp.above;
+                    if (direction === "range") {
+                      if (abs < 10) return "em linha";
+                      return cmp.above ? "acima da faixa" : "abaixo da faixa";
+                    }
+                    if (abs < 8) return "em linha";
+                    if (better && abs >= 20) return "forte";
+                    if (better) return "bom";
+                    if (!better && abs >= 20) return "atenção";
+                    return "leve atenção";
+                  };
+
+                  const sectorClass = classify(sectorCmp);
+                  const ibovClass = classify(ibovCmp);
+                  const unit = openLearnModal.referenceUnit ? ` ${openLearnModal.referenceUnit}` : "";
+                  const readableStatus = (s: string) => {
+                    if (s === "forte") return "acima do referencial (sinal forte)";
+                    if (s === "bom") return "melhor que o referencial";
+                    if (s === "em linha") return "próximo do referencial";
+                    if (s === "leve atenção") return "um pouco pior que o referencial";
+                    if (s === "atenção") return "abaixo do referencial (atenção)";
+                    if (s === "acima da faixa") return "acima da faixa de referência";
+                    if (s === "abaixo da faixa") return "abaixo da faixa de referência";
+                    return "neutro";
+                  };
+                  const finalHint =
+                    sectorClass === "forte" || ibovClass === "forte"
+                      ? "Esse posicionamento pode sinalizar vantagem relativa, desde que os demais fundamentos confirmem consistência."
+                    : sectorClass === "atenção" || ibovClass === "atenção"
+                      ? "Esse ponto pede cautela e validação adicional antes de qualquer conclusão."
+                    : sectorClass === "acima da faixa" || ibovClass === "acima da faixa" || sectorClass === "abaixo da faixa" || ibovClass === "abaixo da faixa"
+                      ? "A leitura está fora de faixa em pelo menos uma comparação e precisa de contexto adicional para interpretação correta."
+                    : "A leitura é equilibrada e vale confirmar a tendência no histórico e nos pares diretos.";
+                  const sectorText = sector !== null ? `Em relação ao setor (${sector.toFixed(2)}${unit}), o indicador está ${readableStatus(sectorClass)}.` : "";
+                  const ibovText = ibov !== null ? `Contra o IBOV (${ibov.toFixed(2)}${unit}), fica ${readableStatus(ibovClass)}.` : "";
+
+                  return (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 md:col-span-2">
+                      <p className="text-[11px] uppercase tracking-wider text-primary mb-1 font-medium">Leitura Rápida</p>
+                      <p className="text-sm leading-relaxed text-foreground/95">
+                        O <span className="font-semibold">{openLearnModal.title}</span> de <span className="font-semibold">{displaySymbol}</span> está em <span className="font-semibold">{current.toFixed(2)}{unit}</span>. {sectorText} {ibovText}
+                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-foreground/95">
+                        {finalHint}
+                      </p>
+                    </div>
+                  );
+                })()}
+                {openLearnModal.outlierNote && (
+                  <div className="rounded-xl border border-loss/25 bg-loss/10 p-4 md:col-span-2">
+                    <p className="text-[11px] uppercase tracking-wider text-loss mb-1 font-medium">Observação relevante</p>
+                    <p className="text-sm leading-relaxed text-foreground/95">{openLearnModal.outlierNote}</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Buy/Sell Modal */}
       <AnimatePresence>
