@@ -1889,17 +1889,17 @@ const AssetDetail = () => {
                       if (current === null || !Number.isFinite(current) || base === null || !Number.isFinite(base) || base === 0) return null;
                       const diffPct = ((current - base) / Math.abs(base)) * 100;
                       if (direction === "lower_better") {
-                        if (diffPct <= -10) return 2;
-                        if (diffPct <= -3) return 1;
-                        if (diffPct < 3) return 0;
-                        if (diffPct < 10) return -1;
+                        if (diffPct <= -20) return 2;
+                        if (diffPct <= -10) return 1;
+                        if (diffPct < 10) return 0;
+                        if (diffPct < 20) return -1;
                         return -2;
                       }
                       if (direction === "higher_better") {
-                        if (diffPct >= 10) return 2;
-                        if (diffPct >= 3) return 1;
-                        if (diffPct > -3) return 0;
-                        if (diffPct > -10) return -1;
+                        if (diffPct >= 20) return 2;
+                        if (diffPct >= 10) return 1;
+                        if (diffPct > -10) return 0;
+                        if (diffPct > -20) return -1;
                         return -2;
                       }
                       return null;
@@ -1908,7 +1908,7 @@ const AssetDetail = () => {
                     const sealFromScore = (avgScore: number) => {
                       if (avgScore >= 1.5) return { label: "★ Muito bom vs pares", className: "border-gain/45 bg-gain/15 text-gain" };
                       if (avgScore >= 0.5) return { label: "✓ Bom vs pares", className: "border-gain/35 bg-gain/10 text-gain" };
-                      if (avgScore > -0.5) return { label: "• OK vs pares", className: "border-border/55 bg-muted/30 text-foreground/90" };
+                      if (avgScore > -0.5) return { label: "• OK vs pares", className: "border-warning/45 bg-warning/15 text-warning" };
                       if (avgScore > -1.5) return { label: "↘ Poderia ser melhor", className: "border-warning/40 bg-warning/12 text-warning" };
                       return { label: "⚠ Ruim vs pares", className: "border-loss/45 bg-loss/14 text-loss" };
                     };
@@ -1921,13 +1921,15 @@ const AssetDetail = () => {
                       if (current > 10) {
                         effectiveBadge = { label: "★ Vaca leiteira", className: "border-gain/45 bg-gain/15 text-gain" };
                       } else if (current < 6) {
-                        effectiveBadge = { label: "↘ Baixo para renda", className: "border-warning/40 bg-warning/12 text-warning" };
+                        effectiveBadge = current >= 5
+                          ? { label: "• Normal para renda", className: "border-warning/45 bg-warning/15 text-warning" }
+                          : { label: "↘ Baixo para renda", className: "border-warning/40 bg-warning/12 text-warning" };
                       } else {
                         effectiveBadge = { label: "✓ Ideal para renda", className: "border-gain/35 bg-gain/10 text-gain" };
                       }
                     } else if (direction === "range") {
                       if (inRange === true) {
-                        effectiveBadge = { label: "• OK", className: "border-border/55 bg-muted/30 text-foreground/90" };
+                        effectiveBadge = { label: "• OK", className: "border-warning/45 bg-warning/15 text-warning" };
                       } else if (inRange === false) {
                         effectiveBadge = { label: "↘ Poderia ser melhor", className: "border-warning/40 bg-warning/12 text-warning" };
                       }
@@ -2120,6 +2122,18 @@ const AssetDetail = () => {
                     if (Math.abs(cmp.diffPct) < 10) return "em linha";
                     return cmp.above ? "acima" : "abaixo";
                   };
+                  const relativeOutcome = (cmp: { diffPct: number; above: boolean } | null): "melhor" | "pior" | "neutro" => {
+                    if (!cmp) return "neutro";
+                    if (Math.abs(cmp.diffPct) < 8) return "neutro";
+                    if (direction === "lower_better") return cmp.above ? "pior" : "melhor";
+                    if (direction === "higher_better") return cmp.above ? "melhor" : "pior";
+                    return "neutro";
+                  };
+                  const sectorOutcome = relativeOutcome(sectorCmp);
+                  const ibovOutcome = relativeOutcome(ibovCmp);
+                  const mixedSignal =
+                    (sectorOutcome === "melhor" && ibovOutcome === "pior") ||
+                    (sectorOutcome === "pior" && ibovOutcome === "melhor");
                   const practicalHint = () => {
                     const key = openLearnModal.indicatorKey || "";
                     if (key === "DY") {
@@ -2142,6 +2156,9 @@ const AssetDetail = () => {
                     }
                     if (key === "P/L") {
                       if (current < 0) return "O lucro recente está pressionado, então este múltiplo perde força de comparação e a prioridade é confirmar recuperação operacional.";
+                      if (mixedSignal) {
+                        return "O sinal está misto: frente aos pares diretos o preço pede mais atenção, mas no contexto amplo da bolsa ainda não parece esticado.";
+                      }
                       if (sectorClass === "forte" || ibovClass === "forte" || sectorClass === "bom" || ibovClass === "bom") {
                         return "O preço parece mais interessante em relação ao lucro atual, o que pode abrir margem de segurança se a qualidade do negócio estiver preservada.";
                       }
@@ -2151,6 +2168,9 @@ const AssetDetail = () => {
                       return "O preço está mais exigente para o lucro atual, então a decisão fica mais dependente de crescimento consistente à frente.";
                     }
                     if (key === "P/VP") {
+                      if (mixedSignal) {
+                        return "O sinal está misto: contra pares diretos a ação parece mais cara, mas no mercado amplo ainda pode estar em faixa aceitável.";
+                      }
                       if (sectorClass === "forte" || ibovClass === "forte" || current < 1) {
                         return "O ativo aparenta estar negociando com desconto patrimonial, o que pode ser oportunidade se os fundamentos estiverem sólidos.";
                       }
