@@ -395,12 +395,7 @@ function addUniversalContinuation(
   recentAssistantMessages: Msg[] = []
 ): string {
   const base = stripExistingHook(String(answer || ""));
-  if (!base) return base;
-  const options = buildHookByPage(page, userInput, ticker);
-  const intro = pickCtaIntro(userInput);
-  const selected = selectNonRepeatingHook(options, userInput, recentAssistantMessages);
-  const cta = selected ? `${intro} ${selected}.` : "Se quiser, sigo com o próximo passo mais útil agora.";
-  return `${base}\n\n${cta}`;
+  return base;
 }
 
 function buildDirectPortfolioReply(

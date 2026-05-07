@@ -298,9 +298,9 @@ const SYSTEM_PROMPT = [
   "Evite respostas genéricas e curtas. Priorize explicações com estrutura: leitura objetiva + interpretação + implicação prática para o investidor.",
   "Ao citar indicadores, explique rapidamente o que significam no contexto do ativo/carteira e por que importam para decisão de longo prazo.",
   "Tom desejado: consultivo, técnico e acessível; sem jargão desnecessário; sem simplificação excessiva.",
-  "CONTINUIDADE GUIADA (OBRIGATÓRIO): termine toda resposta com 1 CTA contextual para convidar o usuário ao próximo passo.",
-  "O fechamento deve ser sempre em formato de pergunta contextual (gancho), para manter o fluxo da conversa.",
-  "Varie a copy do CTA (não repetir sempre 'Quer que eu...'). Use ganchos naturais e persuasivos para manter o fluxo da conversa.",
+  "CONTINUIDADE GUIADA: quando fizer sentido, encerre com um convite curto e contextual para continuação.",
+  "Não force pergunta em toda resposta. Se a resposta já estiver completa, finalize de forma natural sem gancho.",
+  "Evite tom de venda ou repetição mecânica de CTA. Prefira linguagem conversacional e útil.",
   "NA PÁGINA DE ATIVO: mantenha o CTA no mesmo ativo e priorize ganchos sobre indicadores, score fundamentalista, preço atual vs valor intrínseco/preço justo, e comparação com pares do mesmo subsetor.",
   "As opções devem ser contextuais ao que acabou de ser discutido (ex.: risco, rebalanceamento, valuation, perfil, dividendos) e não genéricas.",
   "Escreva as opções como convite de conversa, por exemplo: 'Quer que eu te mostre...?', 'Quer que eu compare...?', 'Quer que eu explique...?'",
@@ -804,31 +804,39 @@ function withGuidedContinuation(answer, userMessage) {
   let options;
   if (/risco|perfil|compatib|desalinh/.test(msg)) {
     options = [
-      "Quer que eu mostre quais ativos mais puxam esse risco hoje?",
-      "Quer que eu simule um rebalanceamento gradual para seu perfil?",
-      "Quer um resumo simples da diferença entre conservador, moderado e arrojado?",
+      "mapear os ativos que mais puxam esse risco hoje",
+      "simular um rebalanceamento gradual para seu perfil",
+      "resumir a diferença entre conservador, moderado e arrojado",
     ];
   } else if (/rebalance|aloc|concentr|setor|diversific/.test(msg)) {
     options = [
-      "Quer que eu priorize 2 ajustes para rebalancear primeiro?",
-      "Quer que eu compare os melhores pares do mesmo setor?",
-      "Quer um plano simples de aportes para reduzir concentração?",
+      "priorizar 2 ajustes para rebalancear primeiro",
+      "comparar os melhores pares do mesmo setor",
+      "montar um plano simples de aportes para reduzir concentração",
     ];
   } else if (/dividend|provento|dy|payout/.test(msg)) {
     options = [
-      "Quer que eu explique como avaliar dividendos sustentáveis?",
-      "Quer que eu compare payout e DY entre ativos parecidos?",
-      "Quer montar um checklist de renda passiva para iniciantes?",
+      "explicar como avaliar dividendos sustentáveis",
+      "comparar payout e DY entre ativos parecidos",
+      "montar um checklist de renda passiva para iniciantes",
     ];
   } else {
     options = [
-      "Quer que eu explique isso em versão iniciante (bem simples)?",
-      "Quer que eu aplique essa análise na sua carteira atual?",
-      "Quer que eu te mostre o próximo passo mais importante agora?",
+      "explicar isso em versão iniciante (bem simples)",
+      "aplicar essa análise na sua carteira atual",
+      "mostrar o próximo passo mais importante agora",
     ];
   }
 
-  return `${base}\n\nSe fizer sentido, posso continuar por aqui:\n- ${options[0]}\n- ${options[1]}\n- ${options[2]}`;
+  const seed = msg.length || 1;
+  const pick = options[seed % options.length];
+  const closures = [
+    `Se quiser, no próximo passo eu posso ${pick}.`,
+    `Se fizer sentido para você, posso ${pick}.`,
+    `Se você quiser aprofundar, posso ${pick}.`,
+  ];
+  const closer = closures[seed % closures.length];
+  return `${base}\n\n${closer}`;
 }
 
 function buildFinalQuestionHook(userMessage, page) {
@@ -842,21 +850,21 @@ function buildFinalQuestionHook(userMessage, page) {
   if (isShortCtaReply) return "";
 
   if (/ativo|acao|a[cç][aã]o|ticker|indicador|valuation|score|payout|dy|roe|pl|pvp/.test(msg)) {
-    return "Quer que eu priorize agora os 2 indicadores que mais pesam neste ativo?";
+    return "Se quiser, eu priorizo os 2 indicadores que mais pesam neste ativo.";
   }
   if (/carteira|portfolio|dashboard|aloc|concentr|rebalance|setor|risco|perfil/.test(msg) || /carteira|dashboard|home/.test(pg)) {
-    return "Quer que eu te mostre o próximo ajuste prático para melhorar o equilíbrio da carteira?";
+    return "Se fizer sentido, posso te mostrar o próximo ajuste prático para melhorar o equilíbrio da carteira.";
   }
   if (/ativo/.test(pg)) {
-    return "Quer que eu compare este ativo com os pares do mesmo subsetor para ver se ele está entre os mais fortes?";
+    return "Se quiser, comparo este ativo com os pares do mesmo subsetor para ver se ele está entre os mais fortes.";
   }
   if (/dividend|provento|renda passiva/.test(msg)) {
-    return "Quer que eu aplique esse checklist de dividendos em um ativo específico agora?";
+    return "Se quiser, aplico esse checklist de dividendos em um ativo específico agora.";
   }
   if (/day trade|trading|curto prazo/.test(msg)) {
-    return "Quer que eu te mostre uma alternativa de longo prazo mais alinhada ao seu perfil?";
+    return "Se quiser, te mostro uma alternativa de longo prazo mais alinhada ao seu perfil.";
   }
-  return "Quer que eu siga com o próximo passo mais útil para essa análise?";
+  return "Se quiser, sigo com o próximo passo mais útil para essa análise.";
 }
 
 function buildDirectHodlIntroAnswer(lastUserMessage, portfolioContext) {
@@ -1234,6 +1242,7 @@ function sanitizeSseResponse(response, userMessage, page) {
       let hookInjected = false;
       let sawTradeLanguage = false;
       let sawSuggestionDisclaimer = false;
+      let assistantText = "";
       const finalHook = buildFinalQuestionHook(userMessage, page);
 
       try {
@@ -1282,11 +1291,18 @@ function sanitizeSseResponse(response, userMessage, page) {
                 if (/nao e recomendacao|não é recomendação|decisao final|decisão final|julgamento critico|julgamento crítico/.test(n)) {
                   sawSuggestionDisclaimer = true;
                 }
+                assistantText += " " + txt;
               } catch {
                 // ignore parse errors
               }
             }
+            const normalizedAssistant = normalizeIntentText(assistantText);
             controller.enqueue(encoder.encode(sanitizeSseLine(line) + "\n"));
+            if (normalizedAssistant && !hookInjected) {
+              const alreadyHasNaturalClosing =
+                /(se quiser|se fizer sentido|posso continuar|proximo passo|pr[óo]ximo ajuste|quer que eu)/.test(normalizedAssistant);
+              if (alreadyHasNaturalClosing) hookInjected = true;
+            }
           }
         }
 
