@@ -142,6 +142,7 @@ function getDirectionBadge(
 function isCriticalOutlier(indicatorKey: string | undefined, current: number | null): boolean {
   if (!indicatorKey || current === null || !Number.isFinite(current)) return false;
   if (indicatorKey === "P/L" && current < 0) return true;
+  if (indicatorKey === "P/VP" && current <= 0.4) return true;
   if ((indicatorKey === "EV/EBIT" || indicatorKey === "EV/EBITDA") && current < 0) return true;
   if (indicatorKey === "LPA" && current < 0) return true;
   if (indicatorKey === "ROE" && current < 0) return true;
@@ -151,6 +152,10 @@ function isCriticalOutlier(indicatorKey: string | undefined, current: number | n
   if (indicatorKey === "Margem Liq." && current < 0) return true;
   if (indicatorKey === "C. Receita 5A" && current < 0) return true;
   if (indicatorKey === "C. Lucro 5A" && current < 0) return true;
+  if (indicatorKey === "Liq. Corrente" && current < 0.8) return true;
+  if (indicatorKey === "Div. Liq. / EBITDA" && current > 4.5) return true;
+  if (indicatorKey === "Div. Liq. / PL" && current > 2.5) return true;
+  if (indicatorKey === "PL / Ativos" && current < 0.1) return true;
   if (indicatorKey === "PAYOUT" && current > 150) return true;
   return false;
 }
@@ -197,6 +202,9 @@ function detectOutlierNote(
   if (indicatorKey === "LPA" && current < 0) {
     return "LPA negativo indica prejuízo por ação no período. A leitura passa a ser de recuperação operacional: evolução de receita, margem, geração de caixa e redução de risco financeiro.";
   }
+  if (indicatorKey === "P/VP" && current <= 0.4) {
+    return "P/VP muito baixo pode indicar desconto extremo ou risco relevante precificado pelo mercado. Vale validar qualidade dos ativos, lucro recorrente e cenário do setor.";
+  }
   if ((indicatorKey === "ROE" || indicatorKey === "ROIC") && current < 0) {
     return `${indicatorKey} negativo sinaliza retorno destrutivo no período. A prioridade analítica passa a ser entender se é choque pontual ou deterioração estrutural.`;
   }
@@ -212,11 +220,32 @@ function detectOutlierNote(
   if (indicatorKey === "PAYOUT" && current > 100) {
     return "Payout acima de 100% sugere distribuição maior que o lucro do período, podendo sinalizar menor sustentabilidade da política de dividendos se persistir.";
   }
-  if (indicatorKey === "DY" && current > 12) {
+  if (indicatorKey === "PAYOUT" && current < 0) {
+    return "Payout negativo geralmente ocorre com prejuízo no período, o que limita a leitura de dividendos até normalização dos resultados.";
+  }
+  if (indicatorKey === "DY" && current >= 20) {
     return "DY muito elevado pode ser efeito de queda acentuada de preço ou evento não recorrente de lucro/dividendo. Vale checar qualidade e recorrência.";
+  }
+  if (indicatorKey === "Liq. Corrente" && current < 0.8) {
+    return "Liquidez corrente abaixo de 0,8 indica pressão de curto prazo para cobrir obrigações, pedindo atenção à gestão de caixa.";
   }
   if ((indicatorKey === "Div. Liq. / EBITDA" || indicatorKey === "Div. Liq. / PL") && current < 0) {
     return "Valor negativo nesses indicadores geralmente indica caixa líquido (mais caixa que dívida), o que tende a reduzir risco financeiro no curto prazo.";
+  }
+  if (indicatorKey === "Div. Liq. / EBITDA" && current > 4.5) {
+    return "Dívida Líquida/EBITDA muito alta indica alavancagem elevada e maior sensibilidade a queda de lucro e juros altos.";
+  }
+  if (indicatorKey === "Div. Liq. / PL" && current > 2.5) {
+    return "Dívida Líquida/PL muito alta indica estrutura de capital pressionada, com risco financeiro acima do usual.";
+  }
+  if (indicatorKey === "PL / Ativos" && current < 0.1) {
+    return "PL/Ativos muito baixo indica baixa participação de capital próprio, elevando dependência de capital de terceiros.";
+  }
+  if (indicatorKey === "ROE" && current > 45) {
+    return "ROE muito alto pode refletir eficiência excepcional, mas também pode ser efeito de alavancagem elevada ou evento não recorrente. Vale validar a qualidade desse retorno.";
+  }
+  if (indicatorKey === "Margem Liq." && current > 35) {
+    return "Margem líquida muito acima do padrão pode indicar ganho não recorrente no período. Vale confirmar a sustentabilidade no histórico.";
   }
   if (indicatorKey === "Indice Basileia" && current < 13) {
     return "Índice de Basileia abaixo de 13% indica colchão de capital mais apertado frente à referência prática adotada no app, pedindo avaliação adicional de resiliência.";
@@ -325,7 +354,7 @@ const INDICATOR_DEEP_GUIDE: Record<string, IndicatorDeepGuide> = {
     formulaDetail: "DY = Dividendos pagos em 12 meses ÷ Preço atual da ação.",
     importance: "Ajuda a estimar geração de renda sobre o preço de entrada, mas não deve ser usado isoladamente.",
     nuances: "DY alto pode ser oportunidade ou armadilha (queda forte de preço, lucro não recorrente ou payout excessivo).",
-    referenceMin: 4,
+    referenceMin: 6,
     referenceMax: 10,
     referenceUnit: "%",
   },
@@ -1851,25 +1880,71 @@ const AssetDetail = () => {
                       openLearnModal.indicatorKey,
                       openLearnModal.currentNumeric ?? null
                     );
-                    const badge = getDirectionBadge(direction, inRange, outlierCritical);
-                    const positionClasses =
-                      openLearnModal.positionTone === "ideal"
-                        ? "border-gain/35 bg-gain/10 text-gain"
-                        : openLearnModal.positionTone === "lower"
-                          ? "border-warning/35 bg-warning/10 text-warning"
-                          : openLearnModal.positionTone === "higher"
-                            ? "border-sky-400/35 bg-sky-500/10 text-sky-300"
-                            : openLearnModal.positionTone === "outlier"
-                              ? "border-loss/40 bg-loss/12 text-loss"
-                              : "border-border/50 bg-muted/30 text-muted-foreground";
+                    const key = openLearnModal.indicatorKey || "";
+                    const current = openLearnModal.currentNumeric ?? null;
+                    const sector = openLearnModal.benchmarkSector ?? null;
+                    const ibov = openLearnModal.benchmarkIbov ?? null;
+
+                    const scoreAgainst = (base: number | null): number | null => {
+                      if (current === null || !Number.isFinite(current) || base === null || !Number.isFinite(base) || base === 0) return null;
+                      const diffPct = ((current - base) / Math.abs(base)) * 100;
+                      if (direction === "lower_better") {
+                        if (diffPct <= -20) return 2;
+                        if (diffPct <= -10) return 1;
+                        if (diffPct < 10) return 0;
+                        if (diffPct < 20) return -1;
+                        return -2;
+                      }
+                      if (direction === "higher_better") {
+                        if (diffPct >= 20) return 2;
+                        if (diffPct >= 10) return 1;
+                        if (diffPct > -10) return 0;
+                        if (diffPct > -20) return -1;
+                        return -2;
+                      }
+                      return null;
+                    };
+
+                    const sealFromScore = (avgScore: number) => {
+                      if (avgScore >= 1.5) return { label: "★ Muito bom vs pares", className: "border-gain/45 bg-gain/15 text-gain" };
+                      if (avgScore >= 0.5) return { label: "✓ Bom vs pares", className: "border-gain/35 bg-gain/10 text-gain" };
+                      if (avgScore > -0.5) return { label: "• OK vs pares", className: "border-warning/45 bg-warning/15 text-warning" };
+                      if (avgScore > -1.5) return { label: "↘ Poderia ser melhor", className: "border-warning/40 bg-warning/12 text-warning" };
+                      return { label: "⚠ Ruim vs pares", className: "border-loss/45 bg-loss/14 text-loss" };
+                    };
+
+                    let effectiveBadge: { label: string; className: string } | null = null;
+
+                    if (outlierCritical) {
+                      effectiveBadge = { label: "⚠ Ruim (alerta relevante)", className: "border-loss/45 bg-loss/14 text-loss" };
+                    } else if (key === "DY" && current !== null && Number.isFinite(current)) {
+                      if (current > 10) {
+                        effectiveBadge = { label: "★ Vaca leiteira", className: "border-gain/45 bg-gain/15 text-gain" };
+                      } else if (current < 6) {
+                        effectiveBadge = current >= 5
+                          ? { label: "• Normal para renda", className: "border-warning/45 bg-warning/15 text-warning" }
+                          : { label: "↘ Baixo para renda", className: "border-warning/40 bg-warning/12 text-warning" };
+                      } else {
+                        effectiveBadge = { label: "✓ Ideal para renda", className: "border-gain/35 bg-gain/10 text-gain" };
+                      }
+                    } else if (direction === "range") {
+                      if (inRange === true) {
+                        effectiveBadge = { label: "• OK", className: "border-warning/45 bg-warning/15 text-warning" };
+                      } else if (inRange === false) {
+                        effectiveBadge = { label: "↘ Poderia ser melhor", className: "border-warning/40 bg-warning/12 text-warning" };
+                      }
+                    } else {
+                      const scores = [scoreAgainst(sector), scoreAgainst(ibov)].filter((v): v is number => v !== null);
+                      if (scores.length) {
+                        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+                        effectiveBadge = sealFromScore(avg);
+                      }
+                    }
                     return (
                       <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-medium ${badge.className}`}>
-                          {badge.label}
-                        </span>
-                        {openLearnModal.positionLabel && openLearnModal.positionTone !== "neutral" && openLearnModal.positionTone !== "outlier" && (
-                          <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-medium ${positionClasses}`}>
-                            {openLearnModal.positionLabel}
+                        {effectiveBadge && (
+                          <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-medium ${effectiveBadge.className}`}>
+                            {effectiveBadge.label}
                           </span>
                         )}
                       </div>
@@ -2034,33 +2109,191 @@ const AssetDetail = () => {
 
                   const sectorClass = classify(sectorCmp);
                   const ibovClass = classify(ibovCmp);
-                  const unit = openLearnModal.referenceUnit ? ` ${openLearnModal.referenceUnit}` : "";
-                  const readableStatus = (s: string) => {
-                    if (s === "forte") return "acima do referencial (sinal forte)";
-                    if (s === "bom") return "melhor que o referencial";
-                    if (s === "em linha") return "próximo do referencial";
-                    if (s === "leve atenção") return "um pouco pior que o referencial";
-                    if (s === "atenção") return "abaixo do referencial (atenção)";
-                    if (s === "acima da faixa") return "acima da faixa de referência";
-                    if (s === "abaixo da faixa") return "abaixo da faixa de referência";
+                  const readableStatus = (cmp: { diffPct: number; above: boolean } | null) => {
+                    if (!cmp) return "sem referência suficiente";
+                    if (direction === "lower_better") {
+                      if (Math.abs(cmp.diffPct) < 8) return "em linha";
+                      return cmp.above ? "mais caro" : "mais barato";
+                    }
+                    if (direction === "higher_better") {
+                      if (Math.abs(cmp.diffPct) < 8) return "em linha";
+                      return cmp.above ? "melhor" : "mais fraco";
+                    }
+                    if (Math.abs(cmp.diffPct) < 10) return "em linha";
+                    return cmp.above ? "acima" : "abaixo";
+                  };
+                  const relativeOutcome = (cmp: { diffPct: number; above: boolean } | null): "melhor" | "pior" | "neutro" => {
+                    if (!cmp) return "neutro";
+                    if (Math.abs(cmp.diffPct) < 8) return "neutro";
+                    if (direction === "lower_better") return cmp.above ? "pior" : "melhor";
+                    if (direction === "higher_better") return cmp.above ? "melhor" : "pior";
                     return "neutro";
                   };
-                  const finalHint =
-                    sectorClass === "forte" || ibovClass === "forte"
-                      ? "Esse posicionamento pode sinalizar vantagem relativa, desde que os demais fundamentos confirmem consistência."
-                    : sectorClass === "atenção" || ibovClass === "atenção"
-                      ? "Esse ponto pede cautela e validação adicional antes de qualquer conclusão."
-                    : sectorClass === "acima da faixa" || ibovClass === "acima da faixa" || sectorClass === "abaixo da faixa" || ibovClass === "abaixo da faixa"
-                      ? "A leitura está fora de faixa em pelo menos uma comparação e precisa de contexto adicional para interpretação correta."
-                    : "A leitura é equilibrada e vale confirmar a tendência no histórico e nos pares diretos.";
-                  const sectorText = sector !== null ? `Em relação ao setor (${sector.toFixed(2)}${unit}), o indicador está ${readableStatus(sectorClass)}.` : "";
-                  const ibovText = ibov !== null ? `Contra o IBOV (${ibov.toFixed(2)}${unit}), fica ${readableStatus(ibovClass)}.` : "";
+                  const sectorOutcome = relativeOutcome(sectorCmp);
+                  const ibovOutcome = relativeOutcome(ibovCmp);
+                  const mixedSignal =
+                    (sectorOutcome === "melhor" && ibovOutcome === "pior") ||
+                    (sectorOutcome === "pior" && ibovOutcome === "melhor");
+                  const practicalHint = () => {
+                    const key = openLearnModal.indicatorKey || "";
+                    if (key === "DY") {
+                      if (sectorClass === "acima da faixa" || ibovClass === "acima da faixa" || sectorClass === "forte" || ibovClass === "forte") {
+                        if (current > 10) {
+                          return "Para renda, o sinal é muito bom: perfil de vaca leiteira, com dividendos fortes frente às referências.";
+                        }
+                        return "Para renda, o sinal é positivo: os dividendos estão competitivos frente às referências e podem favorecer estratégias focadas em renda.";
+                      }
+                      if (sectorClass === "em linha" || ibovClass === "em linha") {
+                        if (current > 10) {
+                          return "Mesmo em linha nas comparações, o patamar de dividendos é muito bom e lembra perfil de vaca leiteira.";
+                        }
+                        return "Para renda, o sinal é neutro: os dividendos estão em linha com o mercado e a decisão depende mais da consistência dos próximos pagamentos.";
+                      }
+                      if (current > 10) {
+                        return "Os dividendos estão em patamar muito bom, com perfil de vaca leiteira, mas vale acompanhar a consistência.";
+                      }
+                      return "Para renda, o sinal pede cautela: os dividendos estão menos competitivos e pode fazer mais sentido buscar ganho por valorização.";
+                    }
+                    if (key === "P/L") {
+                      if (current < 0) return "O lucro recente está pressionado, então este múltiplo perde força de comparação e a prioridade é confirmar recuperação operacional.";
+                      if (mixedSignal) {
+                        return "O sinal está misto: frente aos pares diretos o preço pede mais atenção, mas no contexto amplo da bolsa ainda não parece esticado.";
+                      }
+                      if (sectorClass === "forte" || ibovClass === "forte" || sectorClass === "bom" || ibovClass === "bom") {
+                        return "O preço parece mais interessante em relação ao lucro atual, o que pode abrir margem de segurança se a qualidade do negócio estiver preservada.";
+                      }
+                      if (sectorClass === "em linha" || ibovClass === "em linha") {
+                        return "O preço parece justo para o lucro atual, sem sinal claro de barganha ou exagero.";
+                      }
+                      return "O preço está mais exigente para o lucro atual, então a decisão fica mais dependente de crescimento consistente à frente.";
+                    }
+                    if (key === "P/VP") {
+                      if (mixedSignal) {
+                        return "O sinal está misto: contra pares diretos a ação parece mais cara, mas no mercado amplo ainda pode estar em faixa aceitável.";
+                      }
+                      if (sectorClass === "forte" || ibovClass === "forte" || current < 1) {
+                        return "O ativo aparenta estar negociando com desconto patrimonial, o que pode ser oportunidade se os fundamentos estiverem sólidos.";
+                      }
+                      if (sectorClass === "em linha" || ibovClass === "em linha") {
+                        return "A precificação patrimonial parece equilibrada para o momento.";
+                      }
+                      return "A precificação patrimonial está mais cara, então faz sentido exigir execução forte e rentabilidade consistente.";
+                    }
+                    if (key === "LPA") {
+                      if (current > 0) return "Há geração de lucro por ação, o que reforça a base de resultado para o acionista.";
+                      return "O lucro por ação está pressionado, sinalizando necessidade de acompanhar a virada de resultado.";
+                    }
+                    if (key === "VPA") {
+                      return "Esse indicador mostra o valor patrimonial por ação e ajuda a avaliar se o preço de mercado parece caro ou barato em termos de patrimônio.";
+                    }
+                    if (key === "PAYOUT") {
+                      if (current > 100) return "A distribuição está acima do lucro, o que pode não ser sustentável se esse padrão continuar.";
+                      if (current >= 30 && current <= 70) return "A política de dividendos parece equilibrar bem remuneração do acionista e reinvestimento.";
+                      if (current > 70) return "A empresa prioriza mais distribuição de caixa agora, com menor espaço para reinvestir no crescimento.";
+                      return "A empresa retém mais lucro para expansão, o que pode favorecer crescimento no longo prazo.";
+                    }
+                    if (key === "P/EBIT") {
+                      if (sectorClass === "forte" || ibovClass === "forte" || sectorClass === "bom" || ibovClass === "bom") return "O preço em relação ao resultado operacional parece atrativo.";
+                      if (sectorClass === "em linha" || ibovClass === "em linha") return "A relação entre preço e resultado operacional está em faixa equilibrada.";
+                      return "O preço está mais exigente frente ao resultado operacional atual.";
+                    }
+                    if (key === "EV/EBIT") {
+                      if (sectorClass === "forte" || ibovClass === "forte" || sectorClass === "bom" || ibovClass === "bom") return "Considerando também a estrutura de capital, a precificação parece favorável.";
+                      if (sectorClass === "em linha" || ibovClass === "em linha") return "Considerando dívida e operação, a precificação parece neutra.";
+                      return "Considerando dívida e operação, a precificação está mais esticada.";
+                    }
+                    if (key === "EV/EBITDA") {
+                      if (sectorClass === "forte" || ibovClass === "forte" || sectorClass === "bom" || ibovClass === "bom") return "A avaliação operacional parece confortável para o momento.";
+                      if (sectorClass === "em linha" || ibovClass === "em linha") return "A avaliação operacional está em linha com o mercado.";
+                      return "A avaliação operacional está exigente e pede melhora de eficiência ou crescimento.";
+                    }
+                    if (key === "Div. Liq. / EBITDA") {
+                      if (current <= 1.5) return "A alavancagem está confortável e traz mais tranquilidade financeira.";
+                      if (current <= 3) return "A alavancagem está administrável, mas merece acompanhamento.";
+                      return "A alavancagem está elevada, aumentando o risco em cenários adversos.";
+                    }
+                    if (key === "Div. Liq. / PL") {
+                      if (current <= 0.8) return "A dívida parece bem suportada pelo patrimônio.";
+                      if (current <= 1.5) return "A dívida está em nível intermediário frente ao patrimônio.";
+                      return "A dívida está pesada frente ao patrimônio e pede cautela.";
+                    }
+                    if (key === "Indice Basileia") {
+                      if (current >= 13) return "O colchão de capital parece saudável para absorver riscos.";
+                      return "O colchão de capital está mais apertado e merece atenção extra.";
+                    }
+                    if (key === "Liq. Corrente") {
+                      if (current >= 1 && current <= 2) return "A liquidez de curto prazo está saudável.";
+                      if (current < 1) return "A liquidez de curto prazo está apertada, pedindo atenção.";
+                      return "Há folga de liquidez no curto prazo, com espaço para avaliar eficiência do capital.";
+                    }
+                    if (key === "ROE") {
+                      if (current >= 15) return "O retorno ao acionista é forte no cenário atual.";
+                      if (current >= 10) return "O retorno ao acionista está em nível razoável.";
+                      return "O retorno ao acionista está fraco e pede acompanhamento.";
+                    }
+                    if (key === "ROIC") {
+                      if (current >= 12) return "A empresa mostra boa eficiência em transformar capital investido em retorno.";
+                      if (current >= 8) return "A eficiência sobre o capital investido está em nível intermediário.";
+                      return "A eficiência sobre o capital investido está baixa no momento.";
+                    }
+                    if (key === "Margem Bruta") {
+                      if (current >= 30) return "A margem bruta mostra boa capacidade de absorver custos.";
+                      if (current >= 20) return "A margem bruta está em faixa razoável.";
+                      return "A margem bruta está apertada e reduz a folga operacional.";
+                    }
+                    if (key === "Margem EBIT") {
+                      if (current >= 15) return "A eficiência operacional é boa no momento.";
+                      if (current >= 8) return "A eficiência operacional está em nível intermediário.";
+                      return "A eficiência operacional está pressionada.";
+                    }
+                    if (key === "Margem Liq.") {
+                      if (current >= 12) return "A conversão de receita em lucro líquido está forte.";
+                      if (current >= 6) return "A conversão de receita em lucro líquido está moderada.";
+                      return "A conversão de receita em lucro líquido está apertada.";
+                    }
+                    if (key === "C. Receita 5A") {
+                      if (current >= 10) return "O crescimento de receita no ciclo de 5 anos é forte.";
+                      if (current >= 4) return "O crescimento de receita em 5 anos é moderado.";
+                      return "O crescimento de receita em 5 anos está fraco.";
+                    }
+                    if (key === "C. Lucro 5A") {
+                      if (current >= 10) return "O crescimento de lucro no ciclo de 5 anos é forte.";
+                      if (current >= 4) return "O crescimento de lucro em 5 anos é moderado.";
+                      return "O crescimento de lucro em 5 anos está fraco.";
+                    }
+                    if (key === "Giro Ativos") {
+                      if (current >= 1) return "A empresa usa bem seus ativos para gerar receita.";
+                      if (current >= 0.5) return "O uso de ativos para gerar receita está em nível intermediário.";
+                      return "O uso de ativos para gerar receita está fraco no momento.";
+                    }
+                    if (key === "PL / Ativos") {
+                      if (current >= 0.35) return "A estrutura mostra boa participação de capital próprio.";
+                      if (current >= 0.2) return "A estrutura de capital está em faixa intermediária.";
+                      return "A estrutura depende mais de capital de terceiros.";
+                    }
+                    if (key === "Market Cap") {
+                      return "O porte influencia volatilidade e liquidez, mas não determina sozinho a qualidade do investimento.";
+                    }
+
+                    if (sectorClass === "forte" || ibovClass === "forte") return `${displaySymbol} está melhor que a média nessa métrica.`;
+                    if (sectorClass === "bom" || ibovClass === "bom") return `${displaySymbol} está em boa posição nessa métrica.`;
+                    if (sectorClass === "atenção" || ibovClass === "atenção") return `${displaySymbol} pede atenção nessa métrica.`;
+                    if (sectorClass === "leve atenção" || ibovClass === "leve atenção") return `${displaySymbol} está um pouco abaixo das referências.`;
+                    if (sectorClass === "acima da faixa" || ibovClass === "acima da faixa" || sectorClass === "abaixo da faixa" || ibovClass === "abaixo da faixa") {
+                      return `${displaySymbol} está fora da faixa em pelo menos uma referência.`;
+                    }
+                    return `${displaySymbol} está equilibrado no momento.`;
+                  };
+
+                  const finalHint = practicalHint();
+                  const sectorText = sector !== null ? `Vs setor: ${readableStatus(sectorCmp)}.` : "";
+                  const ibovText = ibov !== null ? `Vs IBOV: ${readableStatus(ibovCmp)}.` : "";
 
                   return (
                     <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 md:col-span-2">
                       <p className="text-[11px] uppercase tracking-wider text-primary mb-1 font-medium">Leitura Rápida</p>
                       <p className="text-sm leading-relaxed text-foreground/95">
-                        O <span className="font-semibold">{openLearnModal.title}</span> de <span className="font-semibold">{displaySymbol}</span> está em <span className="font-semibold">{current.toFixed(2)}{unit}</span>. {sectorText} {ibovText}
+                        {sectorText} {ibovText}
                       </p>
                       <p className="mt-1 text-sm leading-relaxed text-foreground/95">
                         {finalHint}
