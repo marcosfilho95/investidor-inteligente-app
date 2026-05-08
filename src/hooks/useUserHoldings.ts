@@ -50,7 +50,7 @@ const LOCAL_TRADES_STORAGE_KEY = "ii_user_trades_local_v1";
 
 let memoryCacheByUser: Record<string, HoldingsCacheEntry> = {};
 let inFlightByUser: Record<string, Promise<UserHolding[]> | null> = {};
-let inFlightTradeByUser: Record<string, Set<string>> = {};
+const inFlightTradeByUser: Record<string, Set<string>> = {};
 let activeUserCache: HoldingsCacheEntry | null = null;
 const MONEY_EPSILON = 0.005;
 const DAY_MS = 24 * 60 * 60 * 1000;
