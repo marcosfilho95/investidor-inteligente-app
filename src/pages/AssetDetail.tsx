@@ -70,6 +70,8 @@ type IndicatorDeepGuide = {
   referenceUnit?: string;
 };
 
+type AssetIndicatorSource = typeof holdings[number] & DynamicFundamentals;
+
 const INDICATOR_DIRECTION: Record<string, "higher_better" | "lower_better" | "range"> = {
   "DY": "range",
   "P/L": "lower_better",
@@ -525,7 +527,7 @@ const INDICATOR_DEEP_GUIDE: Record<string, IndicatorDeepGuide> = {
   },
 };
 
-const INDICATOR_VALUE_GETTERS: Record<string, (asset: any) => number | null> = {
+const INDICATOR_VALUE_GETTERS: Record<string, (asset: AssetIndicatorSource) => number | null> = {
   "DY": (a) => (Number.isFinite(a.dividend) ? a.dividend : null),
   "P/L": (a) => (Number.isFinite(a.pe) ? a.pe : null),
   "P/VP": (a) => (Number.isFinite(a.pvp) ? a.pvp : null),
@@ -2383,6 +2385,7 @@ const AssetDetail = () => {
 };
 
 export default AssetDetail;
+
 
 
 

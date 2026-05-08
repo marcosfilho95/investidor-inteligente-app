@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,6 +21,8 @@ import AssetDetail from "./pages/AssetDetail";
 import Education from "./pages/Education";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import ModelPortfolios from "./pages/ModelPortfolios";
+import ModelPortfolioDetail from "./pages/ModelPortfolioDetail";
 
 const queryClient = new QueryClient();
 const SESSION_START_KEY_PREFIX = "ii_auth_session_started_at_";
@@ -276,6 +278,8 @@ function AppContent() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/carteira" element={<Portfolio />} />
             <Route path="/ativos" element={<Assets />} />
+            <Route path="/ativos/carteiras-modelo" element={<ModelPortfolios />} />
+            <Route path="/ativos/carteiras-modelo/:id" element={<ModelPortfolioDetail />} />
             <Route path="/ativos/:symbol" element={<AssetDetail />} />
             <Route path="/aprender" element={<Education />} />
             <Route path="/perfil" element={<Profile />} />
@@ -300,3 +304,4 @@ const App = () => (
 );
 
 export default App;
+

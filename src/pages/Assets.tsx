@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { Search, TrendingUp, TrendingDown, PieChart, Sparkles, ChevronDown, Check } from "lucide-react";
+import { Search, TrendingUp, TrendingDown, PieChart, Sparkles, ChevronDown, Check, Crown } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import {
@@ -342,11 +342,11 @@ const Assets = () => {
                 </div>
                 <p className="text-sm text-muted-foreground max-w-lg">
                   <span className="md:hidden">
-                    Explore os {totalAssets} ativos da B3 disponíveis na plataforma. Analise fundamentos e compare
+                    Explore os {totalAssets} ativos da B3 disponiveis na plataforma. Analise fundamentos e compare
                     indicadores.
                   </span>
                   <span className="hidden md:inline">
-                    Explore os {totalAssets} ativos da B3 disponíveis na plataforma.
+                    Explore os {totalAssets} ativos da B3 disponiveis na plataforma.
                     <br />
                     Analise fundamentos e compare indicadores.
                   </span>
@@ -384,9 +384,9 @@ const Assets = () => {
             <div className="pointer-events-none absolute -bottom-14 -left-10 h-28 w-28 rounded-full bg-primary/[0.06] blur-2xl" />
             <div className="relative mb-2 flex items-center justify-between gap-2 px-1">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/85">
-                Filtros rápidos
+                Filtros rapidos
               </p>
-              <p className="text-[10px] text-foreground/70">Refine por tendência e fundamentos</p>
+              <p className="text-[10px] text-foreground/70">Refine por tendencia e fundamentos</p>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:items-center sm:grid-cols-[minmax(0,1fr)_200px_auto]">
               <div className="relative w-full min-w-0">
@@ -473,10 +473,10 @@ const Assets = () => {
             </div>
             <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
               {[
-                { key: "dy", label: "DY MÍN (%)", hint: "Ex: 5" },
-                { key: "pl", label: "P/L MÁX", hint: "Ex: 10" },
-                { key: "roe", label: "ROE MÍN (%)", hint: "Ex: 8" },
-                { key: "marketCap", label: "Market Cap MÁX (B)", hint: "Ex: 10" },
+                { key: "dy", label: "DY MIN (%)", hint: "Ex: 5" },
+                { key: "pl", label: "P/L MAX", hint: "Ex: 10" },
+                { key: "roe", label: "ROE MIN (%)", hint: "Ex: 8" },
+                { key: "marketCap", label: "Market Cap MAX (B)", hint: "Ex: 10" },
               ].map((item) => (
                 <div key={item.key} className="rounded-xl border border-border/60 bg-background/45 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground/80">{item.label}</p>
@@ -497,6 +497,23 @@ const Assets = () => {
               ))}
             </div>
           </div>
+
+          <AnimatedCard delay={0.08}>
+            <Link
+              to="/ativos/carteiras-modelo"
+              className="block w-full rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/10 via-card/60 to-card/70 p-5 text-left transition-all hover:border-primary/45 hover:shadow-[0_12px_32px_-18px] hover:shadow-primary/35"
+            >
+              <p className="text-[11px] uppercase tracking-[0.12em] text-primary/90 font-semibold">Carteiras Modelo</p>
+              <h2 className="mt-1 text-lg font-bold inline-flex items-center gap-2">
+                <Crown className="h-4 w-4 text-amber-400" />
+                TOP 10 por objetivo e perfil
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Acesse uma página didática com estratégia de cada carteira, pesos sugeridos e explicações por ativo.
+              </p>
+            </Link>
+          </AnimatedCard>
+
           {typeof document !== "undefined" &&
             createPortal(
               <AnimatePresence>
@@ -561,7 +578,7 @@ const Assets = () => {
                               <Check className="h-3 w-3" />
                             </span>
                             <span className={`text-[22px] leading-none ${active ? "text-primary/70" : "text-muted-foreground/35 group-hover:text-muted-foreground/50"}`}>
-                              •
+                              â€¢
                             </span>
                             <span className={`text-sm ${active ? "font-medium text-foreground" : ""}`}>{cat}</span>
                           </label>
@@ -628,7 +645,7 @@ const Assets = () => {
                             <p className={`text-lg font-bold font-mono ${showRealPrice ? "" : "text-muted-foreground"}`}>
                               {showRealPrice
                                 ? `R$ ${dailyState.lastPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-                                : "—"}
+                                : "â€”"}
                             </p>
                             <p className="text-[10px] text-muted-foreground mt-0.5">{displaySubsetor}</p>
                           </div>
@@ -646,7 +663,7 @@ const Assets = () => {
                                   showRealPrice ? (isPositive ? "text-gain" : "text-loss") : "text-muted-foreground"
                                 }`}
                               >
-                                {showRealPrice ? `${isPositive ? "+" : ""}${dailyChangePercent}%` : "—"}
+                                {showRealPrice ? `${isPositive ? "+" : ""}${dailyChangePercent}%` : "â€”"}
                               </span>
                             </div>
                             {asset.pe && <span className="text-[10px] text-muted-foreground font-mono">P/L {asset.pe}</span>}
@@ -691,5 +708,7 @@ const Assets = () => {
 };
 
 export default Assets;
+
+
 
 
