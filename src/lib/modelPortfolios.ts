@@ -591,8 +591,12 @@ const PROFILE_SYMBOL_CAPS: Partial<Record<ModelPortfolioId, Record<string, numbe
     HAPV3: 14,
   },
   perfil_arrojado: {
-    HAPV3: 22,
-    ISAE4: 7.5,
+    HAPV3: 17,
+    PETR4: 15,
+    SUZB3: 12,
+    MGLU3: 10,
+    LREN3: 8,
+    ISAE4: 20,
     SAPR11: 7.5,
     TIMS3: 7.5,
     VIVT3: 7.5,
@@ -890,6 +894,159 @@ function enforceRiskLimits(
         toAdd -= add;
       }
     }
+
+    const fixedTargets: Record<string, number> = {
+      HAPV3: 17.5,
+      PETR4: 13,
+      SUZB3: 12,
+      MGLU3: 10,
+      LREN3: 8,
+      ISAE4: 10,
+      BBAS3: 7.5,
+      MRVE3: 8,
+      SAPR11: 7,
+      BBDC4: 7,
+    };
+    const groupSymbols = Object.keys(fixedTargets);
+    const idxBySymbol = Object.fromEntries(assets.map((a, i) => [a.symbol, i])) as Record<string, number>;
+
+    // 1) fixa os alvos explícitos.
+    for (const [symbol, target] of Object.entries(fixedTargets)) {
+      const idx = idxBySymbol[symbol];
+      if (!Number.isInteger(idx)) continue;
+      const current = weights[idx];
+      if (current > target + 0.001) {
+        const excess = current - target;
+        weights[idx] = target;
+        let remaining = excess;
+        const receivers = assets
+          .map((a, i) => ({ i, w: weights[i] }))
+          .filter((x) => x.i !== idx)
+          .sort((a, b) => b.w - a.w);
+        for (const rec of receivers) {
+          if (remaining <= 0.001) break;
+          const cap = getEffectiveAssetCap(profileId, assets[rec.i].symbol, limits.assetMax);
+          const room = Math.max(0, cap - weights[rec.i]);
+          const add = Math.min(room, remaining);
+          if (add <= 0) continue;
+          weights[rec.i] += add;
+          remaining -= add;
+        }
+      }
+    }
+
+    for (const [symbol, target] of Object.entries(fixedTargets)) {
+      const idx = idxBySymbol[symbol];
+      if (!Number.isInteger(idx)) continue;
+      let need = target - weights[idx];
+      if (need <= 0.001) continue;
+      const donors = assets
+        .map((a, i) => ({ i, symbol: a.symbol, w: weights[i] }))
+        .filter((x) => x.i !== idx)
+        .sort((a, b) => b.w - a.w);
+      for (const donor of donors) {
+        if (need <= 0.001) break;
+        const donorFloor = Object.prototype.hasOwnProperty.call(fixedTargets, donor.symbol)
+          ? fixedTargets[donor.symbol]
+          : 0.5;
+        const cut = Math.min(need, Math.max(0, weights[donor.i] - donorFloor));
+        if (cut <= 0) continue;
+        weights[donor.i] -= cut;
+        weights[idx] += cut;
+        need -= cut;
+      }
+    }
+
+    // 2) ISAE4 recebe o residual do bloco alterado.
+    const isaeIdx = idxBySymbol["ISAE4"];
+    if (Number.isInteger(isaeIdx)) {
+      const sumFixed = Object.entries(fixedTargets).reduce((sum, [symbol, target]) => {
+        const idx = idxBySymbol[symbol];
+        return Number.isInteger(idx) ? sum + target : sum;
+      }, 0);
+      const isaeCap = getEffectiveAssetCap(profileId, "ISAE4", limits.assetMax);
+      const isaeTarget = Math.max(0.5, Math.min(isaeCap, fixedTargets.ISAE4));
+      const delta = isaeTarget - weights[isaeIdx];
+      if (Math.abs(delta) > 0.001) {
+        if (delta > 0) {
+          let need = delta;
+          const donors = assets
+            .map((a, i) => ({ i, symbol: a.symbol, w: weights[i] }))
+            .filter((x) => x.i !== isaeIdx)
+            .sort((a, b) => b.w - a.w);
+          for (const donor of donors) {
+            if (need <= 0.001) break;
+            const donorFloor = Object.prototype.hasOwnProperty.call(fixedTargets, donor.symbol)
+              ? fixedTargets[donor.symbol]
+              : 0.5;
+            const cut = Math.min(need, Math.max(0, weights[donor.i] - donorFloor));
+            if (cut <= 0) continue;
+            weights[donor.i] -= cut;
+            weights[isaeIdx] += cut;
+            need -= cut;
+          }
+        } else {
+          let remaining = -delta;
+          weights[isaeIdx] = isaeTarget;
+          const receivers = assets
+            .map((a, i) => ({ i, w: weights[i] }))
+            .filter((x) => x.i !== isaeIdx)
+            .sort((a, b) => b.w - a.w);
+          for (const rec of receivers) {
+            if (remaining <= 0.001) break;
+            const cap = getEffectiveAssetCap(profileId, assets[rec.i].symbol, limits.assetMax);
+            const room = Math.max(0, cap - weights[rec.i]);
+            const add = Math.min(room, remaining);
+            if (add <= 0) continue;
+            weights[rec.i] += add;
+            remaining -= add;
+          }
+        }
+      }
+    }
+
+    // Trava final: mantém os pesos exatamente como solicitado.
+    for (const [symbol, target] of Object.entries(fixedTargets)) {
+      const idx = idxBySymbol[symbol];
+      if (!Number.isInteger(idx)) continue;
+      weights[idx] = target;
+    }
+  }
+
+  // Value Investing: ajuste pontual solicitado sem alterar os demais ativos.
+  if (profileId === "value_investing") {
+    const targets: Record<string, number> = {
+      HAPV3: 18,
+      ISAE4: 10,
+      BBAS3: 10,
+      TUPY3: 8,
+    };
+    const idxBySymbol = Object.fromEntries(assets.map((a, i) => [a.symbol, i])) as Record<string, number>;
+    const targetSymbols = Object.keys(targets).filter((s) => Number.isInteger(idxBySymbol[s]));
+    for (const symbol of targetSymbols) {
+      weights[idxBySymbol[symbol]] = targets[symbol];
+    }
+  }
+
+  if (profileId === "perfil_moderado") {
+    const targets: Record<string, number> = {
+      ITUB4: 15,
+      BBSE3: 7,
+      BBAS3: 8,
+      TIMS3: 8,
+      HAPV3: 12,
+      SAPR11: 10,
+      SUZB3: 12,
+      ISAE4: 10,
+      LREN3: 10,
+      PETR4: 8,
+    };
+    const idxBySymbol = Object.fromEntries(assets.map((a, i) => [a.symbol, i])) as Record<string, number>;
+    for (const [symbol, target] of Object.entries(targets)) {
+      const idx = idxBySymbol[symbol];
+      if (!Number.isInteger(idx)) continue;
+      weights[idx] = target;
+    }
   }
 
   return assets.map((a, i) => ({ ...a, suggestedWeightPct: Number(weights[i].toFixed(1)) }));
@@ -1093,6 +1250,87 @@ export function buildModelPortfolios(): ModelPortfolio[] {
       def.id === "perfil_arrojado"
     ) {
       ranked = applyCompositionRulesByProfile(def.id, rankedAll, ranked).slice(0, 10);
+    }
+
+    if (def.id === "perfil_arrojado") {
+      const upsertSymbol = (symbol: string, replacePreferred?: string) => {
+        const hasSymbol = ranked.some((x) => x.raw.symbol === symbol);
+        if (hasSymbol) return;
+        const candidate =
+          rankedAll.find((item) => item.raw.symbol === symbol) ??
+          (() => {
+            const h = holdings.find((x) => x.symbol === symbol);
+            if (!h) return undefined;
+            return {
+              raw: h,
+              symbol: h.symbol,
+              name: h.symbol === "AXIA6" ? "AXIA" : h.name,
+              score: buildModelPortfolioScore(def.id, h),
+              recommendationScore: calcRecommendationScore(h).score,
+              dividend: safeNum(h.dividend),
+              pe: h.pe,
+              pvp: h.pvp,
+              roe: h.roe,
+              divLiqEbitda: h.divLiqEbitda,
+              upside: resolveActiveValuation(h).upside,
+              suggestedWeightPct: 0,
+              riskScore: 0,
+              riskLevel: "baixo" as const,
+              isOutlier: false,
+              strategyNote: "",
+            };
+          })();
+        if (!candidate) return;
+        const preferredIdx = replacePreferred ? ranked.findIndex((x) => x.raw.symbol === replacePreferred) : -1;
+        const fallbackIdx = ranked
+          .map((x, i) => ({ i, score: x.score }))
+          .sort((a, b) => a.score - b.score)[0]?.i ?? (ranked.length - 1);
+        const replaceIdx = preferredIdx >= 0 ? preferredIdx : fallbackIdx;
+        ranked = [...ranked];
+        ranked[replaceIdx] = candidate;
+      };
+
+      // Pedido explícito: GGBR4 sai e MRVE3 entra.
+      upsertSymbol("MRVE3", "GGBR4");
+      // Mantém MGLU3 na cesta conforme ajuste solicitado de peso.
+      upsertSymbol("MGLU3", "TUPY3");
+      ranked = ranked.filter((x, i, arr) => arr.findIndex((y) => y.raw.symbol === x.raw.symbol) === i);
+      ranked.sort((a, b) => b.score - a.score);
+    }
+
+    if (def.id === "perfil_moderado") {
+      const bbdcIdx = ranked.findIndex((x) => x.raw.symbol === "BBDC4");
+      const hasTim = ranked.some((x) => x.raw.symbol === "TIMS3");
+      const hasItub = ranked.some((x) => x.raw.symbol === "ITUB4");
+      if (bbdcIdx >= 0) {
+        const pick = !hasTim ? "TIMS3" : !hasItub ? "ITUB4" : null;
+        if (pick) {
+          const h = holdings.find((x) => x.symbol === pick);
+          if (h) {
+            const cand = {
+              raw: h,
+              symbol: h.symbol,
+              name: h.symbol === "AXIA6" ? "AXIA" : h.name,
+              score: buildModelPortfolioScore(def.id, h),
+              recommendationScore: calcRecommendationScore(h).score,
+              dividend: safeNum(h.dividend),
+              pe: h.pe,
+              pvp: h.pvp,
+              roe: h.roe,
+              divLiqEbitda: h.divLiqEbitda,
+              upside: resolveActiveValuation(h).upside,
+              suggestedWeightPct: 0,
+              riskScore: 0,
+              riskLevel: "baixo" as const,
+              isOutlier: false,
+              strategyNote: "",
+            };
+            ranked = [...ranked];
+            ranked[bbdcIdx] = cand;
+            ranked.sort((a, b) => b.score - a.score);
+          }
+        }
+      }
     }
 
     if (def.id === "renda_dividendos") {
