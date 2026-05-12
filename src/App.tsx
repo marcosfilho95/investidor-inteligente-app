@@ -23,6 +23,7 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import ModelPortfolios from "./pages/ModelPortfolios";
 import ModelPortfolioDetail from "./pages/ModelPortfolioDetail";
+import ValidacaoTcc from "./pages/ValidacaoTcc";
 
 const queryClient = new QueryClient();
 const SESSION_START_KEY_PREFIX = "ii_auth_session_started_at_";
@@ -274,6 +275,8 @@ function AppContent() {
             path="/login"
             element={!isAuthResolved ? null : currentUserId ? <Navigate to="/dashboard" replace /> : <Login />}
           />
+          <Route path="/validacaotcc" element={<ValidacaoTcc />} />
+          <Route path="/validacao-tcc" element={<ValidacaoTcc />} />
           <Route element={<AuthenticatedLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/carteira" element={<Portfolio />} />
@@ -304,4 +307,5 @@ const App = () => (
 );
 
 export default App;
+
 
