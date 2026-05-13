@@ -21,12 +21,12 @@ import {
 const COLORS = ["#06b6d4", "#84cc16", "#f97316", "#8b5cf6", "#ef4444", "#eab308", "#14b8a6", "#3b82f6"];
 
 const donutBlocks = [
-  { title: "Consentimento", total: 36, data: [{ name: "Sim, concordo", value: 36 }, { name: "Não", value: 0 }] },
+  { title: "Consentimento", total: 37, data: [{ name: "Sim, concordo", value: 37 }, { name: "Não", value: 0 }] },
   {
     title: "Faixa etária",
-    total: 36,
+    total: 37,
     data: [
-      { name: "18 a 24 anos", value: 12 },
+      { name: "18 a 24 anos", value: 13 },
       { name: "25 a 34 anos", value: 19 },
       { name: "35 a 44 anos", value: 2 },
       { name: "45 anos ou mais", value: 3 },
@@ -34,45 +34,45 @@ const donutBlocks = [
   },
   {
     title: "Escolaridade",
-    total: 36,
+    total: 37,
     data: [
       { name: "Ensino Médio", value: 2 },
       { name: "Ensino Técnico", value: 0 },
-      { name: "Ensino Superior Incompleto", value: 16 },
+      { name: "Ensino Superior Incompleto", value: 17 },
       { name: "Ensino Superior Completo", value: 14 },
       { name: "Pós-graduação", value: 4 },
     ],
   },
   {
     title: "Faixa de renda mensal",
-    total: 36,
+    total: 37,
     data: [
       { name: "Até R$ 1.000", value: 5 },
-      { name: "R$ 1.001 a R$ 3.000", value: 9 },
+      { name: "R$ 1.001 a R$ 3.000", value: 10 },
       { name: "R$ 3.001 a R$ 5.000", value: 8 },
       { name: "Acima de R$ 5.000", value: 14 },
     ],
   },
   {
     title: "Experiência com investimentos",
-    total: 36,
+    total: 37,
     data: [
-      { name: "Iniciante", value: 28 },
+      { name: "Iniciante", value: 29 },
       { name: "Intermediário", value: 5 },
       { name: "Avançado", value: 3 },
     ],
   },
   {
     title: "Já investe no mercado financeiro?",
-    total: 36,
-    data: [{ name: "Sim", value: 14 }, { name: "Não", value: 22 }],
+    total: 37,
+    data: [{ name: "Sim", value: 14 }, { name: "Não", value: 23 }],
   },
   {
     title: "Entendimento prévio",
-    total: 36,
+    total: 37,
     data: [
       { name: "Muito pouco", value: 13 },
-      { name: "Pouco", value: 12 },
+      { name: "Pouco", value: 13 },
       { name: "Médio", value: 7 },
       { name: "Alto", value: 3 },
       { name: "Muito Alto", value: 1 },
@@ -81,20 +81,21 @@ const donutBlocks = [
 ];
 
 const likertBlocks = [
-  { title: "A plataforma foi fácil de usar durante todo o teste?", total: 36, values: [0, 0, 2, 3, 31] },
-  { title: "A navegação entre as páginas foi intuitiva?", total: 36, values: [0, 0, 0, 3, 33] },
-  { title: "As informações foram apresentadas de forma acessível?", total: 36, values: [0, 0, 2, 1, 33] },
-  { title: "A IA explicou conceitos de forma clara e compreensível?", total: 36, values: [0, 0, 1, 13, 22] },
-  { title: "A IA ajudou a entender fundamentos e indicadores?", total: 36, values: [0, 0, 0, 10, 26] },
-  { title: "A IA contribuiu para aumentar senso crítico?", total: 36, values: [0, 0, 4, 10, 22] },
-  { title: "A IA ajudou a refletir antes de decisões?", total: 36, values: [0, 1, 3, 7, 25] },
-  { title: "Após a experiência, você se sente mais motivado(a)?", total: 36, values: [0, 0, 4, 7, 25] },
-  { title: "Importância de aprender investimentos", total: 36, values: [0, 0, 2, 8, 26] },
-  { title: "Se disponível no futuro, você usaria a plataforma?", total: 36, values: [0, 1, 3, 5, 27] },
+  { title: "A plataforma foi fácil de usar durante todo o teste?", total: 37, values: [0, 0, 2, 4, 31] },
+  { title: "A navegação entre as páginas foi intuitiva?", total: 37, values: [0, 0, 0, 3, 34] },
+  { title: "As informações foram apresentadas de forma acessível?", total: 37, values: [0, 0, 2, 1, 34] },
+  { title: "A IA explicou conceitos de forma clara e compreensível?", total: 37, values: [0, 0, 1, 13, 23] },
+  { title: "A IA ajudou a entender fundamentos e indicadores?", total: 37, values: [0, 0, 0, 10, 27] },
+  { title: "A IA contribuiu para aumentar senso crítico?", total: 37, values: [0, 0, 4, 11, 22] },
+  { title: "A IA ajudou a refletir antes de decisões?", total: 37, values: [0, 1, 3, 7, 26] },
+  { title: "Após a experiência, você se sente mais motivado(a)?", total: 37, values: [0, 0, 4, 7, 26] },
+  { title: "O quanto você considera importante aprender sobre investimentos?", total: 37, values: [0, 0, 2, 9, 26] },
+  { title: "Se disponível no futuro, você usaria a plataforma?", total: 37, values: [0, 1, 3, 5, 28] },
 ];
 
 const comments = [
   "Ótima",
+  "Em geral, bastante intuitiva; me auxiliou bastante com conceitos de mercado financeiro, sendo útil para pessoas que não possuem contexto sobre a área.",
   "Experiência no geral foi positiva consegui ver que existe muito conteúdo e informação a ser adquirido na plataforma porém existem pontos de melhoria principalmente em relação a IA, em todas as telas a IA tem o mesmo nome de agente o que da a entender que o conhecimento dela é compartilhado entre páginas o que não é verdade pois a IA na tela de Aprender não tem acesso aos ativos na carteira, além disso a IA não tem questão de memoria portanto ao tentar fazer comparações entre coisas que perguntei anteriormente e o estado atual da carteira ele se engana e não consegue entender a comparação, porém apesar dessas questões vejo muito potencial de crescimento e de ajuda principalmente para investidores com pouco conhecimento como é o meu caso.",
   "Sem problemas, bem intuitiva.",
   "Prática, rápida",
@@ -210,19 +211,19 @@ export default function ValidacaoTcc() {
 
                 <h1 className="text-2xl md:text-4xl font-bold tracking-tight leading-tight">Painel de Resultados · Validação da Plataforma Investidor Inteligente</h1>
                 <p className="text-sm md:text-base text-muted-foreground mt-3 max-w-5xl leading-relaxed">
-                  Este painel apresenta a consolidação dos resultados da validação acadêmica da plataforma, com base em 36 respostas.
+                  Este painel apresenta a consolidação dos resultados da validação acadêmica da plataforma, com base em 37 respostas.
                   O objetivo é evidenciar a percepção dos participantes sobre usabilidade, clareza das informações, contribuição da IA
                   e potencial de apoio ao desenvolvimento do senso crítico em decisões de investimento.
                 </p>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mt-6">
                   {[
-                    { label: "Participantes", value: "36", icon: Users2 },
+                    { label: "Participantes", value: "37", icon: Users2 },
                     { label: "Consentimento", value: "100%", icon: ClipboardCheck },
                     { label: "Conclusão seções", value: "100%", icon: CheckCircle2 },
-                    { label: "Facilidade média", value: "4,86/5", icon: Sparkles },
+                    { label: "Facilidade média", value: "4,78/5", icon: Sparkles },
                     { label: "Navegação média", value: "4,92/5", icon: ChartNoAxesColumn },
-                    { label: "IA clara média", value: "4,72/5", icon: GraduationCap },
+                    { label: "IA clara média", value: "4,59/5", icon: GraduationCap },
                   ].map((item) => (
                     <div key={item.label} className="rounded-2xl border border-border/40 bg-background/40 px-3.5 py-3">
                       <div className="flex items-center gap-2 text-muted-foreground">
@@ -435,7 +436,7 @@ export default function ValidacaoTcc() {
             <AnimatedCard>
               <Card className="glass-card border-border/40 h-full">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Participantes (36 respostas)</CardTitle>
+                  <CardTitle className="text-base">Participantes (37 respostas)</CardTitle>
                   <p className="text-xs text-muted-foreground">Dados pessoais anonimizados</p>
                 </CardHeader>
                 <CardContent>
@@ -444,7 +445,7 @@ export default function ValidacaoTcc() {
                     <p className="text-sm font-medium">Amostra anonimizada para preservação de privacidade.</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       Em conformidade com as boas práticas de pesquisa acadêmica, os nomes dos participantes foram ocultados nesta visualização.
-                      A análise quantitativa permanece integralmente preservada com <strong className="text-foreground/90">36 respostas válidas</strong>.
+                      A análise quantitativa permanece integralmente preservada com <strong className="text-foreground/90">37 respostas válidas</strong>.
                     </p>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       Caso necessário, a identificação nominal pode permanecer apenas no registro bruto restrito do pesquisador, sem exposição pública.
