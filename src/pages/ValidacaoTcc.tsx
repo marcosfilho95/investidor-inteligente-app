@@ -78,9 +78,6 @@ const donutBlocks = [
       { name: "Muito Alto", value: 1 },
     ],
   },
-  { title: "Conclusão - Acesso inicial", total: 36, data: [{ name: "Sim", value: 36 }, { name: "Não", value: 0 }] },
-  { title: "Conclusão - Ativos + IA", total: 36, data: [{ name: "Sim", value: 36 }, { name: "Não", value: 0 }] },
-  { title: "Conclusão - Carteira + IA", total: 36, data: [{ name: "Sim", value: 36 }, { name: "Não", value: 0 }] },
 ];
 
 const likertBlocks = [
@@ -376,9 +373,9 @@ export default function ValidacaoTcc() {
                 escala: String(i + 1),
                 respostas: v,
                 label: `${v} (${pct(v, block.total)})`,
+                color: ["#fb7185", "#fb923c", "#fbbf24", "#a3e635", "#34d399"][i],
               }));
               const avg = likertAvg(block.values, block.total);
-              const gradientId = `likert-fill-${idx}`;
 
               return (
                 <AnimatedCard key={block.title} delay={idx * 0.02}>
@@ -409,15 +406,12 @@ export default function ValidacaoTcc() {
                               }}
                               formatter={(value: number) => [`${value} respostas`, "Contagem"]}
                             />
-                            <Bar dataKey="respostas" radius={[8, 8, 0, 0]} fill={`url(#${gradientId})`}>
+                            <Bar dataKey="respostas" radius={[8, 8, 0, 0]}>
+                              {chartData.map((entry) => (
+                                <Cell key={`${block.title}-${entry.escala}`} fill={entry.color} />
+                              ))}
                               <LabelList dataKey="label" position="top" fill="#cbd5e1" fontSize={11} />
                             </Bar>
-                            <defs>
-                              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#86efac" />
-                                <stop offset="100%" stopColor="#16a34a" />
-                              </linearGradient>
-                            </defs>
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
