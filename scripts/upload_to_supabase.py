@@ -468,7 +468,7 @@ def main() -> int:
         ok, reason, stats = validate_intraday_csv(intraday_filepath or "")
         if not ok:
             log(f"Intraday validation failed: {reason}. Upload canceled.")
-            return 0
+            return 1
 
         changed, checksum = upload_if_changed(
             sb,
