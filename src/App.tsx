@@ -194,10 +194,10 @@ function AppContent() {
       setDataVersion((v) => v + 1);
     };
 
-    // Light version check every hour (no 5-minute/full refresh loops).
+    // Refresh version-aware datasets every 5 minutes to keep portfolio views current during market hours.
     const intervalId = window.setInterval(() => {
       void refreshAllData(true);
-    }, 60 * 60 * 1000);
+    }, 5 * 60 * 1000);
     window.addEventListener("ii:prices-data-updated", onPricesUpdated as EventListener);
     window.addEventListener("ii:macro-data-updated", onMacroUpdated as EventListener);
 

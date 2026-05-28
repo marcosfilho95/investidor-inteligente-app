@@ -171,13 +171,37 @@ def upload_if_changed(sb, filepath: str, latest_path: str, versioned_path: str, 
     upload_file(sb, filepath, latest_path, content_type=content_type)
     return True, local_md5
 
-def upload_data_status(sb, version_date: str) -> None:
+def latest_market_date_from_prices(prices_filepath: str) -> str | None:
+    try:
+        with open(prices_filepath, encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+        dates = [str(r.get("date", "")).strip() for r in rows if str(r.get("date", "")).strip()]
+        if not dates:
+            return None
+        return max(dates)
+    except Exception as exc:
+        log(f"WARN failed to compute latest_market_date from prices file={prices_filepath}: {exc}")
+        return None
+
+
+def upload_data_status(sb, version_date: str, prices_filepath: str | None = None) -> None:
     status_path = os.path.join(OUTPUT_DIR, "data-status.json")
-    payload = {"last_version_date": version_date}
+    payload = {
+        "last_version_date": version_date,
+        "last_success_at": datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+    }
+    latest_market_date = latest_market_date_from_prices(prices_filepath) if prices_filepath else None
+    if latest_market_date:
+        payload["latest_market_date"] = latest_market_date
     with open(status_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=True)
     upload_file(sb, status_path, "data-status.json", content_type="application/json")
-    log(f"Updated market-data/data-status.json last_version_date={version_date}")
+    log(
+        "Updated market-data/data-status.json "
+        f"last_version_date={version_date} "
+        f"last_success_at={payload['last_success_at']} "
+        f"latest_market_date={payload.get('latest_market_date', 'n/a')}"
+    )
 
 
 def update_meta(sb, dataset_name, version_date, file_path, row_count, checksum, status="ok", message=None):
@@ -543,7 +567,7 @@ def main() -> int:
     else:
         log("No fundamentals file found. Fundamentals upload skipped.")
 
-    upload_data_status(sb, TODAY)
+    upload_data_status(sb, TODAY, prices_filepath)
 
     log("Run completed successfully.")
     return 0

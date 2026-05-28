@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -17,6 +18,7 @@ import pandas as pd
 REQUIRED_COLUMNS = ["date", "open", "high", "low", "close", "volume", "ticker"]
 MIN_ROWS = 1000
 MIN_TICKERS = 20
+MAX_STALENESS_DAYS = int(os.environ.get("MAX_DAILY_STALENESS_DAYS", "5"))
 
 
 def utc_ts() -> str:
@@ -67,6 +69,23 @@ def validate_minimums(df: pd.DataFrame) -> None:
         raise ValueError(f"Too few tickers: {tickers} < {MIN_TICKERS}")
 
 
+def validate_freshness(df: pd.DataFrame) -> None:
+    parsed = pd.to_datetime(df["date"], errors="coerce", format=None)
+    latest = parsed.max()
+    if pd.isna(latest):
+        raise ValueError("Could not determine latest market date from dataset")
+
+    today = pd.Timestamp(datetime.utcnow().date())
+    staleness_days = int((today - latest.normalize()).days)
+    if staleness_days > MAX_STALENESS_DAYS:
+        raise ValueError(
+            "Dataset is stale: "
+            f"latest_market_date={latest.strftime('%Y-%m-%d')} "
+            f"staleness_days={staleness_days} "
+            f"max_allowed={MAX_STALENESS_DAYS}"
+        )
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print("Usage: python scripts/validate_dataset.py <csv_file_or_output_dir>", file=sys.stderr)
@@ -83,8 +102,15 @@ def main(argv: list[str]) -> int:
         validate_schema(df)
         validate_dates(df)
         validate_minimums(df)
+        validate_freshness(df)
 
-        log(f"Dataset valid. file={csv_path} rows={len(df)} tickers={df['ticker'].nunique()}")
+        latest_date = pd.to_datetime(df["date"], errors="coerce").max()
+        latest_date_str = latest_date.strftime("%Y-%m-%d") if pd.notna(latest_date) else "n/a"
+        log(
+            "Dataset valid. "
+            f"file={csv_path} rows={len(df)} tickers={df['ticker'].nunique()} "
+            f"latest_market_date={latest_date_str} max_staleness_days={MAX_STALENESS_DAYS}"
+        )
         return 0
     except Exception as exc:
         print(f"[validate_dataset] ERROR validation failed: {exc}", file=sys.stderr)
