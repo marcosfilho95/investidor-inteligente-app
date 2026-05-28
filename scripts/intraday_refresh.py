@@ -41,6 +41,8 @@ RETENTION_DAYS = int(os.environ.get("INTRADAY_RETENTION_DAYS", "7"))
 INTRADAY_INTERVAL = os.environ.get("INTRADAY_INTERVAL", "5m")
 INTRADAY_PERIOD = os.environ.get("INTRADAY_PERIOD", "7d")
 INTRADAY_MARKET_TZ = os.environ.get("INTRADAY_MARKET_TZ", "America/Sao_Paulo")
+STRICT_INTRADAY_NONEMPTY = os.environ.get("STRICT_INTRADAY_NONEMPTY", "1").strip().lower() in {"1", "true", "yes", "on"}
+INTRADAY_MAX_STALENESS_DAYS = int(os.environ.get("INTRADAY_MAX_STALENESS_DAYS", "3"))
 
 TICKER_ALIASES = {
     "EMBR3": "EMBJ3",
@@ -270,6 +272,28 @@ def main() -> int:
             f"min_dt={stats['min_dt']} max_dt={stats['max_dt']} "
             f"retention_days={RETENTION_DAYS} latest={OUTPUT_INTRADAY_LATEST}"
         )
+
+        if STRICT_INTRADAY_NONEMPTY and int(stats["stored_rows"]) == 0:
+            print(
+                "[intraday_refresh] ERROR strict mode: intraday dataset is empty "
+                "(stored_rows=0). Failing workflow to avoid stale/empty upload.",
+                file=sys.stderr,
+            )
+            return 1
+
+        if stats["max_dt"] != "n/a":
+            max_dt = pd.to_datetime(str(stats["max_dt"]), errors="coerce")
+            if pd.notna(max_dt):
+                now_brt = pd.Timestamp.now(tz=INTRADAY_MARKET_TZ).tz_localize(None)
+                staleness_days = int((now_brt.date() - max_dt.date()).days)
+                if staleness_days > max(0, INTRADAY_MAX_STALENESS_DAYS):
+                    print(
+                        "[intraday_refresh] ERROR strict mode: intraday dataset too stale "
+                        f"(max_dt={stats['max_dt']} staleness_days={staleness_days} "
+                        f"max_allowed={INTRADAY_MAX_STALENESS_DAYS}).",
+                        file=sys.stderr,
+                    )
+                    return 1
         return 0
     except Exception as exc:
         print(f"[intraday_refresh] ERROR fatal: {exc}", file=sys.stderr)
