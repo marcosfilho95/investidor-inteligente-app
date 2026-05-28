@@ -457,7 +457,6 @@ type IntradayChartPoint = {
   datetime: string;
 };
 
-const INTRADAY_LOCAL_PATH = "/data/intraday_latest.csv";
 const INTRADAY_LAST_PRICE_CACHE_KEY = "ii_intraday_last_price_v1";
 const DEFAULT_SUPABASE_PROJECT_ID = "txpqdupsxtqxcikgpkld";
 const INTRADAY_STORAGE_PATH = (() => {
@@ -543,21 +542,6 @@ function getDailyCloseForDate(symbol: string, dateKey: string): number | null {
   return null;
 }
 
-function maybeBuildClosingAnchorFor7d(
-  symbol: string,
-  sessionDate: string,
-  lastDatetime: string | null
-): IntradayPoint | null {
-  const dailyClose = getDailyCloseForDate(symbol, sessionDate);
-  if (!Number.isFinite(dailyClose)) return null;
-  const lastTime = lastDatetime?.split(" ")[1]?.slice(0, 5) || "";
-  if (lastTime >= "17:00") return null;
-  return {
-    datetime: `${sessionDate} 17:00:00`,
-    price: Number(dailyClose),
-  };
-}
-
 function parseIntradayCsv(text: string): Record<string, IntradayPoint[]> {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length <= 1) return {};
@@ -616,8 +600,7 @@ async function getIntradayHistory(): Promise<Record<string, IntradayPoint[]>> {
   _intradayHistoryInFlight = (async () => {
     const version = String(Date.now());
     const storageCsv = await fetchIntradayCsv(INTRADAY_STORAGE_PATH, version);
-    const localCsv = storageCsv ? null : await fetchIntradayCsv(INTRADAY_LOCAL_PATH, version);
-    const parsed = parseIntradayCsv(storageCsv || localCsv || "");
+    const parsed = parseIntradayCsv(storageCsv || "");
     _intradayHistoryCache = parsed;
     _intradayHistoryFetchedAt = Date.now();
     return parsed;
@@ -643,14 +626,7 @@ export async function getFilteredIntradayPriceHistory(symbol: string): Promise<I
   if (!sessionRows.length) return [];
 
   const sortedSessionRows = [...sessionRows].sort((a, b) => a.datetime.localeCompare(b.datetime));
-  const sessionDate = sortedSessionRows[0]?.datetime?.slice(0, 10) || "";
-  const lastDatetime = sortedSessionRows[sortedSessionRows.length - 1]?.datetime ?? null;
-  const closeAnchor = sessionDate ? maybeBuildClosingAnchorFor7d(symbol, sessionDate, lastDatetime) : null;
-  const rowsWithClose = closeAnchor
-    ? [...sortedSessionRows, closeAnchor].sort((a, b) => a.datetime.localeCompare(b.datetime))
-    : sortedSessionRows;
-
-  return rowsWithClose
+  return sortedSessionRows
     .map((row) => {
       const hm = row.datetime.includes(" ") ? row.datetime.split(" ")[1]?.slice(0, 5) : row.datetime.slice(11, 16);
       return {

@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import os
 import sys
+import io
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.request import urlopen
 
 import pandas as pd
 
@@ -33,6 +35,7 @@ SOURCE_CSV = ROOT_DIR / "public" / "data" / "prices_daily_24assets_plus_ibov_5y.
 OUTPUT_DIR = ROOT_DIR / "output"
 OUTPUT_INTRADAY_LATEST = OUTPUT_DIR / "intraday_latest.csv"
 LOCAL_INTRADAY_FALLBACK = ROOT_DIR / "public" / "data" / "intraday_latest.csv"
+REMOTE_INTRADAY_OBJECT = "intraday/intraday_latest.csv"
 
 RETENTION_DAYS = int(os.environ.get("INTRADAY_RETENTION_DAYS", "7"))
 INTRADAY_INTERVAL = os.environ.get("INTRADAY_INTERVAL", "5m")
@@ -106,21 +109,42 @@ def is_market_open_now() -> tuple[bool, str]:
 
 
 def load_existing_intraday() -> pd.DataFrame:
+    def normalize_intraday(df: pd.DataFrame) -> pd.DataFrame:
+        if not {"datetime", "price", "ticker"}.issubset(df.columns):
+            return pd.DataFrame(columns=["datetime", "price", "ticker"])
+        out = df[["datetime", "price", "ticker"]].copy()
+        out["datetime"] = pd.to_datetime(out["datetime"], errors="coerce")
+        out["price"] = pd.to_numeric(out["price"], errors="coerce")
+        out["ticker"] = out["ticker"].astype(str).str.upper().map(to_canonical_ticker)
+        out = out.dropna(subset=["datetime", "price", "ticker"])
+        return out
+
     for source in [OUTPUT_INTRADAY_LATEST, LOCAL_INTRADAY_FALLBACK]:
         if not source.exists():
             continue
         try:
-            df = pd.read_csv(source)
-            if not {"datetime", "price", "ticker"}.issubset(df.columns):
+            df = normalize_intraday(pd.read_csv(source))
+            if df.empty:
                 continue
-            df = df[["datetime", "price", "ticker"]].copy()
-            df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
-            df["price"] = pd.to_numeric(df["price"], errors="coerce")
-            df["ticker"] = df["ticker"].astype(str).str.upper().map(to_canonical_ticker)
-            df = df.dropna(subset=["datetime", "price", "ticker"])
+            log(f"Loaded existing intraday from local source={source} rows={len(df)}")
             return df
         except Exception as exc:
             log(f"WARN failed to read intraday source={source}: {exc}")
+
+    # GitHub runners are ephemeral; when local files are missing, bootstrap from Storage.
+    supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    if supabase_url:
+        remote_url = f"{supabase_url}/storage/v1/object/public/market-data/{REMOTE_INTRADAY_OBJECT}?t={int(datetime.now().timestamp())}"
+        try:
+            with urlopen(remote_url, timeout=20) as resp:
+                payload = resp.read().decode("utf-8")
+            df = normalize_intraday(pd.read_csv(io.StringIO(payload)))
+            if not df.empty:
+                log(f"Loaded existing intraday from storage url={remote_url} rows={len(df)}")
+                return df
+        except Exception as exc:
+            log(f"WARN failed to bootstrap intraday from storage: {exc}")
+
     return pd.DataFrame(columns=["datetime", "price", "ticker"])
 
 
