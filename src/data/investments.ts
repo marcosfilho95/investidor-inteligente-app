@@ -530,26 +530,6 @@ function getRowsForLatestSession(rows: IntradayPoint[]): IntradayPoint[] {
   return rows.filter((r) => r.datetime.slice(0, 10) === lastDate);
 }
 
-function getLatestDailyDateForSymbol(symbol: string): string | null {
-  const aliases = normalizeIntradayTicker(symbol);
-  const market = getMarketHistory();
-  for (const alias of aliases) {
-    const rows = market[alias];
-    if (!rows || rows.length === 0) continue;
-    const last = rows[rows.length - 1]?.date;
-    if (last) return String(last);
-  }
-  return null;
-}
-
-function isIntradayStaleForSymbol(symbol: string, rows: IntradayPoint[]): boolean {
-  if (!rows.length) return true;
-  const intradayDate = rows[rows.length - 1]?.datetime?.slice(0, 10) || null;
-  const dailyDate = getLatestDailyDateForSymbol(symbol);
-  if (!intradayDate || !dailyDate) return false;
-  return intradayDate < dailyDate;
-}
-
 function getDailyCloseForDate(symbol: string, dateKey: string): number | null {
   const aliases = normalizeIntradayTicker(symbol);
   const market = getMarketHistory();
@@ -640,7 +620,6 @@ export async function getFilteredIntradayPriceHistory(symbol: string): Promise<I
     aliases.map((alias) => allIntraday[alias]).find((series) => Array.isArray(series) && series.length > 0) || [];
 
   if (!rows.length) return [];
-  if (isIntradayStaleForSymbol(symbol, rows)) return [];
 
   const currentSessionRows = getRowsForCurrentSession(rows);
   const sessionRows = currentSessionRows.length > 0 ? currentSessionRows : getRowsForLatestSession(rows);
@@ -668,7 +647,6 @@ export async function getLatestIntradayPointForCurrentSession(
     aliases.map((alias) => allIntraday[alias]).find((series) => Array.isArray(series) && series.length > 0) || [];
 
   if (!rows.length) return null;
-  if (isIntradayStaleForSymbol(symbol, rows)) return null;
   const currentSessionRows = getRowsForCurrentSession(rows);
   const sessionRows = currentSessionRows.length > 0 ? currentSessionRows : getRowsForLatestSession(rows);
   if (!sessionRows.length) return null;
@@ -791,7 +769,6 @@ async function build7dIntradaySeries(symbol: string): Promise<SevenDayIntradayPo
   const rows =
     aliases.map((alias) => allIntraday[alias]).find((series) => Array.isArray(series) && series.length > 0) || [];
   if (!rows.length) return [];
-  if (isIntradayStaleForSymbol(symbol, rows)) return [];
 
   const resampled = resampleIntradayRowsTo15m(rows);
   if (!resampled.length) return [];
