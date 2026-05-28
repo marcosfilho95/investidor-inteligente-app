@@ -476,6 +476,8 @@ const INTRADAY_STORAGE_PATH = (() => {
 
 let _intradayHistoryCache: Record<string, IntradayPoint[]> | null = null;
 let _intradayHistoryInFlight: Promise<Record<string, IntradayPoint[]>> | null = null;
+let _intradayHistoryFetchedAt = 0;
+const INTRADAY_CACHE_TTL_MS = 2 * 60 * 1000;
 
 function readIntradayLastPriceCacheMap(): Record<string, number> {
   if (typeof window === "undefined") return {};
@@ -584,10 +586,19 @@ function parseIntradayCsv(text: string): Record<string, IntradayPoint[]> {
   return out;
 }
 
-async function fetchIntradayCsv(url: string): Promise<string | null> {
+async function fetchIntradayCsv(url: string, version?: string): Promise<string | null> {
   if (!url) return null;
   try {
-    const resp = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(6000) });
+    const u = new URL(url, window.location.origin);
+    if (version) u.searchParams.set("v", version);
+    const resp = await fetch(u.toString(), {
+      cache: "no-store",
+      signal: AbortSignal.timeout(6000),
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+      },
+    });
     if (!resp.ok) return null;
     const txt = await resp.text();
     return txt && txt.trim().length > 0 ? txt : null;
@@ -597,14 +608,18 @@ async function fetchIntradayCsv(url: string): Promise<string | null> {
 }
 
 async function getIntradayHistory(): Promise<Record<string, IntradayPoint[]>> {
-  if (_intradayHistoryCache) return _intradayHistoryCache;
+  if (_intradayHistoryCache && Date.now() - _intradayHistoryFetchedAt < INTRADAY_CACHE_TTL_MS) {
+    return _intradayHistoryCache;
+  }
   if (_intradayHistoryInFlight) return _intradayHistoryInFlight;
 
   _intradayHistoryInFlight = (async () => {
-    const storageCsv = await fetchIntradayCsv(INTRADAY_STORAGE_PATH);
-    const localCsv = storageCsv ? null : await fetchIntradayCsv(INTRADAY_LOCAL_PATH);
+    const version = String(Date.now());
+    const storageCsv = await fetchIntradayCsv(INTRADAY_STORAGE_PATH, version);
+    const localCsv = storageCsv ? null : await fetchIntradayCsv(INTRADAY_LOCAL_PATH, version);
     const parsed = parseIntradayCsv(storageCsv || localCsv || "");
     _intradayHistoryCache = parsed;
+    _intradayHistoryFetchedAt = Date.now();
     return parsed;
   })();
 
@@ -866,6 +881,7 @@ export async function getFiltered7dPriceHistory(
 
 export function invalidateIntradayHistoryCache() {
   _intradayHistoryCache = null;
+  _intradayHistoryFetchedAt = 0;
 }
 
 export function getCachedIntradayLastPrice(symbol: string): number | null {
