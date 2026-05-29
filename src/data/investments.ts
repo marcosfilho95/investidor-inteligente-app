@@ -763,6 +763,22 @@ function resampleIntradayRowsTo15m(rows: IntradayPoint[]): IntradayPoint[] {
   return Array.from(buckets.values()).sort((a, b) => a.datetime.localeCompare(b.datetime));
 }
 
+function maybeBuildClosingAnchorFor7d(
+  symbol: string,
+  date: string,
+  lastDatetime: string | null
+): IntradayPoint | null {
+  const closeDatetime = `${date} 17:00:00`;
+  if (lastDatetime === closeDatetime) return null;
+
+  const marketSeries = getMarketHistory()[symbol];
+  if (!Array.isArray(marketSeries) || marketSeries.length === 0) return null;
+  const day = marketSeries.find((row) => row.date === date);
+  if (!day || !Number.isFinite(day.close)) return null;
+
+  return { datetime: closeDatetime, price: Number(day.close) };
+}
+
 async function build7dIntradaySeries(symbol: string): Promise<SevenDayIntradayPoint[]> {
   const allIntraday = await getIntradayHistory();
   const aliases = normalizeIntradayTicker(symbol);
