@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowDownRight, ArrowUpRight, BarChart3, ChevronDown, ChevronRight, CircleDollarSign, Coins, DollarSign, HelpCircle, PiggyBank, ShoppingCart, Wallet } from "lucide-react";
+import { ArrowDown, ArrowDownRight, ArrowUp, ArrowUpDown, ArrowUpRight, BarChart3, ChevronDown, ChevronRight, CircleDollarSign, Coins, DollarSign, HelpCircle, PiggyBank, ShoppingCart, Wallet } from "lucide-react";
 import { AssetLogoWithFallback } from "@/components/AssetLogo";
 import {
   PieChart as RechartsPie,
@@ -40,6 +40,29 @@ const chartColors = [
   "hsl(100, 55%, 45%)",
   "hsl(250, 65%, 55%)",
 ];
+
+type HoldingsSortKey =
+  | "asset"
+  | "quantity"
+  | "averagePrice"
+  | "currentPrice"
+  | "dailyChange"
+  | "profitability"
+  | "balance"
+  | "allocation";
+
+type SortDirection = "asc" | "desc";
+
+const holdingsDefaultSortDirection: Record<HoldingsSortKey, SortDirection> = {
+  asset: "asc",
+  quantity: "desc",
+  averagePrice: "desc",
+  currentPrice: "desc",
+  dailyChange: "desc",
+  profitability: "desc",
+  balance: "desc",
+  allocation: "desc",
+};
 
 function getTradeTimeMs(tradedAt: string, createdAt?: string): number {
   const tradedMs = new Date(tradedAt || "").getTime();
@@ -113,6 +136,10 @@ const Portfolio = () => {
   const [showRentabilidadeInfoMobile, setShowRentabilidadeInfoMobile] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [showMobileTapHint, setShowMobileTapHint] = useState(false);
+  const [holdingsSort, setHoldingsSort] = useState<{
+    key: HoldingsSortKey;
+    direction: SortDirection;
+  } | null>(null);
   const holdingsScrollRef = useRef<HTMLDivElement | null>(null);
   const tradeScrollRef = useRef<HTMLDivElement | null>(null);
   const allocationSectionRef = useRef<HTMLDivElement | null>(null);
@@ -356,9 +383,9 @@ const Portfolio = () => {
 
   const aiCompatibilityWarning = useMemo(() => {
     const status = String(portfolioRisk.profileCompatibility?.status || "");
-    if (!status || status === "Dentro da pol�tica") return "";
-    if (status === "Abaixo da pol�tica") return "Aten��o: sua carteira est� mais conservadora do que o seu perfil atual.";
-    if (status === "Acima da pol�tica") return "Aten��o: sua carteira est� mais arriscada do que o seu perfil atual.";
+    if (!status || status === "Dentro da política") return "";
+    if (status === "Abaixo da política") return "Atenção: sua carteira está mais conservadora do que o seu perfil atual.";
+    if (status === "Acima da política") return "Atenção: sua carteira está mais arriscada do que o seu perfil atual.";
     return "";
   }, [portfolioRisk.profileCompatibility?.status]);
 
@@ -367,7 +394,7 @@ const Portfolio = () => {
     const compatibilityStatus = String(portfolioRisk.profileCompatibility?.status || "").trim();
 
     if (!profileType && !compatibilityStatus) {
-      return "Perfil de investidor: ainda n�o identificado.";
+      return "Perfil de investidor: ainda não identificado.";
     }
     if (!profileType) {
       return `Compatibilidade da carteira: ${compatibilityStatus}.`;
@@ -378,10 +405,69 @@ const Portfolio = () => {
     return `Perfil de investidor: ${profileType}. Compatibilidade da carteira: ${compatibilityStatus}.`;
   }, [investorProfile?.type, portfolioRisk.profileCompatibility?.status]);
 
-  const sortedHoldings = useMemo(
-    () => [...enrichedHoldings].sort((a, b) => b.value - a.value),
-    [enrichedHoldings]
-  );
+  const sortedHoldings = useMemo(() => {
+    const fallbackSort = (a: (typeof enrichedHoldings)[number], b: (typeof enrichedHoldings)[number]) =>
+      b.value - a.value || a.symbol.localeCompare(b.symbol);
+
+    if (!holdingsSort) {
+      return [...enrichedHoldings].sort(fallbackSort);
+    }
+
+    const getSortValue = (holding: (typeof enrichedHoldings)[number]): number | string => {
+      switch (holdingsSort.key) {
+        case "asset":
+          return getDisplaySymbol(holding.symbol);
+        case "quantity":
+          return holding.shares;
+        case "averagePrice":
+          return holding.avgPrice;
+        case "currentPrice":
+          return holding.price;
+        case "dailyChange":
+          return holding.changePercent;
+        case "profitability":
+          return holding.avgPrice > 0 ? (holding.price / holding.avgPrice - 1) * 100 : 0;
+        case "balance":
+          return holding.value;
+        case "allocation":
+          return holding.allocation;
+      }
+    };
+
+    const directionMultiplier = holdingsSort.direction === "asc" ? 1 : -1;
+    return [...enrichedHoldings].sort((a, b) => {
+      const aValue = getSortValue(a);
+      const bValue = getSortValue(b);
+      const comparison =
+        typeof aValue === "string" && typeof bValue === "string"
+          ? aValue.localeCompare(bValue, "pt-BR", { sensitivity: "base" })
+          : Number(aValue) - Number(bValue);
+
+      return comparison * directionMultiplier || a.symbol.localeCompare(b.symbol);
+    });
+  }, [enrichedHoldings, holdingsSort]);
+
+  const toggleHoldingsSort = (key: HoldingsSortKey) => {
+    setHoldingsSort((current) => {
+      if (current?.key === key) {
+        return {
+          key,
+          direction: current.direction === "asc" ? "desc" : "asc",
+        };
+      }
+      return { key, direction: holdingsDefaultSortDirection[key] };
+    });
+    setHoldingsPage(1);
+  };
+
+  const renderHoldingsSortIcon = (key: HoldingsSortKey) => {
+    if (holdingsSort?.key !== key) {
+      return <ArrowUpDown className="h-3 w-3 opacity-45" aria-hidden="true" />;
+    }
+    return holdingsSort.direction === "asc"
+      ? <ArrowUp className="h-3 w-3 text-primary" aria-hidden="true" />
+      : <ArrowDown className="h-3 w-3 text-primary" aria-hidden="true" />;
+  };
 
   const tradeHistoryRows = useMemo(() => {
     const orderedAsc = [...userTrades].sort((a, b) => {
@@ -1111,18 +1197,72 @@ const Portfolio = () => {
                     <table className="w-full min-w-[980px]">
                       <thead>
                         <tr className="border-b border-border/50">
-                          <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Ativo</th>
-                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Quant.</th>
-                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
-                            Preco Medio
+                          <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleHoldingsSort("asset")}
+                              className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+                              aria-label="Ordenar por ativo"
+                            >
+                              Ativo
+                              {renderHoldingsSortIcon("asset")}
+                            </button>
                           </th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
-                            Preco Atual
+                            <button
+                              type="button"
+                              onClick={() => toggleHoldingsSort("quantity")}
+                              className="ml-auto inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+                              aria-label="Ordenar por quantidade"
+                            >
+                              Quant.
+                              {renderHoldingsSortIcon("quantity")}
+                            </button>
                           </th>
-                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Variacao (dia)</th>
+                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleHoldingsSort("averagePrice")}
+                              className="ml-auto inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+                              aria-label="Ordenar por preço médio"
+                            >
+                              Preço Médio
+                              {renderHoldingsSortIcon("averagePrice")}
+                            </button>
+                          </th>
+                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleHoldingsSort("currentPrice")}
+                              className="ml-auto inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+                              aria-label="Ordenar por preço atual"
+                            >
+                              Preço Atual
+                              {renderHoldingsSortIcon("currentPrice")}
+                            </button>
+                          </th>
+                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleHoldingsSort("dailyChange")}
+                              className="ml-auto inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+                              aria-label="Ordenar por variação do dia"
+                            >
+                              Variação (dia)
+                              {renderHoldingsSortIcon("dailyChange")}
+                            </button>
+                          </th>
                           <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
                             <div className="inline-flex items-center gap-1.5 relative group/info cursor-default">
-                              <span className="text-muted-foreground">Rentabilidade</span>
+                              <button
+                                type="button"
+                                onClick={() => toggleHoldingsSort("profitability")}
+                                className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                                aria-label="Ordenar por rentabilidade"
+                              >
+                                Rentabilidade
+                                {renderHoldingsSortIcon("profitability")}
+                              </button>
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1146,9 +1286,29 @@ const Portfolio = () => {
                               </button>
                             </div>
                           </th>
-                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Saldo</th>
-                          <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">% Carteira</th>
-                          <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Acoes</th>
+                          <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleHoldingsSort("balance")}
+                              className="ml-auto inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+                              aria-label="Ordenar por saldo"
+                            >
+                              Saldo
+                              {renderHoldingsSortIcon("balance")}
+                            </button>
+                          </th>
+                          <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleHoldingsSort("allocation")}
+                              className="ml-auto inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+                              aria-label="Ordenar por percentual da carteira"
+                            >
+                              % Carteira
+                              {renderHoldingsSortIcon("allocation")}
+                            </button>
+                          </th>
+                          <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Ações</th>
                         </tr>
                       </thead>
                       <AnimatePresence mode="wait" initial={false}>
@@ -1190,7 +1350,11 @@ const Portfolio = () => {
                                 >
                                   {h.changePercent >= 0 ? "+" : ""}
                                   {h.changePercent.toFixed(2)}%
-                                  <span className="text-[12px] leading-none">{h.changePercent >= 0 ? "?" : "?"}</span>
+                                  {h.changePercent >= 0 ? (
+                                    <ArrowUp className="h-3 w-3 text-gain" aria-hidden="true" />
+                                  ) : (
+                                    <ArrowDown className="h-3 w-3 text-loss" aria-hidden="true" />
+                                  )}
                                 </span>
                               </td>
                               <td className="text-right px-4 py-3 relative z-10 hover:z-[130]">

@@ -9,6 +9,8 @@ Aplicação para acompanhamento de investimentos com foco em educação financei
 - [Arquitetura (visão rápida)](#arquitetura-visão-rápida)
 - [IA do projeto (HODL + GPT)](#ia-do-projeto-hodl--gpt)
 - [Governança de IA (anti-viés e anti-alucinação)](#governança-de-ia-anti-viés-e-anti-alucinação)
+- [Memória e histórico do chat](#memória-e-histórico-do-chat)
+- [Privacidade e tratamento de dados](#privacidade-e-tratamento-de-dados)
 - [Alertas inteligentes](#alertas-inteligentes)
 - [Pipeline de dados com OpenBB](#pipeline-de-dados-com-openbb)
 - [Cron job e workflow](#cron-job-e-workflow)
@@ -116,6 +118,29 @@ A IA do projeto segue regras para manter segurança e confiabilidade:
 - não dar ordem direta de compra/venda
 - priorizar educação, fundamentos e gestão de risco
 - sinalizar limites quando faltarem dados
+
+## Memória e histórico do chat
+O histórico conversacional do HODL é controlado no frontend, em `src/components/AiChatWidget.tsx`.
+
+Regras atuais:
+- o histórico fica no `localStorage` do navegador
+- o armazenamento é separado por escopo: dashboard, carteira, aprender e ativo específico
+- são mantidas até 20 mensagens recentes por escopo
+- as mensagens expiram após 14 dias
+- a cada pergunta, o recorte válido do histórico é enviado para a Edge Function como contexto
+
+Esse histórico não é salvo em tabelas do PostgreSQL. Portanto, o agente considera mensagens anteriores enquanto elas estiverem no armazenamento local do mesmo navegador e dentro do limite definido; se o usuário limpar os dados do navegador, usar outro dispositivo ou ultrapassar o prazo de expiração, a conversa anterior deixa de ser considerada.
+
+## Privacidade e tratamento de dados
+O sistema usa Supabase Auth, Supabase Postgres e Supabase Storage para persistência dos dados do usuário.
+
+Dados persistidos:
+- conta: e-mail, metadados de autenticação e sessão
+- perfil: nome, usuário, avatar e respostas do questionário de investidor
+- carteira: ativos, quantidades, preço médio e operações registradas
+- alertas: estado e histórico de alertas inteligentes
+
+As tabelas de dados do usuário usam Row Level Security (RLS) com `user_id`, restringindo leitura e escrita ao próprio usuário autenticado. Para uso acadêmico, os resultados devem ser apresentados de forma anonimizada, sem exposição de e-mail, identificadores diretos ou composição individual da carteira, em alinhamento aos princípios de finalidade, minimização, segurança e necessidade da LGPD.
 
 ## Alertas inteligentes
 Implementação principal:
